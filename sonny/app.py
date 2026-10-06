@@ -643,7 +643,41 @@ button {
 
 
 <script>
+function renderMarkdown(text) {
 
+    const escaped = String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    return escaped
+        .replace(
+            /^### (.+)$/gm,
+            "<strong>$1</strong>"
+        )
+        .replace(
+            /^## (.+)$/gm,
+            "<strong>$1</strong>"
+        )
+        .replace(
+            /^# (.+)$/gm,
+            "<strong>$1</strong>"
+        )
+        .replace(
+            /\*\*(.+?)\*\*/g,
+            "<strong>$1</strong>"
+        )
+        .replace(
+            /`([^`]+)`/g,
+            "<code>$1</code>"
+        )
+        .replace(
+            /\n/g,
+            "<br>"
+        );
+}
 const state = {
     userId: null,
     projectId: null,
