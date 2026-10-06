@@ -1248,12 +1248,11 @@ def chat(
     b: ChatIn,
     x_user_id: str | None = Header(None)
 ):
-
     u = user(x_user_id)
 
     p = require_project(u, pid)
 
-        t = time.time()
+    t = time.time()
 
     # Persist the user's turn first.
     store.add_message(
@@ -1262,6 +1261,58 @@ def chat(
         "user",
         b.message
     )
+
+    # Load a bounded recent-history window.
+    # The current user message is included here.
+    history = store.messages(
+        u,
+        pid,
+        limit=20
+    )
+
+    out = respond(
+        p,
+        store.memories(u, pid),
+        b.message,
+        history=history
+    )
+
+    rid = str(uuid.uuid4())
+
+    # Persist Sonny's response as part of the
+    # same durable project conversation.
+    store.add_message(
+        u,
+        pid,
+        "assistant",
+        out["text"],
+        response_id=rid
+    )
+
+    latency = int(
+        (time.time() - t) * 1000
+    )
+
+    store.trace(
+        rid,
+        u,
+        pid,
+        "openai-responses",
+        CORE_VERSION,
+        p["state_version"],
+        out["answer_state"],
+        bool(out.get("memory_proposal")),
+        bool(out.get("next_action")),
+        latency,
+        0.0
+    )
+
+    return {
+        "response_id": rid,
+        **out,
+        "state_version":
+            p["state_version"]
+    }
 
     # Load a bounded recent-history window.
     # The current user message is included here.
