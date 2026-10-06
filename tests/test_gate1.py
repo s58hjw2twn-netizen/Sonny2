@@ -1,4 +1,5 @@
 import os,tempfile,sqlite3
+from unittest.mock import patch
 fd,path=tempfile.mkstemp(); os.close(fd); os.unlink(path); os.environ['SONNY_DB']=path
 from fastapi.testclient import TestClient
 import sonny.app as appmod
