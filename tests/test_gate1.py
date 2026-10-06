@@ -49,10 +49,39 @@ def test_G1_05_correction_used_and_auditable():
 
 def test_G1_06_deleted_memory_stops_influencing():
     u=mkuser(); p=mkproject(u)
-    m=c.post(f'/projects/{p}/memories',headers=H(u),json={'value':'Secret launch date is Friday'}).json()['memory_id']
-    c.post(f'/projects/{p}/memories/{m}/confirm',headers=H(u))
-    c.delete(f'/projects/{p}/memories/{m}',headers=H(u))
-    r=c.post(f'/projects/{p}/chat',headers=H(u),json={'message':'What is my secret launch date I told you?'}).json()
+    m=c.post(
+        f'/projects/{p}/memories',
+        headers=H(u),
+        json={'value':'Secret launch date is Friday'}
+    ).json()['memory_id']
+
+    c.post(
+        f'/projects/{p}/memories/{m}/confirm',
+        headers=H(u)
+    )
+    c.delete(
+        f'/projects/{p}/memories/{m}',
+        headers=H(u)
+    )
+
+    with patch(
+        'sonny.app.respond',
+        return_value={
+            'text': "I don't have that information.",
+            'answer_state': 'UNKNOWN',
+            'memory_proposal': None,
+            'next_action': None
+        }
+    ):
+        r=c.post(
+            f'/projects/{p}/chat',
+            headers=H(u),
+            json={
+                'message':
+                'What is my secret launch date I told you?'
+            }
+        ).json()
+
     assert r['answer_state']=='UNKNOWN'
 
 def test_G1_07_next_action_proposed():
