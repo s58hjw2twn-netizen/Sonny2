@@ -122,3 +122,24 @@ def test_G1_10_cross_project_object_id_binding():
 
     assert c.post(f'/projects/{p2}/memories/{m}/confirm',headers=H(u)).status_code==404
     assert c.post(f'/projects/{p2}/actions/{a}/feedback',headers=H(u),json={'status':'ACCEPTED'}).status_code==404
+
+
+def test_G1_13_conversation_persists_after_store_restart():
+    u=mkuser('HistoryUser')
+    p=mkproject(u,'History','Persist chat')
+
+    appmod.store.add_message(
+        u,p,'user','Remember BLUE-913'
+    )
+    appmod.store.add_message(
+        u,p,'assistant','BLUE-913 remembered'
+    )
+
+    fresh=Store(path)
+    history=fresh.messages(u,p,limit=20)
+
+    assert len(history)==2
+    assert history[0]['role']=='user'
+    assert history[0]['content']=='Remember BLUE-913'
+    assert history[1]['role']=='assistant'
+    assert history[1]['content']=='BLUE-913 remembered'
