@@ -293,4 +293,4 @@ class Store:
             dict(row)
             for row in rows
         ]
-        if status not 
+    
