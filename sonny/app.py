@@ -782,7 +782,7 @@ function loadState() {
 }
 
 
-function showWorkspace() {
+async function showWorkspace() {
 
     document
         .getElementById("setupCard")
@@ -804,12 +804,45 @@ function showWorkspace() {
         .getElementById("projectGoal")
         .textContent =
             state.projectGoal ||
-            "";
+            
+        .getElementById("messageInput")
+          try {
+        const data = await api(
+            "/projects/" + state.projectId
+        );
+
+        const chat =
+            document.getElementById("chat");
+
+        chat.innerHTML = "";
+
+        if (
+            data.messages &&
+            data.messages.length
+        ) {
+            data.messages.forEach(
+                function(message) {
+                    addMessage(
+                        message.role === "assistant"
+                            ? "sonny"
+                            : "user",
+                        message.content
+                    );
+                }
+            );
+        }
+    }
+    catch (e) {
+        console.error(
+            "Could not load conversation history:",
+            e
+        );
+    }
 
     document
         .getElementById("messageInput")
         .focus();
-}
+}  
 
 
 async function startWorkspace() {
