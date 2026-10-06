@@ -288,7 +288,6 @@ class Store:
         return i
 
 
-
         def messages(
         self,
         u,
@@ -299,14 +298,14 @@ class Store:
             """
             SELECT *
             FROM (
-                SELECT *
+                SELECT rowid AS message_order, *
                 FROM messages
                 WHERE user_id=?
                   AND project_id=?
-                ORDER BY created_at DESC, rowid DESC
+                ORDER BY rowid DESC
                 LIMIT ?
             )
-            ORDER BY created_at ASC, rowid ASC
+            ORDER BY message_order ASC
             """,
             (
                 u,
