@@ -55,203 +55,1084 @@ def user(x_user_id: str | None):
 def require_project(u, pid):
     p = store.project(u, pid)
     if not p:
-        raise HTTPException(404)
+        raise HTTPException(404, "Project not found")
     return p
 
 
 # ---------------------------------------------------------
-# SONNY WEB HOMEPAGE
+# SONNY WEB APP
 # ---------------------------------------------------------
 
 @app.get("/", response_class=HTMLResponse)
 def home():
-    return """
+    return r"""
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
 
-    <title>Sonny Assistant</title>
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0,
+    viewport-fit=cover"
+>
 
-    <style>
-        * {
-            box-sizing: border-box;
-        }
+<meta name="theme-color" content="#080c14">
 
-        body {
-            margin: 0;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
+<title>Sonny Assistant</title>
 
-            font-family:
-                -apple-system,
-                BlinkMacSystemFont,
-                "Segoe UI",
-                Roboto,
-                Helvetica,
-                Arial,
-                sans-serif;
+<style>
 
-            background:
-                radial-gradient(
-                    circle at top,
-                    #263247 0%,
-                    #111827 45%,
-                    #080c14 100%
-                );
+* {
+    box-sizing: border-box;
+}
 
-            color: #f9fafb;
-        }
+html,
+body {
+    margin: 0;
+    min-height: 100%;
+}
 
-        .card {
-            width: 100%;
-            max-width: 650px;
+body {
+    min-height: 100vh;
 
-            background: rgba(31, 41, 55, 0.94);
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
 
-            border: 1px solid #374151;
-            border-radius: 26px;
+    background:
+        radial-gradient(
+            circle at top,
+            #263247 0%,
+            #111827 42%,
+            #080c14 100%
+        );
 
-            padding: 34px;
+    color: #f9fafb;
+}
 
-            box-shadow:
-                0 25px 70px rgba(0, 0, 0, 0.45);
-        }
+.app {
+    width: 100%;
+    max-width: 760px;
 
-        .badge {
-            display: inline-block;
+    min-height: 100vh;
 
-            padding: 7px 12px;
+    margin: 0 auto;
+    padding:
+        max(24px, env(safe-area-inset-top))
+        18px
+        max(30px, env(safe-area-inset-bottom));
+}
 
-            border-radius: 999px;
+.header {
+    padding: 14px 4px 20px;
+}
 
-            background: #f97316;
-            color: white;
+.badge {
+    display: inline-block;
 
-            font-size: 12px;
-            font-weight: 800;
+    padding: 7px 12px;
 
-            letter-spacing: 0.6px;
-        }
+    border-radius: 999px;
 
-        h1 {
-            margin-top: 18px;
-            margin-bottom: 5px;
+    background: #f97316;
 
-            font-size: clamp(36px, 9vw, 55px);
-            line-height: 1;
-        }
+    color: white;
 
-        .tagline {
-            margin-top: 10px;
+    font-size: 11px;
+    font-weight: 800;
 
-            font-size: 18px;
-            color: #d1d5db;
-        }
+    letter-spacing: .7px;
+}
 
-        .status {
-            margin-top: 28px;
+h1 {
+    margin: 15px 0 4px;
 
-            display: flex;
-            align-items: center;
-            gap: 9px;
+    font-size: 42px;
+    line-height: 1;
+}
 
-            font-weight: 700;
-            color: #86efac;
-        }
+.tagline {
+    color: #cbd5e1;
+    line-height: 1.45;
+}
 
-        .dot {
-            width: 11px;
-            height: 11px;
+.status {
+    margin-top: 15px;
 
-            border-radius: 50%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 
-            background: #22c55e;
+    color: #86efac;
 
-            box-shadow:
-                0 0 12px rgba(34, 197, 94, 0.8);
-        }
+    font-size: 14px;
+    font-weight: 700;
+}
 
-        .panel {
-            margin-top: 25px;
+.dot {
+    width: 10px;
+    height: 10px;
 
-            padding: 20px;
+    border-radius: 50%;
 
-            border-radius: 18px;
+    background: #22c55e;
 
-            background: #111827;
+    box-shadow:
+        0 0 12px rgba(34, 197, 94, .85);
+}
 
-            border: 1px solid #374151;
-        }
+.card {
+    background: rgba(31, 41, 55, .94);
 
-        .panel strong {
-            color: #fb923c;
-        }
+    border: 1px solid #374151;
 
-        p {
-            line-height: 1.6;
-            color: #d1d5db;
-        }
+    border-radius: 22px;
 
-        .footer {
-            margin-top: 24px;
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, .35);
+}
 
-            color: #9ca3af;
-            font-size: 13px;
-        }
-    </style>
+.setup {
+    padding: 20px;
+    margin-bottom: 18px;
+}
+
+.setup-title {
+    font-size: 15px;
+    font-weight: 800;
+
+    margin-bottom: 13px;
+}
+
+.row {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 10px;
+}
+
+input,
+textarea,
+button {
+    font: inherit;
+}
+
+input,
+textarea {
+    width: 100%;
+
+    padding: 13px 14px;
+
+    border-radius: 13px;
+
+    border: 1px solid #475569;
+
+    outline: none;
+
+    background: #111827;
+
+    color: #f8fafc;
+}
+
+input:focus,
+textarea:focus {
+    border-color: #f97316;
+}
+
+textarea {
+    resize: none;
+
+    min-height: 52px;
+    max-height: 160px;
+}
+
+button {
+    border: 0;
+
+    border-radius: 13px;
+
+    cursor: pointer;
+
+    font-weight: 800;
+}
+
+.primary {
+    background: #f97316;
+    color: white;
+
+    padding: 13px 16px;
+}
+
+.primary:disabled {
+    opacity: .55;
+    cursor: default;
+}
+
+.secondary {
+    background: #334155;
+    color: #e2e8f0;
+
+    padding: 12px 14px;
+}
+
+.workspace {
+    overflow: hidden;
+}
+
+.workspace-top {
+    display: flex;
+
+    justify-content: space-between;
+    align-items: center;
+
+    gap: 12px;
+
+    padding: 17px 18px;
+
+    border-bottom: 1px solid #374151;
+}
+
+.project-name {
+    font-weight: 800;
+}
+
+.project-goal {
+    margin-top: 3px;
+
+    color: #94a3b8;
+
+    font-size: 12px;
+}
+
+.chat {
+    min-height: 320px;
+    max-height: 55vh;
+
+    overflow-y: auto;
+
+    padding: 20px 16px;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 14px;
+}
+
+.empty {
+    margin: auto;
+
+    max-width: 420px;
+
+    text-align: center;
+
+    color: #94a3b8;
+
+    line-height: 1.55;
+}
+
+.message {
+    max-width: 88%;
+
+    padding: 13px 15px;
+
+    border-radius: 17px;
+
+    line-height: 1.48;
+
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.message.user {
+    align-self: flex-end;
+
+    background: #f97316;
+
+    color: white;
+
+    border-bottom-right-radius: 5px;
+}
+
+.message.sonny {
+    align-self: flex-start;
+
+    background: #111827;
+
+    border: 1px solid #374151;
+
+    color: #e5e7eb;
+
+    border-bottom-left-radius: 5px;
+}
+
+.label {
+    display: block;
+
+    margin-bottom: 5px;
+
+    font-size: 10px;
+    font-weight: 900;
+
+    letter-spacing: .7px;
+
+    opacity: .65;
+}
+
+.composer {
+    padding: 14px;
+
+    border-top: 1px solid #374151;
+
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 1fr) auto;
+
+    gap: 10px;
+
+    align-items: end;
+}
+
+.send {
+    height: 52px;
+
+    padding: 0 18px;
+
+    background: #f97316;
+
+    color: white;
+}
+
+.send:disabled {
+    opacity: .5;
+}
+
+.meta {
+    padding: 0 18px 16px;
+
+    color: #64748b;
+
+    font-size: 11px;
+}
+
+.hidden {
+    display: none;
+}
+
+.error {
+    margin-top: 10px;
+
+    color: #fca5a5;
+
+    font-size: 13px;
+
+    line-height: 1.4;
+}
+
+.footer {
+    padding: 20px 4px 0;
+
+    text-align: center;
+
+    color: #64748b;
+
+    font-size: 11px;
+}
+
+@media (max-width: 560px) {
+
+    .app {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .row {
+        grid-template-columns: 1fr;
+    }
+
+    .chat {
+        min-height: 350px;
+        max-height: 52vh;
+    }
+
+    .message {
+        max-width: 92%;
+    }
+
+}
+
+</style>
 </head>
 
 <body>
 
-<div class="card">
+<div class="app">
 
-    <span class="badge">
-        SONNY ASSISTANT • BUILD 0.1.0
-    </span>
+    <header class="header">
 
-    <h1>Sonny</h1>
+        <span class="badge">
+            SONNY ASSISTANT • BUILD 0.1.0
+        </span>
 
-    <div class="tagline">
-        Your personal AI that learns how to work for you.
-    </div>
+        <h1>Sonny</h1>
 
-    <div class="status">
-        <span class="dot"></span>
-        Sonny is online
-    </div>
+        <div class="tagline">
+            Your personal AI that learns how to work for you.
+        </div>
 
-    <div class="panel">
+        <div class="status">
+            <span class="dot"></span>
+            <span id="statusText">Sonny is online</span>
+        </div>
 
-        <strong>Deployment successful</strong>
+    </header>
 
-        <p>
-            Sonny Assistant is running on Railway.
-        </p>
 
-        <p>
-            The Project Co-Pilot backend, persistent projects,
-            memory controls, action tracking and Sonny core
-            are available in this deployment.
-        </p>
+    <section
+        id="setupCard"
+        class="card setup"
+    >
 
-        <p>
-            The interactive Sonny chat workspace is the next
-            interface layer.
-        </p>
+        <div class="setup-title">
+            Start your Sonny workspace
+        </div>
 
-    </div>
+        <div class="row">
+
+            <input
+                id="nameInput"
+                placeholder="Your name"
+                autocomplete="name"
+            >
+
+            <input
+                id="projectInput"
+                placeholder="Project name"
+                value="My Sonny Project"
+            >
+
+        </div>
+
+        <div style="margin-top:10px">
+
+            <input
+                id="goalInput"
+                placeholder="What do you want Sonny to help you accomplish?"
+                value="Help me organize, think and take useful next steps."
+            >
+
+        </div>
+
+        <div style="margin-top:12px">
+
+            <button
+                id="startButton"
+                class="primary"
+                onclick="startWorkspace()"
+            >
+                Start Sonny
+            </button>
+
+        </div>
+
+        <div
+            id="setupError"
+            class="error hidden"
+        ></div>
+
+    </section>
+
+
+    <section
+        id="workspace"
+        class="card workspace hidden"
+    >
+
+        <div class="workspace-top">
+
+            <div>
+
+                <div
+                    id="projectName"
+                    class="project-name"
+                >
+                    Sonny Project
+                </div>
+
+                <div
+                    id="projectGoal"
+                    class="project-goal"
+                ></div>
+
+            </div>
+
+            <button
+                class="secondary"
+                onclick="resetWorkspace()"
+            >
+                New
+            </button>
+
+        </div>
+
+
+        <div
+            id="chat"
+            class="chat"
+        >
+
+            <div
+                id="emptyState"
+                class="empty"
+            >
+                <strong>
+                    Sonny is ready.
+                </strong>
+
+                <br><br>
+
+                Type a message below to start working
+                on this project.
+            </div>
+
+        </div>
+
+
+        <div class="composer">
+
+            <textarea
+                id="messageInput"
+                placeholder="Message Sonny..."
+                rows="1"
+                onkeydown="composerKey(event)"
+            ></textarea>
+
+            <button
+                id="sendButton"
+                class="send"
+                onclick="sendMessage()"
+            >
+                Send
+            </button>
+
+        </div>
+
+        <div
+            id="chatMeta"
+            class="meta"
+        >
+            Project Co-Pilot • Sonny Core
+        </div>
+
+    </section>
+
 
     <div class="footer">
         Sonny Assistant 0.1.0
     </div>
 
 </div>
+
+
+<script>
+
+const state = {
+    userId: null,
+    projectId: null,
+    projectName: null,
+    projectGoal: null
+};
+
+
+function apiHeaders() {
+
+    const h = {
+        "Content-Type": "application/json"
+    };
+
+    if (state.userId) {
+        h["X-User-ID"] = state.userId;
+    }
+
+    return h;
+}
+
+
+async function api(path, options = {}) {
+
+    const response = await fetch(
+        path,
+        {
+            ...options,
+            headers: {
+                ...apiHeaders(),
+                ...(options.headers || {})
+            }
+        }
+    );
+
+    let data = null;
+
+    try {
+        data = await response.json();
+    }
+    catch (_) {
+        data = {};
+    }
+
+    if (!response.ok) {
+
+        const message =
+            data.detail ||
+            "Request failed.";
+
+        throw new Error(
+            typeof message === "string"
+                ? message
+                : JSON.stringify(message)
+        );
+    }
+
+    return data;
+}
+
+
+function saveState() {
+
+    localStorage.setItem(
+        "sonny_workspace",
+        JSON.stringify(state)
+    );
+}
+
+
+function loadState() {
+
+    try {
+
+        const saved =
+            JSON.parse(
+                localStorage.getItem(
+                    "sonny_workspace"
+                )
+            );
+
+        if (
+            saved &&
+            saved.userId &&
+            saved.projectId
+        ) {
+
+            Object.assign(
+                state,
+                saved
+            );
+
+            showWorkspace();
+
+            return true;
+        }
+
+    }
+    catch (_) {}
+
+    return false;
+}
+
+
+function showWorkspace() {
+
+    document
+        .getElementById("setupCard")
+        .classList
+        .add("hidden");
+
+    document
+        .getElementById("workspace")
+        .classList
+        .remove("hidden");
+
+    document
+        .getElementById("projectName")
+        .textContent =
+            state.projectName ||
+            "Sonny Project";
+
+    document
+        .getElementById("projectGoal")
+        .textContent =
+            state.projectGoal ||
+            "";
+
+    document
+        .getElementById("messageInput")
+        .focus();
+}
+
+
+async function startWorkspace() {
+
+    const button =
+        document.getElementById(
+            "startButton"
+        );
+
+    const error =
+        document.getElementById(
+            "setupError"
+        );
+
+    error.classList.add("hidden");
+
+    const name =
+        document
+            .getElementById("nameInput")
+            .value
+            .trim();
+
+    const projectName =
+        document
+            .getElementById("projectInput")
+            .value
+            .trim();
+
+    const goal =
+        document
+            .getElementById("goalInput")
+            .value
+            .trim();
+
+    if (!name) {
+
+        error.textContent =
+            "Enter your name.";
+
+        error.classList.remove(
+            "hidden"
+        );
+
+        return;
+    }
+
+    if (!projectName) {
+
+        error.textContent =
+            "Enter a project name.";
+
+        error.classList.remove(
+            "hidden"
+        );
+
+        return;
+    }
+
+    button.disabled = true;
+    button.textContent = "Starting...";
+
+    try {
+
+        const createdUser =
+            await api(
+                "/users",
+                {
+                    method: "POST",
+                    body: JSON.stringify({
+                        name: name
+                    })
+                }
+            );
+
+        state.userId =
+            createdUser.user_id;
+
+        const createdProject =
+            await api(
+                "/projects",
+                {
+                    method: "POST",
+                    body: JSON.stringify({
+                        name: projectName,
+                        goal: goal
+                    })
+                }
+            );
+
+        state.projectId =
+            createdProject.project_id;
+
+        state.projectName =
+            projectName;
+
+        state.projectGoal =
+            goal;
+
+        saveState();
+
+        showWorkspace();
+
+    }
+    catch (e) {
+
+        error.textContent =
+            e.message;
+
+        error.classList.remove(
+            "hidden"
+        );
+
+    }
+    finally {
+
+        button.disabled = false;
+        button.textContent =
+            "Start Sonny";
+    }
+}
+
+
+function addMessage(role, text) {
+
+    const chat =
+        document.getElementById("chat");
+
+    const empty =
+        document.getElementById(
+            "emptyState"
+        );
+
+    if (empty) {
+        empty.remove();
+    }
+
+    const box =
+        document.createElement("div");
+
+    box.className =
+        "message " + role;
+
+    const label =
+        document.createElement("span");
+
+    label.className = "label";
+
+    label.textContent =
+        role === "user"
+            ? "YOU"
+            : "SONNY";
+
+    const content =
+        document.createElement("div");
+
+    content.textContent = text;
+
+    box.appendChild(label);
+    box.appendChild(content);
+
+    chat.appendChild(box);
+
+    chat.scrollTop =
+        chat.scrollHeight;
+
+    return box;
+}
+
+
+async function sendMessage() {
+
+    if (
+        !state.userId ||
+        !state.projectId
+    ) {
+        return;
+    }
+
+    const input =
+        document.getElementById(
+            "messageInput"
+        );
+
+    const button =
+        document.getElementById(
+            "sendButton"
+        );
+
+    const meta =
+        document.getElementById(
+            "chatMeta"
+        );
+
+    const message =
+        input.value.trim();
+
+    if (!message) {
+        return;
+    }
+
+    input.value = "";
+
+    addMessage(
+        "user",
+        message
+    );
+
+    button.disabled = true;
+
+    meta.textContent =
+        "Sonny is thinking...";
+
+    let pending = null;
+
+    try {
+
+        pending =
+            addMessage(
+                "sonny",
+                "Thinking..."
+            );
+
+        const result =
+            await api(
+                "/projects/" +
+                encodeURIComponent(
+                    state.projectId
+                ) +
+                "/chat",
+                {
+                    method: "POST",
+                    body: JSON.stringify({
+                        message: message
+                    })
+                }
+            );
+
+        if (pending) {
+            pending.remove();
+        }
+
+        addMessage(
+            "sonny",
+            result.response ||
+            result.answer ||
+            result.message ||
+            JSON.stringify(
+                result,
+                null,
+                2
+            )
+        );
+
+        const answerState =
+            result.answer_state
+                ? " • " +
+                  result.answer_state
+                : "";
+
+        meta.textContent =
+            "Project Co-Pilot" +
+            answerState;
+
+    }
+    catch (e) {
+
+        if (pending) {
+            pending.remove();
+        }
+
+        addMessage(
+            "sonny",
+            "I couldn't complete that request. " +
+            e.message
+        );
+
+        meta.textContent =
+            "Connection error";
+
+    }
+    finally {
+
+        button.disabled = false;
+
+        input.focus();
+    }
+}
+
+
+function composerKey(event) {
+
+    if (
+        event.key === "Enter" &&
+        !event.shiftKey
+    ) {
+
+        event.preventDefault();
+
+        sendMessage();
+    }
+}
+
+
+function resetWorkspace() {
+
+    const confirmed =
+        confirm(
+            "Start a new Sonny workspace?"
+        );
+
+    if (!confirmed) {
+        return;
+    }
+
+    localStorage.removeItem(
+        "sonny_workspace"
+    );
+
+    location.reload();
+}
+
+
+async function checkHealth() {
+
+    try {
+
+        const response =
+            await fetch("/health");
+
+        if (!response.ok) {
+            throw new Error();
+        }
+
+        document
+            .getElementById(
+                "statusText"
+            )
+            .textContent =
+                "Sonny is online";
+
+    }
+    catch (_) {
+
+        document
+            .getElementById(
+                "statusText"
+            )
+            .textContent =
+                "Connection unavailable";
+    }
+}
+
+
+checkHealth();
+loadState();
+
+</script>
 
 </body>
 </html>
