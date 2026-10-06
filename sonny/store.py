@@ -1,7 +1,7 @@
 import sqlite3, json, uuid
 from pathlib import Path
 
-SCHEMA_VERSION="1.1"
+SCHEMA_VERSION="1.2"
 
 class Store:
     def __init__(self, path="sonny.db"):
