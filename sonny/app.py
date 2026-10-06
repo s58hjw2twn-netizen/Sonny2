@@ -800,13 +800,13 @@ async function showWorkspace() {
             state.projectName ||
             "Sonny Project";
 
-    document
+        document
         .getElementById("projectGoal")
         .textContent =
             state.projectGoal ||
-            
-        .getElementById("messageInput")
-          try {
+            "";
+
+    try {
         const data = await api(
             "/projects/" + state.projectId
         );
