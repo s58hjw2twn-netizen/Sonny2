@@ -219,8 +219,33 @@ class Store:
         self.db.commit()
         return i
 
-    def action_feedback(self,u,p,a,status):
-            def add_message(
+        def action_feedback(self, u, p, a, status):
+        if status not in {
+            "ACCEPTED",
+            "EDITED",
+            "REJECTED",
+            "DEFERRED",
+            "COMPLETED"
+        }:
+            return False
+
+        cur = self.db.execute(
+            """
+            UPDATE actions
+            SET status=?
+            WHERE id=?
+              AND user_id=?
+              AND project_id=?
+            """,
+            (status, a, u, p)
+        )
+
+        self.db.commit()
+
+        return cur.rowcount > 0
+
+
+    def add_message(
         self,
         u,
         p,
@@ -293,4 +318,3 @@ class Store:
             dict(row)
             for row in rows
         ]
-    
