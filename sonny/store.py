@@ -219,7 +219,7 @@ class Store:
         self.db.commit()
         return i
 
-        def action_feedback(self, u, p, a, status):
+   def action_feedback(self, u, p, a, status):
         if status not in {
             "ACCEPTED",
             "EDITED",
