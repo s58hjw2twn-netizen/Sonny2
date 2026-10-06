@@ -1,13 +1,16 @@
 import json
+import logging
 import os
 
 import httpx
 
 
-CORE_VERSION = "1.1-model-backed"
+CORE_VERSION = "1.1-model-backed-diagnostic"
 
 OPENAI_API_URL = "https://api.openai.com/v1/responses"
 DEFAULT_MODEL = os.getenv("SONNY_MODEL", "gpt-5.4-mini")
+
+logger = logging.getLogger("sonny.core")
 
 
 def _memory_text(memories):
@@ -15,8 +18,10 @@ def _memory_text(memories):
         return "No approved memories are currently available."
 
     approved = []
+
     for memory in memories:
         value = memory.get("value")
+
         if value:
             approved.append(f"- {value}")
 
@@ -67,6 +72,7 @@ def _extract_text(payload):
         for content in item.get("content", []):
             if content.get("type") == "output_text":
                 text = content.get("text")
+
                 if text:
                     pieces.append(text)
 
@@ -98,12 +104,30 @@ def _call_openai(project, memories, message):
             json=request_body,
         )
 
-        response.raise_for_status()
+        if response.is_error:
+            # Safe diagnostic:
+            # logs OpenAI's status/error response but never the API key.
+            error_body = response.text[:2000]
+
+            logger.error(
+                "OpenAI request failed: status=%s model=%s body=%s",
+                response.status_code,
+                DEFAULT_MODEL,
+                error_body,
+            )
+
+            response.raise_for_status()
+
         payload = response.json()
 
     text = _extract_text(payload)
 
     if not text:
+        logger.error(
+            "OpenAI response contained no readable output text. model=%s",
+            DEFAULT_MODEL,
+        )
+
         raise RuntimeError(
             "OpenAI returned a response without readable output text"
         )
@@ -133,13 +157,38 @@ def respond(project, memories, message):
             "memory_proposal": None,
         }
 
-    except (
-        httpx.HTTPError,
-        RuntimeError,
-        json.JSONDecodeError,
-    ):
-        return {
-            "text": _fallback(project),
-            "answer_state": "FALLBACK",
-            "memory_proposal": None,
-        }
+    except httpx.HTTPStatusError as exc:
+        logger.error(
+            "Sonny model HTTP failure: status=%s",
+            exc.response.status_code,
+        )
+
+    except httpx.RequestError as exc:
+        logger.error(
+            "Sonny model network failure: %s",
+            type(exc).__name__,
+        )
+
+    except json.JSONDecodeError:
+        logger.error(
+            "Sonny model returned invalid JSON."
+        )
+
+    except RuntimeError as exc:
+        logger.error(
+            "Sonny model runtime failure: %s",
+            str(exc),
+        )
+
+    except Exception as exc:
+        # Do not expose request headers or secrets.
+        logger.exception(
+            "Unexpected Sonny model failure: %s",
+            type(exc).__name__,
+        )
+
+    return {
+        "text": _fallback(project),
+        "answer_state": "FALLBACK",
+        "memory_proposal": None,
+    }
