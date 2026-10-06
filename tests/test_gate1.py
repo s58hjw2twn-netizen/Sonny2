@@ -132,11 +132,55 @@ def test_G1_11_false_memory_sentinel():
 
 def test_G1_12_unknown_distinguished_from_known():
     u=mkuser(); p=mkproject(u)
-    m=c.post(f'/projects/{p}/memories',headers=H(u),json={'value':'Budget is $7500'}).json()['memory_id']
-    c.post(f'/projects/{p}/memories/{m}/confirm',headers=H(u))
-    known=c.post(f'/projects/{p}/chat',headers=H(u),json={'message':'What is my budget I told you?'}).json()
-    unknown=c.post(f'/projects/{p}/chat',headers=H(u),json={'message':'What is my launch date I told you?'}).json()
-    assert known['answer_state']=='KNOWN' and unknown['answer_state']=='UNKNOWN'
+
+    m=c.post(
+        f'/projects/{p}/memories',
+        headers=H(u),
+        json={'value':'Budget is $7500'}
+    ).json()['memory_id']
+
+    c.post(
+        f'/projects/{p}/memories/{m}/confirm',
+        headers=H(u)
+    )
+
+    with patch(
+        'sonny.app.respond',
+        side_effect=[
+            {
+                'text': 'Your budget is $7500.',
+                'answer_state': 'KNOWN',
+                'memory_proposal': None,
+                'next_action': None
+            },
+            {
+                'text': "I don't have that information.",
+                'answer_state': 'UNKNOWN',
+                'memory_proposal': None,
+                'next_action': None
+            }
+        ]
+    ):
+        known=c.post(
+            f'/projects/{p}/chat',
+            headers=H(u),
+            json={
+                'message':
+                'What is my budget I told you?'
+            }
+        ).json()
+
+        unknown=c.post(
+            f'/projects/{p}/chat',
+            headers=H(u),
+            json={
+                'message':
+                'What is my launch date I told you?'
+            }
+        ).json()
+
+    assert known['answer_state']=='KNOWN'
+    assert unknown['answer_state']=='UNKNOWN'
 
 def test_G1_10_adversarial_direct_identifier_paths():
     a=mkuser('Owner'); b=mkuser('Attacker'); p=mkproject(a,'Private','Keep isolated')
