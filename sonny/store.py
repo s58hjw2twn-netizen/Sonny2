@@ -68,6 +68,19 @@ class Store:
             next_action_generated INTEGER NOT NULL DEFAULT 0,
             latency_ms INTEGER NOT NULL DEFAULT 0,
             estimated_cost REAL NOT NULL DEFAULT 0
+                    CREATE TABLE IF NOT EXISTS messages(
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            response_id TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(project_id) REFERENCES projects(id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_messages_project_created
+        ON messages(user_id, project_id, created_at);
         );
         ''')
         self.db.commit()
@@ -207,6 +220,79 @@ class Store:
         return i
 
     def action_feedback(self,u,p,a,status):
+            def add_message(
+        self,
+        u,
+        p,
+        role,
+        content,
+        response_id=None
+    ):
+        if role not in {"user", "assistant"}:
+            return None
+
+        if not self.project(u, p):
+            return None
+
+        i = self.uid()
+
+        self.db.execute(
+            """
+            INSERT INTO messages(
+                id,
+                user_id,
+                project_id,
+                role,
+                content,
+                response_id
+            )
+            VALUES(?,?,?,?,?,?)
+            """,
+            (
+                i,
+                u,
+                p,
+                role,
+                content,
+                response_id
+            )
+        )
+
+        self.db.commit()
+
+        return i
+
+
+    def messages(
+        self,
+        u,
+        p,
+        limit=20
+    ):
+        rows = self.db.execute(
+            """
+            SELECT *
+            FROM (
+                SELECT *
+                FROM messages
+                WHERE user_id=?
+                  AND project_id=?
+                ORDER BY created_at DESC, rowid DESC
+                LIMIT ?
+            )
+            ORDER BY created_at ASC, rowid ASC
+            """,
+            (
+                u,
+                p,
+                limit
+            )
+        ).fetchall()
+
+        return [
+            dict(row)
+            for row in rows
+        ]
         if status not in {
             'ACCEPTED','EDITED','REJECTED','DEFERRED','COMPLETED'
         }:
