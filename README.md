@@ -6,3 +6,5 @@ Canonical MVP reconstruction implementing the frozen Gate-1 contracts: isolated 
 ```bash
 python -m pip install -r requirements.txt
 uvicorn sonny.app:app --reload
+python evaluation/run_gate1.py
+Commit the change to `main`, then tell me **“next file.”**
