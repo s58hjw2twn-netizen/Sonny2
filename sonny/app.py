@@ -1225,7 +1225,7 @@ def get_project(
 ):
     u = user(x_user_id)
 
-        p = require_project(u, pid)
+p = require_project(u, pid)
 
     return {
         "project": p,
