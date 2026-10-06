@@ -57,7 +57,7 @@ class Store:
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
         
-        CREATE TABLE IF NOT EXISTS traces(
+                CREATE TABLE IF NOT EXISTS traces(
             response_id TEXT PRIMARY KEY,
             user_id TEXT NOT NULL,
             project_id TEXT NOT NULL,
@@ -69,7 +69,19 @@ class Store:
             next_action_generated INTEGER NOT NULL DEFAULT 0,
             latency_ms INTEGER NOT NULL DEFAULT 0,
             estimated_cost REAL NOT NULL DEFAULT 0
-                    CREATE 
+        );
+        CREATE TABLE IF NOT EXISTS messages(
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            response_id TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(project_id) REFERENCES projects(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_messages_project_created
+        ON messages(user_id,project_id,created_at);
         ''')
         self.db.commit()
 
