@@ -3,6 +3,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-RUN pytest -q
+RUN PYTHONPATH=/app pytest -q
 ENV PYTHONUNBUFFERED=1
 CMD ["sh","-c","uvicorn sonny.app:app --host 0.0.0.0 --port ${PORT:-8000}"]
