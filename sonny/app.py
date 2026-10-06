@@ -965,7 +965,12 @@ function addMessage(role, text) {
     const content =
         document.createElement("div");
 
+    if (role === "sonny") {
+    content.innerHTML = renderMarkdown(text);
+}
+else {
     content.textContent = text;
+}
 
     box.appendChild(label);
     box.appendChild(content);
