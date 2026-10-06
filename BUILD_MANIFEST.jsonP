@@ -1,0 +1,11 @@
+{
+  "product": "Sonny Assistant Project Co-Pilot",
+  "build": "0.1.0",
+  "sonny_core": "1.0",
+  "database_schema": "1.1",
+  "project_state_schema": "1",
+  "memory_schema": "1",
+  "gate1_test_suite": "1.2",
+  "host_model_evidence": "stub-local",
+  "status": "candidate-local-functional"
+}
