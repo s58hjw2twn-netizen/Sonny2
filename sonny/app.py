@@ -1225,9 +1225,9 @@ def get_project(
 ):
     u = user(x_user_id)
 
-    p = require_project(u, pid)
+        p = require_project(u, pid)
 
-        return {
+    return {
         "project": p,
         "confirmed_memories":
             store.memories(u, pid),
