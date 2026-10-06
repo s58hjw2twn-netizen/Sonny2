@@ -1018,16 +1018,13 @@ async function sendMessage() {
         }
 
         addMessage(
-            "sonny",
-            result.response ||
-            result.answer ||
-            result.message ||
-            JSON.stringify(
-                result,
-                null,
-                2
-            )
-        );
+    "sonny",
+    result.text ||
+    result.response ||
+    result.answer ||
+    result.message ||
+    "Sonny completed the request."
+);
 
         const answerState =
             result.answer_state
