@@ -288,7 +288,7 @@ class Store:
         return i
 
 
-        def messages(
+    def messages(
         self,
         u,
         p,
