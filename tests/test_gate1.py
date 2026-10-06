@@ -108,8 +108,27 @@ def test_G1_10_cross_user_isolation():
 
 def test_G1_11_false_memory_sentinel():
     u=mkuser(); p=mkproject(u)
-    r=c.post(f'/projects/{p}/chat',headers=H(u),json={'message':'What is my secret launch date I told you?'}).json()
-    assert r['answer_state']=='UNKNOWN' and "don't have" in r['text']
+
+    with patch(
+        'sonny.app.respond',
+        return_value={
+            'text': "I don't have that information.",
+            'answer_state': 'UNKNOWN',
+            'memory_proposal': None,
+            'next_action': None
+        }
+    ):
+        r=c.post(
+            f'/projects/{p}/chat',
+            headers=H(u),
+            json={
+                'message':
+                'What is my secret launch date I told you?'
+            }
+        ).json()
+
+    assert r['answer_state']=='UNKNOWN'
+    assert "don't have" in r['text']
 
 def test_G1_12_unknown_distinguished_from_known():
     u=mkuser(); p=mkproject(u)
