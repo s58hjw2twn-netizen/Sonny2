@@ -44,3 +44,41 @@ records do not establish why it was removed.
 The owner asked to remember this location and status. Do not restart or redeploy
 the hosted app without explicit approval: hosting charges may resume. No Railway
 settings were changed during the lookup. Development remains paused as above.
+
+## Deferred functional self-monitoring plan
+
+Saved at the owner's request on October 15, 2026 Eastern (October 16 UTC).
+This is a future plan, not authorization to resume development or a scheduled task.
+Follow LOW_TOUCH_DEVELOPMENT.md when work resumes.
+
+Goal: implement existing self-model/metacognitive design as measurable behavior,
+without claiming consciousness, real feelings, or proven recursive intelligence gains.
+
+1. Build an application-supplied live state record: connected model, available
+   tools, permissions, memory access, current task, and verified action results.
+2. Add a small "Sonny State" panel and make model self-reports consult that record.
+   Distinguish implemented capabilities from planned capabilities.
+3. Record predictions and checkable outcomes, with evidence and uncertainty;
+   diagnose knowledge, reasoning, memory, and tool failures. Minimize sensitive logs.
+4. Test revoked permissions, disabled tools, deleted memory, interrupted tasks,
+   and inaccurate completion claims. Verify that behavior matches actual state.
+5. Later add approved memory/strategy corrections, unseen-task regression checks,
+   and rollback. Evaluate separately from frozen research benchmarks.
+
+First deliverable: live state record, panel, outcome logging, automated tests,
+and integration with one selected available model. Model-dependent validation
+requires a connected runtime; paid use requires separate approval.
+
+Provisional planning estimate (not measured or guaranteed):
+- State record and panel: 3–5 active development hours.
+- Outcome logging and state/permission-change tests: 3–5 hours.
+- One-model integration and self-report checks: 2–6 hours once available.
+- Total: 8–16 active hours, roughly 1–2 weeks at 1–2 hours/day, assuming no major
+  rework. Re-estimate after repository review. Controlled learning and independent
+  evaluation are additional work.
+
+Potential product differentiation to evaluate: accurate, inspectable memory,
+correction retention, project continuity, user control, and cost per successful
+task. No superiority to Meta Muse has been demonstrated. A future matched
+fictional-project comparison should measure forgotten decisions, repeat errors,
+accuracy, user effort, and cost; it must remain separate from frozen benchmarks.
