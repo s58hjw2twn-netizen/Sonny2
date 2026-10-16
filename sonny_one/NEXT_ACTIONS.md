@@ -31,3 +31,16 @@ Finish commit/CI verification, then stop. Resume only when the owner asks.
 The owner approved the local login/access-policy and signing-configuration scope
 on 2026-10-15. No paid service, model API charge, public deployment, main merge,
 private-account connection or frozen-benchmark change is authorized by that step.
+
+## Remembered hosted demo location
+
+Confirmed read-only on 2026-10-16 UTC: the original Railway webpage is
+https://sonny-assistant-0-1-0-production.up.railway.app in project **Sonny Live AI**,
+service `sonny-assistant-0-1-0`. The address remains assigned, but the service is
+**OFFLINE**, with no active deployment. Its latest deployment is `REMOVED`, last
+updated 2026-10-09 at 03:07:08 UTC (October 8 at 11:07 p.m. Eastern). The available
+records do not establish why it was removed.
+
+The owner asked to remember this location and status. Do not restart or redeploy
+the hosted app without explicit approval: hosting charges may resume. No Railway
+settings were changed during the lookup. Development remains paused as above.
