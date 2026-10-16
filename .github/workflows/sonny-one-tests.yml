@@ -26,4 +26,4 @@ jobs:
       - name: Install test dependency
         run: python -m pip install pytest
       - name: Run isolated Sonny ONE tests
-        run: python -m pytest -q tests/test_sonny_one.py tests/test_sonny_one_evolution.py
+        run: python -m pytest -q tests/test_sonny_one*.py
