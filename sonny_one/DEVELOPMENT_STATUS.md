@@ -1,38 +1,54 @@
 # Low-touch development checkpoint — 2026-10-16 UTC
 
-Branch: `feature/sonny-one-foundation`. Starting commit: `44938a87`.
+Branch: `feature/sonny-one-foundation`. This continuation starts at `aca1c4c`.
 
 ## Completed
 
-- Installed the pinned repository dependencies; baseline full suite: 32 passed.
-- Expanded CI from research-only tests to the full suite using requirements.txt.
-- Added a test fixture removing model API credentials during test execution.
-- Added a standalone, stateless local demo with responsive browser UI, fixed
-  planning/recall responses, consent-based browser persistence, memory forgetting,
-  workspace erasure, retryable errors and no external model integration.
-- Added API boundary/input/network-isolation tests and optional Playwright flow.
-- Documented local startup, data behavior, limits and next actions.
+- Prior foundation: complete deterministic CI suite and zero-cost local demo.
+- Browser checks now run successfully after using a download mirror for the
+  optional test-only browser tool (Playwright 1.51.1 / Chromium 134 on Linux).
+  The application has no dependency on that testing tool or browser version.
+- Fixed edited drafts being discarded when an earlier reply arrives; malformed
+  replies do not add partial transcript entries.
+- Invalid saved records are rejected visibly. New/erased conversations show a
+  usable empty state; replies have accessible busy/status feedback.
+- Demo intents match words, avoiding unrelated substring-triggered replies.
+- Added PWA manifest/icon and a static offline shell. User/API data is never
+  added to the service-worker cache. Offline sends preserve drafts.
+- Added automated loopback server lifecycle for browser checks, CI JavaScript
+  syntax checks, and the next-action queue.
+- Prepared a concrete local authentication and persistent-memory plan; no live
+  auth policy, signing secret or private account was created/changed.
 
-## Verified
+## Verified evidence
 
-- `python -m pytest -q`: 43 passed (one third-party Starlette/AnyIO deprecation
-  warning), including existing Gate 1 and Sonny ONE research tests.
-- `node --check sonny_one/web/app.js`: passed.
-- `node --check tests/browser_sonny_one.cjs`: passed.
-- `git diff --check`: passed.
+- `python -m pytest -q`: 48 passed; one third-party Starlette/AnyIO deprecation
+  warning. Existing Gate 1 and Sonny ONE research tests remain passing.
+- `python scripts/check_sonny_one_browser.py`: 4 viewport suites passed:
+  1440×1000, 768×1024, 390×844 and 320×740, using the optional local Playwright
+  installation. Covers planning, memory save/forget, persistence opt-in, erasure,
+  safe HTML-like text, connection retry, corrupted saved data, in-flight drafts,
+  malformed replies, offline reload and API-cache exclusion.
+- Inspected rendered desktop and phone screenshots; no horizontal overflow.
+- JavaScript syntax checks and `git diff --check`: passed.
+- Direct GitHub Actions API confirms prior commit `aca1c4c` completed successfully:
+  https://github.com/s58hjw2twn-netizen/Sonny2/actions/runs/38839681730
+  (The connector's workflow lookup returned no runs; the direct API supplied
+  the verification.) New-commit CI must be checked after its branch update.
 
-## Not verified / blockers
+## Remaining limits / blockers
 
-- Actual browser flow and visual layout: Playwright is available but its browser
-  executable is absent; browser download returned an invalid archive. The
-  optional browser script has not passed and is not a verified browser result.
-- Physical iPhone Safari and Windows browser testing remains outstanding.
-- Authenticated multi-user service, server memory persistence, general model
-  answers and PWA installation are not implemented in this demo.
-- Remote CI success must be verified separately after branch update.
+- Linux Chromium viewport tests are not physical iPhone, Safari or Windows tests.
+- WebKit binary downloaded, but required system libraries are missing. The
+  dependency installer failed with container setgroups/seteuid permission errors.
+- Home-screen installation on actual iPhone is unverified. Browser shell support
+  does not establish App Store readiness or a deployed service.
+- No authenticated multi-user backend, server memory persistence or general AI
+  replies are enabled in this demo. Legacy X-User-ID routes are not authentication.
 
-## Owner decisions
+## Owner decision
 
-None needed to review or run this local demo. Approval will be needed before
-security configuration/access-policy changes, paid model calls, deployment,
-merging main or a private-data pilot. Frozen research files remain unchanged.
+Review AUTHENTICATED_BACKEND_PLAN.md to approve the next local authentication,
+access-policy and signing-configuration step under LOW_TOUCH_DEVELOPMENT.md.
+No spending, public deployment, main merge or frozen-benchmark change is needed.
+See NEXT_ACTIONS.md for dependencies and remaining tasks.

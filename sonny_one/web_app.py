@@ -1,5 +1,6 @@
 """Local, stateless demo. No model providers, credentials, or research execution."""
 from pathlib import Path
+import re
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
@@ -48,6 +49,11 @@ def home():
     return FileResponse(WEB / "index.html")
 
 
+@app.get("/sw.js")
+def service_worker():
+    return FileResponse(WEB / "sw.js", media_type="application/javascript")
+
+
 @app.get("/api/status")
 def status():
     return {"mode": "deterministic-demo", "model_connected": False, "api_cost": 0,
@@ -57,16 +63,17 @@ def status():
 @app.post("/api/chat")
 def chat(body: ChatRequest):
     message = body.message.lower()
-    if any(word in message for word in ("remember", "memory", "know about me")):
+    words = set(re.findall(r"[a-z]+", message))
+    if (words & {"remember", "memory", "memories"} or "know about me" in message):
         text = ("Your approved memories:\n" + "\n".join(f"• {m}" for m in body.memories)
                 if body.memories else "You have no approved memories. Add a fact in the memory panel and explicitly save it to use it here.")
-    elif any(word in message for word in ("plan", "next", "goal", "help")):
+    elif words & {"plan", "next", "goal", "help"}:
         text = (f"Let's work toward: {body.goal or 'your next goal'}.\n\n"
                 "1. Choose one small outcome you can finish today.\n"
                 "2. Write down its main constraint.\n"
                 "3. Complete the smallest step and check the result.\n\n"
                 "This is a fixed demo plan, not a model-generated recommendation.")
-    elif any(word in message for word in ("hello", "hi", "hey")):
+    elif words & {"hello", "hi", "hey"}:
         text = "Hi, I'm Sonny ONE. Try ‘Help me plan’ or ‘What do you remember?’ to explore this local demo."
     else:
         text = ("This demo supports planning and approved-memory recall. A language model is not connected yet, "

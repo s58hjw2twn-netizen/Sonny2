@@ -62,3 +62,27 @@ def test_invalid_or_unbounded_input_rejected(client, body):
 def test_unknown_request_does_not_claim_model_answer(client):
     response = client.post('/api/chat', json={'message': 'Calculate the orbit of Mars'}).json()
     assert 'not connected' in response['text']
+
+
+@pytest.mark.parametrize('message', ['something else', 'explain Mars', 'a highway'])
+def test_substrings_do_not_trigger_unrelated_demo_intents(client, message):
+    answer = client.post('/api/chat', json={'message': message}).json()['text']
+    assert 'not connected' in answer
+
+
+def test_plural_memories_recalled(client):
+    answer = client.post('/api/chat', json={
+        'message': 'Show my memories', 'memories': ['Sample fact']}).json()['text']
+    assert 'Sample fact' in answer
+
+
+def test_installable_shell_assets_served(client):
+    manifest = client.get('/assets/manifest.webmanifest').json()
+    assert manifest['display'] == 'standalone'
+    assert manifest['start_url'] == '/'
+    for icon in manifest['icons']:
+        assert client.get(icon['src']).status_code == 200
+    worker = client.get('/sw.js')
+    assert worker.status_code == 200
+    assert 'javascript' in worker.headers['content-type']
+    assert worker.headers['cache-control'] == 'no-store'

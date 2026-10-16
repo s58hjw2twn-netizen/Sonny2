@@ -52,6 +52,25 @@ forgetting, erasure, HTML injection rendering, and network-failure recovery.
    approval before implementation under LOW_TOUCH_DEVELOPMENT.md.
 3. Add licensed model routing only after approved provider choice and spending
    limits. This demo deliberately has no provider path.
-4. Evaluate PWA installability after the persistence and account design is agreed.
+4. Verify home-screen installation on a real iPhone after an approved device-access plan.
 
 No production release or research promotion is implied by passing these checks.
+
+## Automated browser runner and home-screen shell
+
+`python scripts/check_sonny_one_browser.py` starts a temporary loopback server,
+checks desktop/tablet/phone/narrow-phone widths, then shuts it down. Playwright
+and its Chromium binary must already be installed; the runner downloads nothing.
+Set `NODE_PATH` if Playwright is installed outside the repository. Set
+`SONNY_SCREENSHOT_DIR` to an existing scratch directory for optional screenshots.
+
+A web manifest and service worker make the static shell available offline on
+supported browsers. It caches only the page, CSS, JavaScript, icon and manifest;
+API replies and user data are never placed in the service-worker cache. Offline
+sending reports a connection error and retains the draft. No installation prompt
+or real-iPhone home-screen behavior has been certified. Localhost on an iPhone
+refers to the iPhone itself, not the Windows computer; phone access to a hosted
+pilot requires a separately approved deployment plan.
+
+Backend decisions are prepared in
+[../AUTHENTICATED_BACKEND_PLAN.md](../AUTHENTICATED_BACKEND_PLAN.md).

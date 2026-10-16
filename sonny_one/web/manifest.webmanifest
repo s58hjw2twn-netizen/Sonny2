@@ -1,0 +1,12 @@
+{
+  "id": "/",
+  "name": "Sonny ONE Local Demo",
+  "short_name": "Sonny Demo",
+  "description": "A local planning and approved-memory prototype. No AI model connected.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#101820",
+  "theme_color": "#101820",
+  "icons": [{"src": "/assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}]
+}
