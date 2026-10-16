@@ -13,3 +13,9 @@ Security limitations: local prototype storage is unencrypted, no authentication 
 A separate zero-API-cost prototype is available. See [web/README.md](web/README.md)
 for the loopback launch command, memory behavior and validation instructions.
 Run all automated checks with `python -m pytest -q`.
+
+## Authenticated local test pilot
+
+The owner-approved local login and persistent workspace are implemented separately
+from the research runtime. See [LOCAL_PILOT.md](LOCAL_PILOT.md) for the Windows
+launcher, data behavior, tests and remaining release gates.

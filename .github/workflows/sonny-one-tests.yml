@@ -8,7 +8,8 @@ on:
       - 'sonny/**'
       - 'requirements.txt'
       - 'tests/**'
-      - 'scripts/check_sonny_one_browser.py'
+      - 'scripts/**'
+      - 'Start-Sonny-ONE.cmd'
       - '.github/workflows/sonny-one-tests.yml'
   pull_request:
     paths:
@@ -16,7 +17,8 @@ on:
       - 'sonny/**'
       - 'requirements.txt'
       - 'tests/**'
-      - 'scripts/check_sonny_one_browser.py'
+      - 'scripts/**'
+      - 'Start-Sonny-ONE.cmd'
       - '.github/workflows/sonny-one-tests.yml'
 permissions:
   contents: read
@@ -37,4 +39,6 @@ jobs:
         run: |
           node --check sonny_one/web/app.js
           node --check sonny_one/web/sw.js
+          node --check sonny_one/web/pilot.js
           node --check tests/browser_sonny_one.cjs
+          node --check tests/browser_sonny_one_pilot.cjs

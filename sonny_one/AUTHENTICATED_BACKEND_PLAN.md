@@ -1,6 +1,7 @@
 # Local authenticated backend — reviewable next implementation
 
-Status: proposed; no live authentication configuration changed.
+Status: owner approved this local implementation on 2026-10-15 (New York time).
+Implemented as a separate local pilot; see LOCAL_PILOT.md. No production policy changed.
 Scope: separate Sonny ONE local pilot; invented test data only; no public hosting,
 paid providers, private-account connections, email delivery or research execution.
 
@@ -62,9 +63,9 @@ Passing legacy Gate 1 tests does not establish authenticated isolation.
 
 LOW_TOUCH_DEVELOPMENT.md explicitly requires owner approval for
 “Security-sensitive configuration, secret creation or access-policy changes.”
-Approval is needed to activate the proposed login/session policy and create the
-local signing configuration. No secret has been created and no accounts have
-been connected. No payment or public deployment is needed for this local step.
+The owner granted this local login/session and signing-configuration approval.
+The launcher creates private local signing configuration only when run. Tests use
+disposable invented accounts and test-only keys. No private accounts are connected. No payment or public deployment is needed for this local step.
 
 Remaining product choices can use the defaults above. No provider or subscription
 purchase is needed until a separate model-integration approval.
