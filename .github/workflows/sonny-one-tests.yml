@@ -1,16 +1,20 @@
-name: Sonny ONE Research Tests
+name: Sonny ONE Tests
 on:
   push:
     branches:
       - feature/sonny-one-foundation
     paths:
       - 'sonny_one/**'
-      - 'tests/test_sonny_one*.py'
+      - 'sonny/**'
+      - 'requirements.txt'
+      - 'tests/**'
       - '.github/workflows/sonny-one-tests.yml'
   pull_request:
     paths:
       - 'sonny_one/**'
-      - 'tests/test_sonny_one*.py'
+      - 'sonny/**'
+      - 'requirements.txt'
+      - 'tests/**'
       - '.github/workflows/sonny-one-tests.yml'
 permissions:
   contents: read
@@ -23,7 +27,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install test dependency
-        run: python -m pip install pytest
-      - name: Run isolated Sonny ONE tests
-        run: python -m pytest -q tests/test_sonny_one*.py
+      - name: Install pinned dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Run complete deterministic suite
+        run: python -m pytest -q
