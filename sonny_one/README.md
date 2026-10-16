@@ -7,3 +7,9 @@ Modules: stable versioned identity, explicitly simulated emotional variables, co
 Run: `python -m pytest tests/test_sonny_one.py` (requires pytest).
 
 Security limitations: local prototype storage is unencrypted, no authentication or deployment controls, no retention scheduler, and no external independent evaluation yet. Do not store sensitive real user data or expose as a service. Passing unit tests does not establish production readiness.
+
+## Local browser demo
+
+A separate zero-API-cost prototype is available. See [web/README.md](web/README.md)
+for the loopback launch command, memory behavior and validation instructions.
+Run all automated checks with `python -m pytest -q`.
