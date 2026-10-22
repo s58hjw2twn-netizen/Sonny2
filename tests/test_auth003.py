@@ -43,3 +43,30 @@ def test_failed_login_throttles_account():
     for _ in range(5):
         assert c.post("/auth/login", json={"user_id": uid, "password": "wrong"}).status_code == 401
     assert c.post("/auth/login", json={"user_id": uid, "password": "correct private passphrase"}).status_code == 429
+
+
+def test_cross_origin_login_is_rejected():
+    uid = store.create_user("Origin")
+    identities.enroll_existing_user(uid, "origin private passphrase")
+    c = TestClient(app)
+    response = c.post(
+        "/auth/login",
+        headers={"Origin": "https://untrusted.example"},
+        json={"user_id": uid, "password": "origin private passphrase"},
+    )
+    assert response.status_code == 403
+    assert "sonny_session" not in c.cookies
+
+
+def test_session_expiry_and_revocation():
+    from sonny.app import sessions
+    from unittest.mock import patch
+    uid = store.create_user("Expiry")
+    token, csrf = sessions.create(uid)
+    assert sessions.resolve(token) == uid
+    assert sessions.valid_csrf(token, csrf)
+    with patch("sonny.sessions.time.time", return_value=10**12):
+        assert sessions.resolve(token) is None
+        assert not sessions.valid_csrf(token, csrf)
+    sessions.revoke(token)
+    assert sessions.resolve(token) is None
