@@ -1294,6 +1294,8 @@ def login(b: LoginIn, request: Request, response: Response):
         login_throttle.failed_login(b.user_id, client_ip)
         raise HTTPException(401, "Invalid credentials")
     login_throttle.succeeded_login(b.user_id)
+    # Replace any existing browser session on account switch or re-login.
+    sessions.revoke(request.cookies.get("sonny_session"))
     token, csrf = sessions.create(b.user_id)
     response.set_cookie(
         "sonny_session", token, httponly=True, secure=secure,
