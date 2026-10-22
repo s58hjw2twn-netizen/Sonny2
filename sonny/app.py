@@ -72,6 +72,12 @@ def authenticated_user(request: Request):
     return uid
 
 
+def check_origin(request: Request):
+    origin = request.headers.get("origin")
+    if origin and origin.rstrip("/") != str(request.base_url).rstrip("/"):
+        raise HTTPException(403, "Invalid origin")
+
+
 def secure_cookie(request: Request):
     # Reverse proxies must forward HTTPS correctly; never expose cookies over
     # HTTP except explicitly enabled local development.
@@ -1275,6 +1281,7 @@ def users_disabled():
 
 @app.post("/auth/login")
 def login(b: LoginIn, request: Request, response: Response):
+    check_origin(request)
     secure = secure_cookie(request)
     if not login_throttle.allowed(b.user_id):
         raise HTTPException(429, "Too many login attempts; try again later")
