@@ -1036,12 +1036,9 @@ function addMessage(role, text) {
     const content =
         document.createElement("div");
 
-    if (role === "sonny") {
-    content.innerHTML = renderMarkdown(text);
-}
-else {
+    // Model output is untrusted text. Do not inject it as HTML.
+    // Rich Markdown can return after a reviewed sanitizer is installed.
     content.textContent = text;
-}
 
     box.appendChild(label);
     box.appendChild(content);
