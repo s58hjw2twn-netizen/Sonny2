@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from .store import Store
 from .identity_store import IdentityStore
 from .sessions import SessionStore
+from .login_throttle import LoginThrottle
 from .core import respond, CORE_VERSION
 
 
@@ -18,6 +19,8 @@ identities = IdentityStore(store.db)
 identities.initialize()
 sessions = SessionStore(store.db)
 sessions.initialize()
+login_throttle = LoginThrottle(store.db)
+login_throttle.initialize()
 
 
 class LoginIn(BaseModel):
@@ -949,26 +952,22 @@ async function startWorkspace() {
         state.userId = name;
         document.getElementById("passwordInput").value = "";
 
-        const createdProject =
-            await api(
-                "/projects",
-                {
-                    method: "POST",
-                    body: JSON.stringify({
-                        name: projectName,
-                        goal: goal
-                    })
-                }
-            );
-
-        state.projectId =
-            createdProject.project_id;
-
-        state.projectName =
-            projectName;
-
-        state.projectGoal =
-            goal;
+        const existing = await api("/projects");
+        const previous = existing.projects.find(p => p.id === state.projectId);
+        const selected = previous || existing.projects[0];
+        if (selected) {
+            state.projectId = selected.id;
+            state.projectName = selected.name;
+            state.projectGoal = selected.goal;
+        } else {
+            const created = await api("/projects", {
+                method: "POST",
+                body: JSON.stringify({name: projectName, goal: goal})
+            });
+            state.projectId = created.project_id;
+            state.projectName = projectName;
+            state.projectGoal = goal;
+        }
 
         saveState();
 
@@ -1227,7 +1226,23 @@ async function checkHealth() {
 
 
 checkHealth();
-// A fresh login is required after page reload; no secret is persisted in localStorage.
+(async () => {
+    try {
+        const active = await api("/auth/session");
+        state.csrfToken = active.csrf_token;
+        state.userId = active.user_id;
+        const previous = JSON.parse(localStorage.getItem("sonny_workspace") || "{}");
+        const projects = await api("/projects");
+        const selected = projects.projects.find(p => p.id === previous.projectId) || projects.projects[0];
+        if (selected) {
+            state.projectId = selected.id;
+            state.projectName = selected.name;
+            state.projectGoal = selected.goal;
+            saveState();
+            await showWorkspace();
+        }
+    } catch (_) { /* Login required or session expired. */ }
+})();
 
 </script>
 
@@ -1261,8 +1276,12 @@ def users_disabled():
 @app.post("/auth/login")
 def login(b: LoginIn, request: Request, response: Response):
     secure = secure_cookie(request)
+    if not login_throttle.allowed(b.user_id):
+        raise HTTPException(429, "Too many login attempts; try again later")
     if not identities.verify_user(b.user_id, b.password):
+        login_throttle.failed(b.user_id)
         raise HTTPException(401, "Invalid credentials")
+    login_throttle.succeeded(b.user_id)
     token, csrf = sessions.create(b.user_id)
     response.set_cookie(
         "sonny_session", token, httponly=True, secure=secure,
@@ -1274,10 +1293,9 @@ def login(b: LoginIn, request: Request, response: Response):
 
 @app.get("/auth/session")
 def session(request: Request, response: Response, u: str = Depends(authenticated_user)):
-    # CSRF token is intentionally not reissued here. Clients must log in
-    # again after a reload until a secure session-resume flow is added.
+    csrf = sessions.rotate_csrf(request.cookies.get("sonny_session"))
     response.headers["Cache-Control"] = "no-store"
-    return {"authenticated": True, "user_id": u}
+    return {"authenticated": True, "user_id": u, "csrf_token": csrf}
 
 
 @app.post("/auth/logout")
@@ -1290,6 +1308,16 @@ def logout(request: Request, response: Response, u: str = Depends(authenticated_
 # ---------------------------------------------------------
 # PROJECTS
 # ---------------------------------------------------------
+
+@app.get("/projects")
+def list_projects(u: str = Depends(authenticated_user)):
+    rows = store.db.execute(
+        "SELECT id, name, goal, status FROM projects WHERE user_id=? ORDER BY rowid DESC",
+        (u,),
+    ).fetchall()
+    return {"projects": [dict(row) for row in rows]}
+
+
 
 @app.post("/projects")
 def projects(
@@ -1311,7 +1339,6 @@ def get_project(
     pid: str,
     u: str = Depends(authenticated_user)
 ):
-    u = u
 
     p = require_project(u, pid)
 
