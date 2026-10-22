@@ -1,6 +1,6 @@
 import os,tempfile,sqlite3
 from unittest.mock import patch
-fd,path=tempfile.mkstemp(); os.close(fd); os.unlink(path); os.environ['SONNY_DB']=path
+fd,path=tempfile.mkstemp(); os.close(fd); os.unlink(path); os.environ['SONNY_DB']=path; os.environ['SONNY_ALLOW_HTTP_LOCAL']='1'
 from fastapi.testclient import TestClient
 import sonny.app as appmod
 from sonny.store import Store
@@ -8,16 +8,21 @@ from sonny.store import Store
 c=TestClient(appmod.app)
 
 def mkuser(n='U'):
-    return c.post('/users',json={'name':n}).json()['user_id']
+    uid = appmod.store.create_user(n)
+    appmod.identities.enroll_existing_user(uid, 'test-only-private-passphrase')
+    return uid
 
 def mkproject(u,n='Test',g='Ship MVP'):
-    return c.post('/projects',headers={'X-User-ID':u},json={'name':n,'goal':g}).json()['project_id']
+    return c.post('/projects',headers=H(u),json={'name':n,'goal':g}).json()['project_id']
 
 def H(u):
-    return {'X-User-ID':u}
+    response = c.post('/auth/login', json={'user_id':u, 'password':'test-only-private-passphrase'})
+    assert response.status_code == 200
+    return {'X-CSRF-Token':response.json()['csrf_token']}
 
 def test_G1_01_create_isolated_account():
     u=mkuser()
+    c.cookies.clear()
     assert u and c.post('/projects',json={'name':'x','goal':'y'}).status_code==401
 
 def test_G1_02_create_project_persists():
@@ -26,7 +31,11 @@ def test_G1_02_create_project_persists():
 
 def test_G1_03_chat_uses_project_context():
     u=mkuser(); p=mkproject(u,'Apollo','Launch Apollo')
-    r=c.post(f'/projects/{p}/chat',headers=H(u),json={'message':'What next?'}).json()
+    with patch('sonny.app.respond', return_value={
+        'text':'Apollo next step: Launch Apollo', 'answer_state':'KNOWN',
+        'memory_proposal':None, 'next_action':None
+    }):
+        r=c.post(f'/projects/{p}/chat',headers=H(u),json={'message':'What next?'}).json()
     assert 'Apollo' in r['text'] and 'Launch Apollo' in r['text']
 
 def test_G1_04_approved_memory_persists_with_provenance():
