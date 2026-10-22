@@ -1,0 +1,38 @@
+name: Authentication checks
+
+on:
+  push:
+    branches:
+      - security/auth-001
+  pull_request:
+    paths:
+      - 'sonny/**'
+      - 'tests/test_credentials.py'
+      - 'tests/test_identity_store.py'
+      - 'tests/test_auth002.py'
+      - 'tests/test_auth003.py'
+      - '.github/workflows/auth-checks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  auth-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Check Python syntax
+        run: python -m compileall -q sonny tests
+      - name: Credential unit tests
+        run: python -m pytest -q tests/test_credentials.py tests/test_identity_store.py
+      - name: AUTH-002 API tests (isolated process)
+        run: python -m pytest -q tests/test_auth002.py
+      - name: AUTH-003 API tests (isolated process)
+        run: python -m pytest -q tests/test_auth003.py
