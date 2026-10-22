@@ -85,3 +85,30 @@ def test_ip_throttle_blocks_password_spraying():
     assert not throttle.allowed_login("new-account", ip)
     assert throttle.allowed_login("new-account", "198.51.100.10")
     # A spoofable X-Forwarded-For header is not used as the identity source.
+
+
+def test_http_login_exception_is_loopback_only():
+    from sonny.app import secure_cookie
+    from fastapi import HTTPException
+    from starlette.requests import Request
+
+    def request(peer, scheme="http"):
+        scope = {
+            "type": "http", "scheme": scheme,
+            "method": "POST", "path": "/auth/login",
+            "root_path": "", "query_string": b"",
+            "headers": [(b"host", b"sonny.local")],
+            "client": (peer, 50000), "server": ("sonny.local", 80),
+        }
+        return Request(scope)
+
+    assert secure_cookie(request("127.0.0.1")) is False
+    assert secure_cookie(request("::1")) is False
+    assert secure_cookie(request("testclient")) is False
+    try:
+        secure_cookie(request("203.0.113.10"))
+    except HTTPException as exc:
+        assert exc.status_code == 503
+    else:
+        raise AssertionError("Remote HTTP peer must not receive a session")
+    assert secure_cookie(request("203.0.113.10", scheme="https")) is True
