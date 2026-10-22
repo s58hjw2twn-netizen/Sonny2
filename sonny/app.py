@@ -81,8 +81,12 @@ def check_origin(request: Request):
 def secure_cookie(request: Request):
     # Reverse proxies must forward HTTPS correctly; never expose cookies over
     # HTTP except explicitly enabled local development.
-    if request.url.scheme != "https" and os.getenv("SONNY_ALLOW_HTTP_LOCAL") != "1":
-        raise HTTPException(503, "HTTPS required for authentication")
+    if request.url.scheme != "https":
+        peer = request.client.host if request.client else ""
+        if os.getenv("SONNY_ALLOW_HTTP_LOCAL") != "1" or peer not in {
+            "127.0.0.1", "::1", "testclient"
+        }:
+            raise HTTPException(503, "HTTPS required for authentication")
     return request.url.scheme == "https"
 
 
