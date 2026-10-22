@@ -24,30 +24,32 @@ def identity(tmp_path):
 
 def test_existing_owner_can_enroll_and_verify(identity):
     store, db = identity
-    store.enroll_existing_owner("owner-1", "long private passphrase")
-    assert store.verify_owner("owner-1", "long private passphrase")
-    assert not store.verify_owner("owner-1", "wrong")
+    store.enroll_existing_user("owner-1", "long private passphrase")
+    assert store.verify_user("owner-1", "long private passphrase")
+    assert not store.verify_user("owner-1", "wrong")
     assert db.execute("SELECT user_id FROM projects").fetchone()[0] == "owner-1"
 
 
 def test_unknown_user_cannot_enroll(identity):
     store, db = identity
     with pytest.raises(ValueError, match="not found"):
-        store.enroll_existing_owner("nonexistent", "long private passphrase")
+        store.enroll_existing_user("nonexistent", "long private passphrase")
     assert db.execute("SELECT COUNT(*) FROM auth_credentials").fetchone()[0] == 0
 
 
-def test_second_owner_enrollment_is_blocked(identity):
+def test_distinct_users_can_enroll_but_duplicate_enrollment_is_blocked(identity):
     store, db = identity
-    store.enroll_existing_owner("owner-1", "first private passphrase")
-    with pytest.raises(ValueError, match="already enrolled"):
-        store.enroll_existing_owner("other-2", "second private passphrase")
-    assert not store.verify_owner("other-2", "second private passphrase")
+    store.enroll_existing_user("owner-1", "first private passphrase")
+    store.enroll_existing_user("other-2", "second private passphrase")
+    assert store.verify_user("other-2", "second private passphrase")
+    with pytest.raises(sqlite3.IntegrityError):
+        store.enroll_existing_user("owner-1", "replacement passphrase")
+    assert store.verify_user("owner-1", "first private passphrase")
 
 
 def test_no_plaintext_password_stored(identity):
     store, db = identity
-    store.enroll_existing_owner("owner-1", "distinctive secret phrase")
+    store.enroll_existing_user("owner-1", "distinctive secret phrase")
     stored = db.execute(
         "SELECT password_verifier FROM auth_credentials"
     ).fetchone()[0]
@@ -57,6 +59,6 @@ def test_no_plaintext_password_stored(identity):
 
 def test_reinitialization_preserves_credentials(identity):
     store, db = identity
-    store.enroll_existing_owner("owner-1", "long private passphrase")
+    store.enroll_existing_user("owner-1", "long private passphrase")
     IdentityStore(db).initialize()
-    assert store.verify_owner("owner-1", "long private passphrase")
+    assert store.verify_user("owner-1", "long private passphrase")
