@@ -70,3 +70,18 @@ def test_session_expiry_and_revocation():
         assert not sessions.valid_csrf(token, csrf)
     sessions.revoke(token)
     assert sessions.resolve(token) is None
+
+
+def test_ip_throttle_blocks_password_spraying():
+    from sonny.login_throttle import LoginThrottle
+    import sqlite3
+    db = sqlite3.connect(":memory:")
+    throttle = LoginThrottle(db)
+    throttle.initialize()
+    ip = "198.51.100.9"
+    for i in range(5):
+        assert throttle.allowed_login("account-" + str(i), ip)
+        throttle.failed_login("account-" + str(i), ip)
+    assert not throttle.allowed_login("new-account", ip)
+    assert throttle.allowed_login("new-account", "198.51.100.10")
+    # A spoofable X-Forwarded-For header is not used as the identity source.
