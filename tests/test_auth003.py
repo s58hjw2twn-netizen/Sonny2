@@ -112,3 +112,22 @@ def test_http_login_exception_is_loopback_only():
     else:
         raise AssertionError("Remote HTTP peer must not receive a session")
     assert secure_cookie(request("203.0.113.10", scheme="https")) is True
+
+
+def test_relogin_revokes_previous_session():
+    from sonny.app import sessions
+    uid = store.create_user("Relogin")
+    identities.enroll_existing_user(uid, "relogin private passphrase")
+    c = TestClient(app)
+    first = c.post("/auth/login", json={
+        "user_id": uid, "password": "relogin private passphrase"
+    })
+    assert first.status_code == 200
+    old_token = c.cookies.get("sonny_session")
+    assert sessions.resolve(old_token) == uid
+    second = c.post("/auth/login", json={
+        "user_id": uid, "password": "relogin private passphrase"
+    })
+    assert second.status_code == 200
+    assert sessions.resolve(old_token) is None
+    assert sessions.resolve(c.cookies.get("sonny_session")) == uid
