@@ -527,17 +527,23 @@ button {
     >
 
         <div class="setup-title">
-            Start your Sonny workspace
+            Sign in to your Sonny account
         </div>
 
         <div class="row">
 
             <input
                 id="nameInput"
-                placeholder="Your name"
+                placeholder="Your existing account ID"
                 autocomplete="name"
             >
 
+            <input
+                id="passwordInput"
+                type="password"
+                autocomplete="current-password"
+                placeholder="Password"
+            >
             <input
                 id="projectInput"
                 placeholder="Project name"
@@ -563,7 +569,7 @@ button {
                 class="primary"
                 onclick="startWorkspace()"
             >
-                Start Sonny
+                Sign in and start Sonny
             </button>
 
         </div>
@@ -603,7 +609,7 @@ button {
                 class="secondary"
                 onclick="resetWorkspace()"
             >
-                New
+                Sign out
             </button>
 
         </div>
@@ -705,6 +711,7 @@ function renderMarkdown(text) {
 }
 const state = {
     userId: null,
+    csrfToken: null,
     projectId: null,
     projectName: null,
     projectGoal: null
@@ -717,8 +724,8 @@ function apiHeaders() {
         "Content-Type": "application/json"
     };
 
-    if (state.userId) {
-        h["X-User-ID"] = state.userId;
+    if (state.csrfToken) {
+        h["X-CSRF-Token"] = state.csrfToken;
     }
 
     return h;
@@ -731,6 +738,7 @@ async function api(path, options = {}) {
         path,
         {
             ...options,
+            credentials: "same-origin",
             headers: {
                 ...apiHeaders(),
                 ...(options.headers || {})
@@ -768,7 +776,7 @@ function saveState() {
 
     localStorage.setItem(
         "sonny_workspace",
-        JSON.stringify(state)
+        JSON.stringify({projectId:state.projectId,projectName:state.projectName,projectGoal:state.projectGoal})
     );
 }
 
@@ -786,8 +794,8 @@ function loadState() {
 
         if (
             saved &&
-            saved.userId &&
-            saved.projectId
+            saved.projectId &&
+            state.csrfToken
         ) {
 
             Object.assign(
@@ -902,10 +910,12 @@ async function startWorkspace() {
             .value
             .trim();
 
-    if (!name) {
+    const password = document.getElementById("passwordInput").value;
+
+    if (!name || !password) {
 
         error.textContent =
-            "Enter your name.";
+            "Enter your account ID and password.";
 
         error.classList.remove(
             "hidden"
@@ -931,19 +941,13 @@ async function startWorkspace() {
 
     try {
 
-        const createdUser =
-            await api(
-                "/users",
-                {
-                    method: "POST",
-                    body: JSON.stringify({
-                        name: name
-                    })
-                }
-            );
-
-        state.userId =
-            createdUser.user_id;
+        const loginResult = await api("/auth/login", {
+            method: "POST",
+            body: JSON.stringify({user_id: name, password: password})
+        });
+        state.csrfToken = loginResult.csrf_token;
+        state.userId = name;
+        document.getElementById("passwordInput").value = "";
 
         const createdProject =
             await api(
@@ -985,7 +989,7 @@ async function startWorkspace() {
 
         button.disabled = false;
         button.textContent =
-            "Start Sonny";
+            "Sign in and start Sonny";
     }
 }
 
@@ -1173,20 +1177,19 @@ function composerKey(event) {
 }
 
 
-function resetWorkspace() {
+async function resetWorkspace() {
 
     const confirmed =
         confirm(
-            "Start a new Sonny workspace?"
+            "Sign out of Sonny?"
         );
 
     if (!confirmed) {
         return;
     }
 
-    localStorage.removeItem(
-        "sonny_workspace"
-    );
+    try { await api("/auth/logout", {method:"POST"}); } catch (_) {}
+    localStorage.removeItem("sonny_workspace");
 
     location.reload();
 }
@@ -1224,7 +1227,7 @@ async function checkHealth() {
 
 
 checkHealth();
-loadState();
+// A fresh login is required after page reload; no secret is persisted in localStorage.
 
 </script>
 
