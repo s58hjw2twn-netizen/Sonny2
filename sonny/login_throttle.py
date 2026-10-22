@@ -21,8 +21,8 @@ class LoginThrottle:
         self.db.commit()
 
     @staticmethod
-    def key(user_id):
-        return hashlib.sha256(user_id.encode("utf-8")).hexdigest()
+    def key(identity):
+        return hashlib.sha256(identity.encode("utf-8")).hexdigest()
 
     def allowed(self, user_id):
         now = int(time.time())
@@ -48,3 +48,17 @@ class LoginThrottle:
         self.db.execute("DELETE FROM auth_login_attempts WHERE account_hash=?",
                         (self.key(user_id),))
         self.db.commit()
+
+
+    def allowed_login(self, user_id, client_ip):
+        """Enforce both account and direct-peer IP limits."""
+        return self.allowed("account:" + user_id) and self.allowed("ip:" + client_ip)
+
+    def failed_login(self, user_id, client_ip):
+        self.failed("account:" + user_id)
+        self.failed("ip:" + client_ip)
+
+    def succeeded_login(self, user_id):
+        # Successful login resets the account bucket only; IP failures remain
+        # to constrain password spraying across different accounts.
+        self.succeeded("account:" + user_id)
