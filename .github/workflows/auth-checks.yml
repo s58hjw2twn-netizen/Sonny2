@@ -11,6 +11,7 @@ on:
       - 'tests/test_identity_store.py'
       - 'tests/test_auth002.py'
       - 'tests/test_auth003.py'
+      - 'tests/test_gate1.py'
       - '.github/workflows/auth-checks.yml'
 
 permissions:
@@ -36,3 +37,5 @@ jobs:
         run: python -m pytest -q tests/test_auth002.py
       - name: AUTH-003 API tests (isolated process)
         run: python -m pytest -q tests/test_auth003.py
+      - name: Functional contract tests (isolated process)
+        run: python -m pytest -q tests/test_gate1.py
