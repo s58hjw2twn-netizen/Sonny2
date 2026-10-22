@@ -21,3 +21,19 @@ Status: INCOMPLETE / UNTESTED. Branch only; do not merge or deploy.
 
 ## Deployment constraint
 The `main` branch is unchanged. The development branch must not be exposed publicly until the blockers above are resolved.
+
+## AUTH-003 follow-up: direct-peer IP throttling
+
+The login endpoint now enforces two SQLite-backed failure buckets: account ID
+and direct peer IP. The IP bucket is intentionally not reset on successful
+authentication, to make account-spraying more difficult.
+
+**Deployment caution:** Behind a reverse proxy, the direct peer may be the
+proxy address for every visitor. This can cause shared lockouts. Do not trust
+user-supplied `X-Forwarded-For` to solve this. Configure a trusted proxy and
+explicit trusted-client-IP extraction, then add integration tests for that
+deployment topology before public access. Distributed deployments also require
+a shared atomic rate-limit backend or gateway-level controls.
+
+CI remains unverified. Neither the empty commit status response nor empty
+PR-filtered workflow results prove that tests ran or passed.
