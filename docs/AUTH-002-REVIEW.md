@@ -37,3 +37,14 @@ a shared atomic rate-limit backend or gateway-level controls.
 
 CI remains unverified. Neither the empty commit status response nor empty
 PR-filtered workflow results prove that tests ran or passed.
+
+## AUTH-003 transport hardening
+
+The `SONNY_ALLOW_HTTP_LOCAL=1` exception is now restricted to loopback
+peers (`127.0.0.1`, `::1`) and Starlette's `testclient`. A remote
+HTTP peer receives HTTP 503 even if the flag is enabled. This check relies on
+the ASGI scope's connection scheme and peer address; hosting must configure
+TLS termination and trusted proxy headers correctly. Do not expose a
+proxy-to-app HTTP hop without verifying this configuration.
+
+The new regression test is committed but not yet confirmed passing in CI.
