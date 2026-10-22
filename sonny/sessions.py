@@ -71,3 +71,16 @@ class SessionStore:
                 (int(time.time()), self.digest(token)),
             )
             self.db.commit()
+
+    def rotate_csrf(self, token):
+        """Rotate CSRF proof when restoring an authenticated browser session."""
+        if not self.resolve(token):
+            return None
+        csrf = secrets.token_urlsafe(32)
+        self.db.execute(
+            "UPDATE auth_sessions SET csrf_hash=? WHERE token_hash=? "
+            "AND revoked_at IS NULL AND expires_at>?",
+            (self.digest(csrf), self.digest(token), int(time.time())),
+        )
+        self.db.commit()
+        return csrf
