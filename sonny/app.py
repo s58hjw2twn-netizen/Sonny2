@@ -1283,12 +1283,13 @@ def users_disabled():
 def login(b: LoginIn, request: Request, response: Response):
     check_origin(request)
     secure = secure_cookie(request)
-    if not login_throttle.allowed(b.user_id):
+    client_ip = request.client.host if request.client else "unknown"
+    if not login_throttle.allowed_login(b.user_id, client_ip):
         raise HTTPException(429, "Too many login attempts; try again later")
     if not identities.verify_user(b.user_id, b.password):
-        login_throttle.failed(b.user_id)
+        login_throttle.failed_login(b.user_id, client_ip)
         raise HTTPException(401, "Invalid credentials")
-    login_throttle.succeeded(b.user_id)
+    login_throttle.succeeded_login(b.user_id)
     token, csrf = sessions.create(b.user_id)
     response.set_cookie(
         "sonny_session", token, httponly=True, secure=secure,
