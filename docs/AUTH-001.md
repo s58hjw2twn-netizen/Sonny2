@@ -1,61 +1,38 @@
-# AUTH-001 — Personal-first authentication architecture
+# AUTH-001 — Unified Sonny ONE account architecture
 
-Status: PROPOSED — design only; not implemented or security-validated.
-Target branch: `security/auth-001`
-Scope: Personal owner access now, multi-user commercial accounts later.
+Status: IMPLEMENTATION IN PROGRESS — not tested, deployed, or security-audited.
+Branch: `security/auth-001`
 
-## Current findings
-- `sonny/app.py` trusts a client-provided `X-User-ID` for protected project, chat, memory and action routes.
-- `sonny/auth.py` contains JWT issuance and verification helpers, but protected routes do not use them.
-- The web UI creates an unauthenticated user through `POST /users` and stores a user ID in localStorage.
-- Existing database records are keyed by user IDs and project ownership; preserve these identifiers during migration.
+## Product decision
+Build one commercial-ready multi-account system. Initially allow only the founder's account; later invite beta users and eventually enable verified public registration. Do not fork a personal edition.
 
-## Security goals
-1. Reject unauthenticated requests to protected endpoints.
-2. Resolve the acting user only from a verified session or signed token, never a client-selected user ID.
-3. Preserve existing project, memory, message and action ownership.
-4. Support one owner initially without baking a single-user assumption into storage or authorization.
-5. Support commercial multi-user enrollment and recovery later without replacing ownership IDs.
-6. Never commit credentials, API keys, signing secrets or password hashes derived from real credentials.
+## Identity and authorization
+- Preserve existing `users.id` values as immutable principals; all projects, memories, messages, actions and traces remain scoped to the authenticated user.
+- Store independently salted password verifiers in an additive `auth_credentials` table keyed by `user_id`.
+- Multiple users may have credentials. Re-enrollment of an existing user must fail; password changes require a separate authenticated recovery flow.
+- Authentication must derive identity from a verified server-side session. Never trust `X-User-ID`, localStorage IDs, or client-submitted owner IDs as authority.
+- Require project ownership checks on every nested resource. Default-deny all protected routes.
+- Prefer secure HttpOnly SameSite cookies, server-side session revocation and CSRF protection; require HTTPS outside local development.
+- Rate-limit login, enrollment and recovery; avoid account enumeration and secret-bearing logs.
 
-## Proposed personal-release design
-- Introduce an explicit owner-enrollment procedure, disabled after successful enrollment. Enrollment must require an out-of-band, server-side bootstrap secret or local administrative action; public name-only signup cannot create a privileged owner.
-- Store a password hash using a modern, salted password KDF (prefer Argon2id), never plaintext. Add a credentials table linked to existing `users.id`.
-- Provide login and logout flows. Prefer an HttpOnly, Secure, SameSite cookie with server-side revocation/rotation, plus CSRF defenses for state-changing requests. If bearer JWTs are retained, add revocation/rotation strategy and avoid localStorage token persistence.
-- Use FastAPI dependency injection for authenticated identity on every protected route. Retire `X-User-ID` as an authority; ignore or reject it.
-- Preserve `require_project(authenticated_user_id, project_id)` authorization checks on all nested resources.
-- Add rate limiting and generic login errors. Require HTTPS outside localhost.
-- Keep `OPENAI_API_KEY`, signing secrets and bootstrap secrets server-side.
+## Enrollment modes
+1. **Private founder enrollment:** local administrative bootstrap only, with explicit proof of control and backup of existing SQLite data. Bind to the correct existing user ID; never infer ownership from a display name.
+2. **Invite-only beta:** verified invitation and email ownership, unique account identity, no cross-account access.
+3. **Commercial registration:** verified email, recovery, optional MFA/passkeys, abuse controls, privacy policy and operational readiness.
 
-## Migration and compatibility
-1. Inventory the existing users/projects and back up the SQLite database before schema changes.
-2. Provide an explicit, audited mechanism to bind the current owner's existing `users.id` to the new credential; do not silently claim or merge records by display name.
-3. Create additive, versioned schema migrations with rollback/backup instructions.
-4. Update browser onboarding, login, session restore and logout; never rely on a stored user ID for authentication.
-5. Keep personal owner registration closed after enrollment; commercial self-registration is a separate future feature.
-6. Ensure old clients cannot bypass the new authentication checks.
+Public `POST /users` name-only enrollment must be disabled as part of API migration. No self-service account creation until verified registration is implemented.
 
-## Acceptance tests
-- Anonymous requests to all protected endpoints return 401.
-- Invalid, expired and revoked sessions are rejected.
-- A valid owner cannot switch identity by supplying another `X-User-ID`.
-- Direct object identifiers for another user/project are denied.
-- Owner's existing project and memory remain accessible after explicit migration.
-- Passwords, cookies, credentials and secrets do not appear in traces or logs.
-- Session expiration, logout, login throttling and CSRF controls are exercised.
-- Browser sign-in and chat flows work on a mobile viewport.
-- Tests are run in CI and results are recorded; passing tests are not equivalent to a security audit.
+## Migration and release gates
+- Inventory and back up the database; implement versioned, additive schema migration.
+- Introduce credential persistence and authentication dependencies.
+- Add login/logout, secure sessions, expiry and revocation.
+- Migrate all FastAPI routes and iPhone web UI; remove client-supplied identity authority.
+- Test anonymous denial, token/session forgery, expiry, CSRF, brute-force protection, cross-user resource isolation, duplicate enrollment, and data preservation.
+- Run CI and a separate security review before deployment or merge. No security claims from unexecuted tests.
+- Do not use quarantined SONNY ONE EVAL 001 as a development test or benchmark.
 
-## Commercial extension (later)
-- Controlled registration and verified email ownership.
-- Account recovery and optional MFA/passkeys.
-- Tenant-aware authorization, abuse prevention and privacy controls.
-- Production-grade database migration, backups and operational monitoring.
+## Commercial capabilities deferred until needed
+Email verification, invitations, recovery, billing/subscription entitlements, quotas, tenant administration, production database operations, observability and incident response.
 
-## Non-goals for this design commit
-- No route, database, or UI behavior changes.
-- No deployment, test execution, or security certification.
-- No changes to SONNY ONE EVAL 001 benchmark materials or blind-evaluation protocol.
-
-## Next implementation slice
-Implement the authenticated-user dependency and credential/session storage on this branch, with focused tests, then migrate the browser UI and verify existing data preservation before considering merge.
+## Current code status
+`sonny/credentials.py` and `sonny/identity_store.py` are isolated foundations only. They are not wired to the API; current `X-User-ID` endpoints remain insecure. Keep this branch out of production until the release gates are met.
