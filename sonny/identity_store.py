@@ -1,7 +1,7 @@
-"""AUTH-001 credential storage; not wired into public API routes.
+"""AUTH-001 multi-account credential persistence; not yet wired to API routes.
 
-Enrollment must only be invoked from a trusted local/admin bootstrap path
-after independently verifying the intended existing user ID.
+Enrollment is an internal operation. Public registration remains disabled until
+email verification, rate limiting, and abuse controls are implemented.
 """
 import sqlite3
 
@@ -24,22 +24,17 @@ class IdentityStore:
         """)
         self.db.commit()
 
-    def enroll_existing_owner(self, user_id: str, password: str) -> None:
-        """Bind one pre-existing user to a credential, once only.
+    def enroll_existing_user(self, user_id: str, password: str) -> None:
+        """Bind an existing user to a credential exactly once.
 
-        This is deliberately NOT a public signup API. Caller must verify
-        ownership and make a backup before invoking it.
+        Caller must independently verify ownership before migration.
+        This is not a public registration endpoint.
         """
         if not isinstance(user_id, str) or not user_id:
             raise ValueError("An existing user ID is required")
         verifier = hash_password(password)
         try:
             self.db.execute("BEGIN IMMEDIATE")
-            count = self.db.execute(
-                "SELECT COUNT(*) FROM auth_credentials"
-            ).fetchone()[0]
-            if count:
-                raise ValueError("Owner already enrolled")
             existing = self.db.execute(
                 "SELECT 1 FROM users WHERE id=?", (user_id,)
             ).fetchone()
@@ -54,7 +49,7 @@ class IdentityStore:
             self.db.rollback()
             raise
 
-    def verify_owner(self, user_id: str, password: str) -> bool:
+    def verify_user(self, user_id: str, password: str) -> bool:
         """Credential check only; not a session or authentication endpoint."""
         if not isinstance(user_id, str) or not isinstance(password, str):
             return False
