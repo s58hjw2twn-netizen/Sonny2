@@ -2,20 +2,27 @@ import os
 import time
 import uuid
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 from .store import Store
+from .identity_store import IdentityStore
+from .sessions import SessionStore
 from .core import respond, CORE_VERSION
 
 
 app = FastAPI(title="Sonny Assistant", version="0.1.0")
 store = Store(os.getenv("SONNY_DB", "sonny.db"))
+identities = IdentityStore(store.db)
+identities.initialize()
+sessions = SessionStore(store.db)
+sessions.initialize()
 
 
-class UserIn(BaseModel):
-    name: str
+class LoginIn(BaseModel):
+    user_id: str
+    password: str
 
 
 class ProjectIn(BaseModel):
@@ -46,10 +53,28 @@ class FeedbackIn(BaseModel):
     status: str
 
 
-def user(x_user_id: str | None):
-    if not x_user_id:
-        raise HTTPException(401, "X-User-ID required")
-    return x_user_id
+def authenticated_user(request: Request):
+    token = request.cookies.get("sonny_session")
+    uid = sessions.resolve(token)
+    if not uid:
+        raise HTTPException(401, "Authentication required")
+    if request.method not in {"GET", "HEAD", "OPTIONS"}:
+        if not sessions.valid_csrf(token, request.headers.get("X-CSRF-Token")):
+            raise HTTPException(403, "CSRF validation failed")
+        origin = request.headers.get("origin")
+        if origin:
+            expected = str(request.base_url).rstrip("/")
+            if origin.rstrip("/") != expected:
+                raise HTTPException(403, "Invalid origin")
+    return uid
+
+
+def secure_cookie(request: Request):
+    # Reverse proxies must forward HTTPS correctly; never expose cookies over
+    # HTTP except explicitly enabled local development.
+    if request.url.scheme != "https" and os.getenv("SONNY_ALLOW_HTTP_LOCAL") != "1":
+        raise HTTPException(503, "HTTPS required for authentication")
+    return request.url.scheme == "https"
 
 
 def require_project(u, pid):
@@ -1226,10 +1251,37 @@ def health():
 # ---------------------------------------------------------
 
 @app.post("/users")
-def users(b: UserIn):
-    return {
-        "user_id": store.create_user(b.name)
-    }
+def users_disabled():
+    raise HTTPException(403, "Registration is closed")
+
+
+@app.post("/auth/login")
+def login(b: LoginIn, request: Request, response: Response):
+    secure = secure_cookie(request)
+    if not identities.verify_user(b.user_id, b.password):
+        raise HTTPException(401, "Invalid credentials")
+    token, csrf = sessions.create(b.user_id)
+    response.set_cookie(
+        "sonny_session", token, httponly=True, secure=secure,
+        samesite="strict", max_age=12 * 60 * 60, path="/",
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return {"csrf_token": csrf}
+
+
+@app.get("/auth/session")
+def session(request: Request, response: Response, u: str = Depends(authenticated_user)):
+    # CSRF token is intentionally not reissued here. Clients must log in
+    # again after a reload until a secure session-resume flow is added.
+    response.headers["Cache-Control"] = "no-store"
+    return {"authenticated": True, "user_id": u}
+
+
+@app.post("/auth/logout")
+def logout(request: Request, response: Response, u: str = Depends(authenticated_user)):
+    sessions.revoke(request.cookies.get("sonny_session"))
+    response.delete_cookie("sonny_session", path="/", samesite="strict")
+    return {"logged_out": True}
 
 
 # ---------------------------------------------------------
@@ -1239,12 +1291,12 @@ def users(b: UserIn):
 @app.post("/projects")
 def projects(
     b: ProjectIn,
-    x_user_id: str | None = Header(None)
+    u: str = Depends(authenticated_user)
 ):
     return {
         "project_id":
             store.create_project(
-                user(x_user_id),
+                u,
                 b.name,
                 b.goal
             )
@@ -1254,9 +1306,9 @@ def projects(
 @app.get("/projects/{pid}")
 def get_project(
     pid: str,
-    x_user_id: str | None = Header(None)
+    u: str = Depends(authenticated_user)
 ):
-    u = user(x_user_id)
+    u = u
 
     p = require_project(u, pid)
 
@@ -1279,9 +1331,9 @@ def get_project(
 def chat(
     pid: str,
     b: ChatIn,
-    x_user_id: str | None = Header(None)
+    u: str = Depends(authenticated_user)
 ):
-    u = user(x_user_id)
+    u = u
 
     p = require_project(u, pid)
 
@@ -1358,10 +1410,10 @@ def chat(
 def propose_memory(
     pid: str,
     b: MemoryIn,
-    x_user_id: str | None = Header(None)
+    u: str = Depends(authenticated_user)
 ):
 
-    u = user(x_user_id)
+    u = u
 
     require_project(u, pid)
 
@@ -1384,10 +1436,10 @@ def propose_memory(
 def confirm(
     pid: str,
     mid: str,
-    x_user_id: str | None = Header(None)
+    u: str = Depends(authenticated_user)
 ):
 
-    u = user(x_user_id)
+    u = u
 
     require_project(u, pid)
 
@@ -1410,10 +1462,10 @@ def correct(
     pid: str,
     mid: str,
     b: CorrectionIn,
-    x_user_id: str | None = Header(None)
+    u: str = Depends(authenticated_user)
 ):
 
-    u = user(x_user_id)
+    u = u
 
     require_project(u, pid)
 
@@ -1439,10 +1491,10 @@ def correct(
 def delete(
     pid: str,
     mid: str,
-    x_user_id: str | None = Header(None)
+    u: str = Depends(authenticated_user)
 ):
 
-    u = user(x_user_id)
+    u = u
 
     require_project(u, pid)
 
@@ -1466,10 +1518,10 @@ def delete(
 def action(
     pid: str,
     b: ActionIn,
-    x_user_id: str | None = Header(None)
+    u: str = Depends(authenticated_user)
 ):
 
-    u = user(x_user_id)
+    u = u
 
     require_project(u, pid)
 
@@ -1494,10 +1546,10 @@ def feedback(
     pid: str,
     aid: str,
     b: FeedbackIn,
-    x_user_id: str | None = Header(None)
+    u: str = Depends(authenticated_user)
 ):
 
-    u = user(x_user_id)
+    u = u
 
     require_project(u, pid)
 
