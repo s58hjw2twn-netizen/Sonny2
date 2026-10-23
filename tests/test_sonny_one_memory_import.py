@@ -49,5 +49,17 @@ class MemoryImportTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             import_active_memories(self.memory, "bob", json.dumps(obj), consent=True)
 
+    def test_duplicate_json_keys_rejected(self):
+        duplicate = '{"format":"sonny-one-memory","format":"other","version":1,"records":[]}'
+        with self.assertRaises(ValueError):
+            import_active_memories(self.memory, "bob", duplicate, consent=True)
+        self.assertEqual(self.memory.recall("bob"), [])
+
+    def test_nonstandard_json_number_rejected(self):
+        invalid = '{"format":"sonny-one-memory","version":1,"records":[{"statement":"x","source":"user","confidence":NaN,"valid_until":null}]}'
+        with self.assertRaises(ValueError):
+            import_active_memories(self.memory, "bob", invalid, consent=True)
+        self.assertEqual(self.memory.recall("bob"), [])
+
 if __name__ == "__main__":
     unittest.main()
