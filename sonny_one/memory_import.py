@@ -13,7 +13,19 @@ def import_active_memories(memory, user_id: str, payload: str, *, consent: bool)
         raise ValueError("Authenticated destination user and consent required")
     if not isinstance(payload, str) or len(payload.encode("utf-8")) > 2_000_000:
         raise ValueError("Invalid or oversized snapshot")
-    data = json.loads(payload)
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("Duplicate JSON key")
+            result[key] = value
+        return result
+
+    def reject_constant(value):
+        raise ValueError("Nonstandard JSON number")
+
+    data = json.loads(payload, object_pairs_hook=unique_object,
+                      parse_constant=reject_constant)
     if (not isinstance(data, dict) or set(data) != {"format", "version", "records"}
             or data["format"] != FORMAT or type(data["version"]) is not int
             or data["version"] != VERSION or not isinstance(data["records"], list)
