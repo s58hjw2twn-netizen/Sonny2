@@ -24,7 +24,7 @@ execution, promotion, production connection, or deployment is implemented.
 ## Evaluation command (on a dedicated disposable runner)
 
 ```bash
-python -m unittest -v tests.test_apl_policy
+python -m pytest -q tests/test_apl_policy.py
 python -m sonny_one.apl.runner \
   --source /trusted/Sonny2 \
   --revision FULL_40_CHARACTER_GIT_SHA \
