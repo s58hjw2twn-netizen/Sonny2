@@ -1,0 +1,31 @@
+name: Sonny ONE foundation verification
+on:
+  push:
+    branches:
+      - feature/sonny-one-foundation
+    paths:
+      - 'sonny_one/**'
+      - 'tests/test_sonny_one_hosted_*.py'
+      - 'tests/test_sonny_one_memory_import.py'
+      - '.github/workflows/sonny-one-foundation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile changed modules
+        run: |
+          python -m compileall -q sonny_one/hosted_config.py sonny_one/hosted_request_policy.py sonny_one/hosted_boundary.py sonny_one/hosted_candidate.py sonny_one/memory_import.py
+      - name: Run standard-library-only foundation tests
+        run: |
+          python -m unittest discover -s tests -p 'test_sonny_one_hosted_*.py' -v
+          python -m unittest discover -s tests -p 'test_sonny_one_memory_import.py' -v
