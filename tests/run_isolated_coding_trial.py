@@ -80,12 +80,17 @@ def main():
             (workspace / "sonny" / "__init__.py").write_text("")
             (workspace / "sonny" / "example.py").write_text(candidate)
             (workspace / "test_example.py").write_text(test)
+            source_path = workspace / "sonny" / "example.py"
+            before_hash = hashlib.sha256(source_path.read_bytes()).hexdigest()
+            assert before_hash == hashlib.sha256(candidate.encode()).hexdigest()
             for file in workspace.rglob("*"):
                 if file.is_file():
                     file.chmod(0o644)
             workspace.chmod(0o755)
             (workspace / "sonny").chmod(0o755)
             result = run_container(workspace)
+            after_hash = hashlib.sha256(source_path.read_bytes()).hexdigest()
+            assert before_hash == after_hash, "container changed host candidate source"
             print(f"{name}: exit={result.returncode}; output={result.stdout[-500:]} {result.stderr[-500:]}")
             if result.returncode in (125, 126, 127):
                 raise RuntimeError("Docker infrastructure failure")
