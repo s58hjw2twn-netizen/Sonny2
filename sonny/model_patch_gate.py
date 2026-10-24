@@ -5,6 +5,7 @@ run code, or authorize commits.
 """
 import hashlib
 import ast
+import json
 
 MAX_PATCH_BYTES = 32_000
 ALLOWED_PREFIXES = ("sonny/", "tests/")
@@ -90,3 +91,21 @@ def stage_scoped_model_patch(task, files: dict[str, str], proposal: dict) -> dic
     staged["model_proposal_sha256"] = validated["content_sha256"]
     staged["commit_allowed"] = False
     return staged
+
+
+def parse_model_response(response: str) -> dict:
+    """Decode a single model JSON response; reject extra fields and oversized output."""
+    if not isinstance(response, str):
+        raise ValueError("model response must be text")
+    try:
+        raw = response.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise ValueError("model response must be valid UTF-8") from exc
+    if not raw or len(raw) > MAX_PATCH_BYTES + 4096:
+        raise ValueError("model response exceeds size limit")
+    try:
+        proposal = json.loads(response)
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise ValueError("model response must be valid JSON") from exc
+    validate_model_patch(proposal)
+    return proposal
