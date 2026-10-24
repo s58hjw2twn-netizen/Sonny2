@@ -43,6 +43,15 @@ class GitHubTransportTests(unittest.TestCase):
                    return_value=Opener()):
             self.assertEqual(github_readonly_json(BASE + "/actions/runs/101")["id"], 101)
 
+    def test_allowlisted_branch_head_read(self):
+        class Opener:
+            def open(self, request, timeout):
+                return FakeResponse({"commit": {"sha": "a" * 40}})
+        with patch("sonny_one.development_controller.github_readonly_transport.build_opener",
+                   return_value=Opener()):
+            value = github_readonly_json(BASE + "/branches/research/apl-001")
+        self.assertEqual(value["commit"]["sha"], "a" * 40)
+
     def test_external_url_rejected(self):
         with self.assertRaises(ValueError):
             github_readonly_json("https://example.com/")
