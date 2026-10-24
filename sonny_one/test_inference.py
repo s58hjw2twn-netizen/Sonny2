@@ -41,6 +41,20 @@ class InferenceTests(unittest.TestCase):
         with self.assertRaisesRegex(InferenceFailure, "Invalid provider response"):
             generate(Broken(), "hello")
 
+    def test_oversized_output_rejected(self):
+        class Oversized:
+            def generate(self, request):
+                return Response("x" * 16001, "test")
+        with self.assertRaisesRegex(InferenceFailure, "Invalid provider response"):
+            generate(Oversized(), "hello")
+
+    def test_invalid_demo_flag_rejected(self):
+        class Invalid:
+            def generate(self, request):
+                return Response("hello", "test", "false")
+        with self.assertRaisesRegex(InferenceFailure, "Invalid provider response"):
+            generate(Invalid(), "hello")
+
     def test_blank_model_rejected(self):
         class Broken:
             def generate(self, request):
