@@ -33,6 +33,8 @@ def generate_review_proposal(*, model: str, output: Path,
     if repo_root is None:
         raise ValueError("repository root required for independent static checks")
     baseline = build_coding_context(repo_root)
+    if getattr(adapter.model_producer, "last_source_sha256", None) != baseline["source_sha256"]:
+        raise ValueError("source changed during inference or source fingerprint missing")
     static_result = evaluate_static_proposal(baseline["source"], proposal["patch_text"])
     report = {"format": "sonny-one-review-only-model-proposal-v1",
               "proposal": proposal, "baseline_sha256": baseline["source_sha256"],
