@@ -7,15 +7,19 @@ on:
     paths:
       - "sonny/research_agent.py"
       - "sonny/candidate_stager.py"
+      - "sonny/candidate_evaluator.py"
       - "tests/test_research_agent.py"
       - "tests/test_candidate_stager.py"
+      - "tests/test_candidate_evaluator.py"
       - ".github/workflows/research-agent.yml"
   pull_request:
     paths:
       - "sonny/research_agent.py"
       - "sonny/candidate_stager.py"
+      - "sonny/candidate_evaluator.py"
       - "tests/test_research_agent.py"
       - "tests/test_candidate_stager.py"
+      - "tests/test_candidate_evaluator.py"
       - ".github/workflows/research-agent.yml"
 
 permissions:
@@ -35,4 +39,4 @@ jobs:
       - name: Install test runner
         run: python -m pip install pytest==8.3.4
       - name: Run deterministic agent boundary tests
-        run: python -m pytest -q tests/test_research_agent.py tests/test_candidate_stager.py
+        run: python -m pytest -q tests/test_research_agent.py tests/test_candidate_stager.py tests/test_candidate_evaluator.py
