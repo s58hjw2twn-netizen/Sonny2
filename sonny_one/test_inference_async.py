@@ -15,6 +15,15 @@ class AsyncInferenceTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError):
             await generate_with_deadline(OfflineProvider(), "hello", timeout_seconds=float("nan"))
 
+    async def test_budget_reaches_provider(self):
+        observed = []
+        class Recorder:
+            def generate(self, request):
+                observed.append(request.timeout_seconds)
+                return Response("ok", "fake", False)
+        await generate_with_deadline(Recorder(), "hello", timeout_seconds=3.5)
+        self.assertEqual(observed, [3.5])
+
     async def test_provider_timeout(self):
         class Slow:
             def generate(self, request):
