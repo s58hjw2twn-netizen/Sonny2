@@ -77,6 +77,7 @@ class TestRunnerGuardrails(unittest.TestCase):
                 self.assertIn(restriction, argv)
             self.assertIn("--volume=" + str(workspace) + ":/src:ro", argv)
             self.assertIn("--volume=" + str(suite) + ":/trusted:ro", argv)
+            self.assertIn("--env=SONNY_APL_CANDIDATE_TEST=1", argv)
 
     def test_docker_timeout_is_rejected(self):
         import subprocess
