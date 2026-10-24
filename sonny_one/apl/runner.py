@@ -83,6 +83,7 @@ def docker_test(image, workspace, suite, timeout):
         "--env=HOME=/tmp", "--env=PYTHONPATH=/src",
         "--env=PYTHONDONTWRITEBYTECODE=1",
         "--env=PYTEST_DISABLE_PLUGIN_AUTOLOAD=1",
+        "--env=SONNY_APL_CANDIDATE_TEST=1",
         "--volume=" + str(workspace) + ":/src:ro",
         "--volume=" + str(suite) + ":/trusted:ro",
         "--workdir=/src", "--entrypoint=python", image,
