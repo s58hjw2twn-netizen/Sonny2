@@ -19,6 +19,7 @@ on:
       - "tests/test_candidate_stager.py"
       - "tests/test_model_patch_gate.py"
       - "tests/test_coding_model_provider.py"
+      - "tests/run_isolated_coding_trial.py"
       - "tests/test_gemini_provider.py"
       - "tests/test_candidate_evaluator.py"
       - "tests/test_isolated_test_command.py"
@@ -73,3 +74,22 @@ jobs:
           path: agent-test-results.xml
           if-no-files-found: warn
           retention-days: 7
+
+  isolated-functional-trial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test transport dependencies
+        run: python -m pip install httpx==0.28.1
+      - name: Prepare isolated Python image
+        run: docker pull python:3.11-slim
+      - name: Verify paired functional repair in isolated containers
+        run: python tests/run_isolated_coding_trial.py
