@@ -146,3 +146,50 @@ def test_invalid_signature_rejected(client):
         headers={"Authorization": f"Bearer {forged}", "X-User-ID": owner},
     )
     assert response.status_code == 401
+
+
+def test_chat_rejects_unauthenticated_requests(client):
+    http, store = client
+    owner = store.create_user("owner")
+    project = store.create_project(owner, "private", "goal")
+    response = http.post(
+        f"/projects/{project}/chat",
+        headers={"X-User-ID": owner},
+        json={"message": "should never reach model"},
+    )
+    assert response.status_code == 401
+    assert store.messages(owner, project) == []
+
+
+def test_memory_mutation_rejects_unauthenticated_requests(client):
+    http, store = client
+    owner = store.create_user("owner")
+    project = store.create_project(owner, "private", "goal")
+    response = http.post(
+        f"/projects/{project}/memories",
+        headers={"X-User-ID": owner},
+        json={"value": "unauthorized", "type": "fact"},
+    )
+    assert response.status_code == 401
+    assert store.memories(owner, project) == []
+
+
+def test_other_user_cannot_write_to_private_project(client):
+    import jwt
+    import time
+    http, store = client
+    owner = store.create_user("owner")
+    intruder = store.create_user("intruder")
+    project = store.create_project(owner, "private", "goal")
+    now = int(time.time())
+    token = jwt.encode(
+        {"sub": intruder, "iat": now, "exp": now + 3600},
+        "test-only-signing-key-not-for-production", algorithm="HS256",
+    )
+    response = http.post(
+        f"/projects/{project}/memories",
+        headers={"Authorization": f"Bearer {token}", "X-User-ID": intruder},
+        json={"value": "unauthorized", "type": "fact"},
+    )
+    assert response.status_code == 404
+    assert store.memories(owner, project) == []
