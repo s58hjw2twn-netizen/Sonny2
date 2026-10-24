@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feature/sonny-one-foundation
+      - research/apl-001
     paths:
       - 'sonny_one/**'
       - 'sonny/**'

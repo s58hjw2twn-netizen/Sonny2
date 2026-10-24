@@ -1,16 +1,20 @@
 # APL-001 Docker evaluation setup (not yet executed)
 
 The APL runner requires a **prebuilt image pinned by SHA-256 digest**.
-The Dockerfile is a reproducible template, not a verified image or an
-authorization to build, deploy, or purchase resources.
+The Dockerfile is an offline build template, not a verified or bit-for-bit
+reproducible image. Runtime reproducibility still requires measured evidence.
 
 ## Prerequisites
 - A disposable, nonproduction Docker host.
 - A trusted Python base image, specified as `repository@sha256:<digest>`.
 - Offline, independently vetted pytest wheels placed in `wheels/`.
+- A `requirements.lock` pinning pytest and every transitive dependency with
+  exact versions and SHA-256 hashes for those vetted wheels. The build uses
+  pip `--require-hashes` and fails closed without that lock.
 - Trusted and held-out test directories outside the candidate source tree.
 - A full 40-character immutable Git revision and a policy-compliant patch.
-- Explicit owner authorization before running a real container evaluation.
+- The 2026-10-24 handoff authorizes free isolated research evaluations.
+  Purchases, production use, public deployment and promotion remain forbidden.
 
 ## Build and verify
 From this directory, once all prerequisites exist, a human operator can run:

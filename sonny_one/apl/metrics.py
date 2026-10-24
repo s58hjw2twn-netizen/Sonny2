@@ -12,6 +12,8 @@ def compare_metrics(baseline: dict, candidate: dict) -> dict:
         raise ValueError("Both metric reports must be objects")
     if not baseline or baseline.keys() != candidate.keys():
         raise ValueError("Reports require identical, nonempty task identifiers")
+    if any(not isinstance(task, str) or not task.strip() for task in baseline):
+        raise ValueError("Task identifiers must be nonempty strings")
     deltas = {}
     for task in sorted(baseline):
         b, c = baseline[task], candidate[task]
@@ -34,3 +36,29 @@ def compare_metrics(baseline: dict, candidate: dict) -> dict:
         "promotion": "FORBIDDEN",
         "note": "Descriptive paired scores only; independent grading, holdout integrity and uncertainty analysis required."
     }
+
+
+def paired_uncertainty(baseline: dict, candidate: dict, *, resamples=10000, seed=20261024) -> dict:
+    """Seeded task-paired percentile bootstrap, conditional on supplied scores.
+
+Assumes independent, representative tasks. Correlated tasks/reused holdouts
+invalidate that interpretation; this does not measure repeat-run variability.
+"""
+    import random
+    summary = compare_metrics(baseline, candidate)
+    if type(resamples) is not int or not 100 <= resamples <= 100000:
+        raise ValueError("Resamples must be an integer in [100, 100000]")
+    if type(seed) is not int:
+        raise ValueError("Seed must be an integer")
+    values = list(summary['task_deltas'].values())
+    if len(values) < 2:
+        raise ValueError("At least two paired tasks are required")
+    if resamples * len(values) > 10_000_000:
+        raise ValueError("Bootstrap computation budget exceeded")
+    rng = random.Random(seed)
+    samples = sorted(sum(rng.choice(values) for _ in values) / len(values)
+                     for _ in range(resamples))
+    return {**summary, 'bootstrap_95_percentile_interval':
+            [samples[int(.025 * (resamples - 1))], samples[int(.975 * (resamples - 1))]],
+            'resamples': resamples, 'seed': seed,
+            'uncertainty_scope': 'Task sampling only, conditional on supplied scores; no independence or repeat-run validation.'}

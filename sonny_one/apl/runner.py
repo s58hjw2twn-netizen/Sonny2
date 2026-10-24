@@ -10,6 +10,12 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
+import uuid
+import stat
+import os
+import selectors
+import signal
 from pathlib import Path
 
 from .policy import append_lineage, sha256_bytes, validate_patch
@@ -19,14 +25,58 @@ IMAGE_RE = re.compile(r"^[A-Za-z0-9._/-]+@sha256:[a-f0-9]{64}$")
 REV_RE = re.compile(r"^[a-f0-9]{40}$")
 
 
+def bounded_execute(argv, timeout=90, output_limit=4000):
+    """POSIX child process with bounded output memory and group timeout cleanup."""
+    started = time.monotonic()
+    process = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               start_new_session=True)
+    tails = {"stdout": b"", "stderr": b""}
+    try:
+        with selectors.DefaultSelector() as selector:
+            for name in tails:
+                stream = getattr(process, name)
+                os.set_blocking(stream.fileno(), False)
+                selector.register(stream, selectors.EVENT_READ, name)
+            while selector.get_map():
+                remaining = timeout - (time.monotonic() - started)
+                if remaining <= 0:
+                    raise subprocess.TimeoutExpired(argv, timeout)
+                for key, _ in selector.select(min(remaining, .1)):
+                    data = os.read(key.fileobj.fileno(), 65536)
+                    if data:
+                        tails[key.data] = (tails[key.data] + data)[-output_limit:]
+                    else:
+                        selector.unregister(key.fileobj)
+            remaining = timeout - (time.monotonic() - started)
+            if remaining <= 0:
+                raise subprocess.TimeoutExpired(argv, timeout)
+            process.wait(timeout=remaining)
+        return subprocess.CompletedProcess(argv, process.returncode,
+            tails["stdout"].decode("utf-8", errors="replace"),
+            tails["stderr"].decode("utf-8", errors="replace"))
+    finally:
+        # Also terminate descendants retaining output pipes after parent exit.
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait()
+        process.stdout.close()
+        process.stderr.close()
+
+
 def execute(argv, timeout=90):
+    if argv[0] == "docker":
+        return bounded_execute(argv, timeout)
     return subprocess.run(argv, text=True, capture_output=True,
                           timeout=timeout, check=False)
 
 
 def docker_test(image, workspace, suite, timeout):
+    name = "sonny-apl-" + uuid.uuid4().hex
+    started = time.monotonic()
     command = [
-        "docker", "run", "--rm", "--pull=never",
+        "docker", "run", "--rm", "--pull=never", "--name=" + name,
         "--network=none", "--cap-drop=ALL", "--security-opt=no-new-privileges",
         "--read-only", "--pids-limit=128", "--memory=512m", "--cpus=1",
         "--user=65534:65534", "--tmpfs=/tmp:rw,nosuid,nodev,size=64m",
@@ -35,16 +85,25 @@ def docker_test(image, workspace, suite, timeout):
         "--env=PYTEST_DISABLE_PLUGIN_AUTOLOAD=1",
         "--volume=" + str(workspace) + ":/src:ro",
         "--volume=" + str(suite) + ":/trusted:ro",
-        "--workdir=/src", image,
-        "python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "/trusted",
+        "--workdir=/src", "--entrypoint=python", image,
+        "-m", "pytest", "-q", "-p", "no:cacheprovider", "/trusted",
     ]
     try:
         result = execute(command, timeout=timeout)
         return {"exit_code": result.returncode,
+                "elapsed_seconds": time.monotonic() - started,
                 "stdout_tail": result.stdout[-4000:],
                 "stderr_tail": result.stderr[-4000:]}
     except (subprocess.TimeoutExpired, OSError) as exc:
-        return {"exit_code": -1, "error": type(exc).__name__}
+        # Killing the Docker client does not stop its daemon-side container.
+        try:
+            cleanup = execute(["docker", "rm", "--force", name], timeout=15)
+            cleaned = cleanup.returncode == 0
+        except (subprocess.TimeoutExpired, OSError):
+            cleaned = False
+        return {"exit_code": -1, "error": type(exc).__name__,
+                "cleanup_confirmed": cleaned, "container_name": name,
+                "elapsed_seconds": time.monotonic() - started}
 
 
 def suite_fingerprint(directory):
@@ -53,8 +112,10 @@ def suite_fingerprint(directory):
     for path in sorted(directory.rglob("*")):
         if path.is_symlink():
             raise ValueError("Test suite symlinks are prohibited")
-        if not path.is_file():
+        if path.is_dir():
             continue
+        if not stat.S_ISREG(path.stat().st_mode):
+            raise ValueError("Test suite special files are prohibited")
         relative = path.relative_to(directory).as_posix().encode("utf-8")
         data = path.read_bytes()
         digest.update(len(relative).to_bytes(8, "big"))
@@ -66,6 +127,8 @@ def suite_fingerprint(directory):
 
 def evaluate(source, revision, patch_file, trusted, heldout, image,
              ledger, timeout=90):
+    if type(timeout) is not int or not 1 <= timeout <= 600:
+        raise ValueError("Timeout must be an integer in [1, 600]")
     source = Path(source).resolve(strict=True)
     trusted = Path(trusted).resolve(strict=True)
     heldout = Path(heldout).resolve(strict=True)
@@ -76,10 +139,10 @@ def evaluate(source, revision, patch_file, trusted, heldout, image,
         raise ValueError("A prebuilt, digest-pinned Docker image is required")
     if not source.is_dir() or not trusted.is_dir() or not heldout.is_dir():
         raise ValueError("Source and independent test suites must be directories")
-    if trusted == heldout:
+    if trusted == heldout or trusted in heldout.parents or heldout in trusted.parents:
         raise ValueError("Trusted and held-out suites must be distinct")
     for suite in (trusted, heldout):
-        if suite == source or source in suite.parents:
+        if suite == source or source in suite.parents or suite in source.parents:
             raise ValueError("Independent test suites cannot live in the source tree")
     trusted_hash = suite_fingerprint(trusted)
     heldout_hash = suite_fingerprint(heldout)
@@ -92,6 +155,18 @@ def evaluate(source, revision, patch_file, trusted, heldout, image,
               "paths": paths, "status": "REJECTED", "promotion": "FORBIDDEN"}
     try:
         with tempfile.TemporaryDirectory(prefix="sonny-apl-") as tmp:
+            # Apply precisely the validated bytes, not a mutable inbox path.
+            validated_patch = Path(tmp) / "validated.diff"
+            validated_patch.write_text(patch, encoding="utf-8")
+            fixtures = Path(tmp) / "fixtures"
+            fixtures.mkdir(mode=0o755)
+            trusted_copy, heldout_copy = fixtures / "trusted", fixtures / "heldout"
+            for original, snapshot, expected in ((trusted, trusted_copy, trusted_hash),
+                                                  (heldout, heldout_copy, heldout_hash)):
+                shutil.copytree(original, snapshot, symlinks=True)
+                if suite_fingerprint(snapshot) != expected:
+                    raise RuntimeError("Test fixtures changed while snapshotting")
+                snapshot.chmod(0o755)
             workspace = Path(tmp) / "workspace"
             clone = execute(["git", "clone", "--no-hardlinks", "--no-checkout",
                              "--", str(source), str(workspace)])
@@ -102,11 +177,11 @@ def evaluate(source, revision, patch_file, trusted, heldout, image,
             if checkout.returncode:
                 raise RuntimeError("Base revision not available in source")
             checked = execute(["git", "-C", str(workspace), "apply",
-                               "--check", "--", str(patch_file)])
+                               "--check", "--", str(validated_patch)])
             if checked.returncode:
                 raise RuntimeError("Patch failed git apply --check")
             applied = execute(["git", "-C", str(workspace), "apply",
-                               "--", str(patch_file)])
+                               "--", str(validated_patch)])
             if applied.returncode:
                 raise RuntimeError("Patch could not be applied")
             changed = execute(["git", "-C", str(workspace), "status",
@@ -135,11 +210,16 @@ def evaluate(source, revision, patch_file, trusted, heldout, image,
             # Docker user 65534 must be able to traverse the disposable checkout.
             Path(tmp).chmod(0o755)
             workspace.chmod(0o755)
-            report["baseline_deterministic"] = docker_test(image, baseline, trusted, timeout)
-            report["baseline_heldout"] = docker_test(image, baseline, heldout, timeout)
-            report["deterministic"] = docker_test(image, workspace, trusted, timeout)
+            report["baseline_deterministic"] = docker_test(image, baseline, trusted_copy, timeout)
+            report["baseline_heldout"] = docker_test(image, baseline, heldout_copy, timeout)
+            report["deterministic"] = docker_test(image, workspace, trusted_copy, timeout)
             if report["deterministic"]["exit_code"] == 0:
-                report["heldout"] = docker_test(image, workspace, heldout, timeout)
+                report["heldout"] = docker_test(image, workspace, heldout_copy, timeout)
+            if (suite_fingerprint(trusted) != trusted_hash or
+                    suite_fingerprint(heldout) != heldout_hash or
+                    suite_fingerprint(trusted_copy) != trusted_hash or
+                    suite_fingerprint(heldout_copy) != heldout_hash):
+                raise RuntimeError("Test fixtures changed during evaluation")
             report["comparison"] = compare(
                 {"base_revision": revision,
                  "deterministic": report["baseline_deterministic"],
@@ -156,13 +236,14 @@ def evaluate(source, revision, patch_file, trusted, heldout, image,
                                 else "REJECTED")
             if not baseline_ok:
                 report["error"] = "Baseline suite failed; comparison is not a valid clean baseline"
-    except (RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
+    except (RuntimeError, ValueError, OSError, subprocess.TimeoutExpired) as exc:
         report["error"] = str(exc)[:500]
     report["lineage_hash"] = append_lineage(Path(ledger), {
         "candidate_id": candidate_id, "base_revision": revision,
         "image": image, "trusted_suite_sha256": trusted_hash,
         "heldout_suite_sha256": heldout_hash,
         "status": report["status"],
+        "report_sha256": sha256_bytes(json.dumps(report, sort_keys=True).encode()),
         "baseline_deterministic_exit": report.get("baseline_deterministic", {}).get("exit_code"),
         "baseline_heldout_exit": report.get("baseline_heldout", {}).get("exit_code"),
         "deterministic_exit": report.get("deterministic", {}).get("exit_code"),

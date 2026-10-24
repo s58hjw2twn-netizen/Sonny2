@@ -68,6 +68,19 @@ def sha256_bytes(data: bytes) -> str:
 
 
 def append_lineage(ledger: Path, record: dict) -> str:
+    """Serialize cooperating writers using a separate POSIX advisory lock."""
+    import fcntl
+    ledger = Path(ledger)
+    ledger.parent.mkdir(parents=True, exist_ok=True)
+    with Path(str(ledger) + ".lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            return _append_lineage_locked(ledger, record)
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+
+
+def _append_lineage_locked(ledger: Path, record: dict) -> str:
     """Hash-linked local audit trail. File permissions/backups still required."""
     ledger = Path(ledger)
     if "previous_hash" in record or "record_hash" in record:
@@ -91,6 +104,13 @@ def append_lineage(ledger: Path, record: dict) -> str:
 
 
 def verify_lineage(ledger: Path) -> bool:
+    try:
+        return _verify_lineage(ledger)
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return False
+
+
+def _verify_lineage(ledger: Path) -> bool:
     previous = "0" * 64
     for line in Path(ledger).read_text(encoding="utf-8").splitlines():
         entry = json.loads(line)

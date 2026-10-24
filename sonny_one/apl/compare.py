@@ -24,10 +24,13 @@ def compare(baseline: dict, candidate: dict) -> dict:
         b = baseline[suite]["exit_code"] == 0
         c = candidate[suite]["exit_code"] == 0
         skipped = candidate[suite].get("skipped") is True
+        valid = all(r[suite]["exit_code"] in (0, 1)
+                    and not r[suite].get("skipped") and not r[suite].get("error")
+                    for r in (baseline, candidate))
         outcomes[suite] = {"baseline_pass": b, "candidate_pass": c,
-                           "candidate_skipped": skipped,
-                           "regression": b and not c and not skipped,
-                           "repair": not b and c}
+                           "candidate_skipped": skipped, "comparison_valid": valid,
+                           "regression": valid and b and not c,
+                           "repair": valid and not b and c}
     regressions = [suite for suite, outcome in outcomes.items() if outcome["regression"]]
     repairs = [suite for suite, outcome in outcomes.items() if outcome["repair"]]
     skipped = [suite for suite, outcome in outcomes.items() if outcome["candidate_skipped"]]

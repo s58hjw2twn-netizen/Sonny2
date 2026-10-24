@@ -17,9 +17,11 @@ Never alter frozen SEB-1.0, CSAT-1.3 or RSI v1.3. Never promote automatically.
 - `tests/test_apl_policy.py`: proposed unit tests for scope, traversal,
   symlinks, renames, duplicates, patch size and lineage tampering.
 
-This is a **proposal intake and evaluation prototype**, not an autonomous
-proposal generator. No LLM, model training, recursive iteration, background
-execution, promotion, production connection, or deployment is implemented.
+The evaluator supports bounded processing of externally supplied patch proposals
+using `loop.py`. It records predicted pass probabilities before each evaluation,
+uses the same baseline for every candidate, and stops on infrastructure errors.
+It does not generate model-written patches, train models, promote candidates,
+or demonstrate recursive self-improvement.
 
 ## Evaluation command (on a dedicated disposable runner)
 
@@ -53,19 +55,35 @@ ledger detects ordinary accidental edits but is not tamper-proof against a
 privileged attacker: replicate signed logs to independent storage before
 consequential use.
 
+## Bounded proposal queue
+
+Supply a JSON array of objects with exactly `patch` (local diff path) and
+`predicted_pass` (probability from 0 to 1). Run:
+
+```bash
+python -m sonny_one.apl.loop --manifest /inbox/proposals.json --max-candidates 3 \
+  --source /trusted/Sonny2 --revision FULL_40_CHARACTER_GIT_SHA \
+  --trusted /private/trusted-tests --heldout /private/heldout-tests \
+  --image runner@sha256:REAL_64_HEX_DIGEST --ledger /private/apl/lineage.jsonl
+```
+
+The hard budget is ten candidates; per-suite timeouts are 1–600 seconds.
+All manifest entries are validated before evaluation. Duplicate patches and
+invalid probabilities are rejected. There is no winner selection or promotion.
+Predictions describe review eligibility, not probability of scientific improvement.
+The queue does not feed held-out answers to a generator. Reusing a held-out suite
+across candidate selection can still contaminate it; reserve a separate final
+suite under an independent owner.
+
+`metrics.paired_uncertainty` provides a seeded paired task bootstrap with a
+computation budget. Its interval assumes representative independent tasks;
+it does not establish independence, generalization or repeat-run stability.
+External grader names are metadata, not authenticated identities.
+
 ## Next engineering work
 
-1. Build a dedicated non-production Docker test image and inspect its digest.
-2. Create immutable external trusted and held-out test fixtures, with separate
-   owners/access controls and contamination checks.
-3. Add adversarial integration tests for malformed diffs, test tampering,
-   sandbox escape attempts, timeouts, reward hacking and lineage corruption.
-4. Add candidate generator that **only emits a diff and prediction** into an
-   inbox. Start with one human-proposed candidate and no paid model calls.
-5. Add paired baseline-versus-candidate measurements (accuracy, regressions,
-   wall-clock time, cost), an independent grader and explicit rejection gates.
-6. Require a separately signed owner authorization for **any** merge,
-   deployment, API spend, or transfer into commercial Sonny Assistant.
+See [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md) for verified results, audit limits,
+infrastructure blockers, and the ordered next-action queue.
 
 ## Research guidance and evidence levels (reviewed 2026-10-23)
 

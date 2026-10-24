@@ -3,9 +3,9 @@
 # acquired, audited, and pinned. No network access is required at runtime.
 ARG PYTHON_BASE
 FROM ${PYTHON_BASE}
-ARG PYTEST_WHEEL
 COPY wheels/ /opt/wheels/
-RUN python -m pip install --no-index --find-links=/opt/wheels pytest && \
+COPY requirements.lock /opt/requirements.lock
+RUN python -m pip install --no-index --require-hashes --find-links=/opt/wheels -r /opt/requirements.lock && \
     python -m pip check
 WORKDIR /src
 ENTRYPOINT []
