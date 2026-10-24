@@ -51,8 +51,8 @@ def stage_candidate(task: Task, files: dict[str, str], changes: list[Replacement
         staged[change.path] = candidate
     digest = hashlib.sha256()
     for path in sorted(staged):
-        digest.update(path.encode() + b"\\0")
-        digest.update(staged[path].encode() + b"\\0")
+        digest.update(path.encode() + bytes([0]))
+        digest.update(staged[path].encode() + bytes([0]))
     return {
         "task_id": task.task_id,
         "candidate": staged,
