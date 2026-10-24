@@ -83,6 +83,25 @@ class HardeningTests(unittest.TestCase):
             self.assertIn('proposal_prediction', ledger.read_text())
             evaluate.assert_called_once()
 
+    def test_queue_evaluates_frozen_validated_patch_bytes(self):
+        from sonny_one.apl.policy import sha256_bytes
+        with tempfile.TemporaryDirectory() as tmp:
+            path, ledger = Path(tmp)/'patch', Path(tmp)/'ledger'
+            path.write_text(DIFF)
+            digest = sha256_bytes(DIFF.encode())
+            captured = []
+            def fake_evaluate(*, patch_file, **kwargs):
+                captured.append(Path(patch_file).read_text())
+                path.write_text('malicious later inbox contents')
+                return {'candidate_id': sha256_bytes(captured[-1].encode()),
+                        'promotion': 'FORBIDDEN'}
+            with patch('sonny_one.apl.loop.evaluate', side_effect=fake_evaluate):
+                result = run_queue([{'patch': str(path), 'predicted_pass': .7}],
+                                   ledger=ledger, revision='a'*40)
+            self.assertEqual(result['attempted'], 1)
+            self.assertEqual(captured, [DIFF])
+            self.assertEqual(digest, result['reports'][0]['candidate_id'])
+
     def test_bootstrap_reproducible_and_not_proof(self):
         from sonny_one.apl.metrics import paired_uncertainty
         args = ({'a': 0, 'b': 1, 'c': 0}, {'a': 1, 'b': 0, 'c': 1})

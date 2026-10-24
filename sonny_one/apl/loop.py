@@ -6,6 +6,7 @@ feedback is not supplied to a generator. This is not recursive self-improvement.
 import argparse
 import json
 import math
+import tempfile
 from pathlib import Path
 from .runner import evaluate
 from .policy import append_lineage, sha256_bytes, validate_patch
@@ -31,17 +32,19 @@ def run_queue(proposals, *, max_candidates=3, **evaluation_args):
         if digest in seen:
             raise ValueError("Duplicate candidate")
         seen.add(digest)
-        prepared.append((proposal, digest))
+        prepared.append((proposal, digest, data))
     results = []
-    for proposal, digest in prepared:
-        # Bind prediction to bytes before observing outcomes.
-        if sha256_bytes(Path(proposal["patch"]).read_text(encoding="utf-8").encode()) != digest:
-            raise ValueError("Proposal changed after intake")
-        append_lineage(Path(evaluation_args["ledger"]), {
-            "event": "proposal_prediction", "candidate_id": digest,
-            "base_revision": evaluation_args["revision"],
-            "predicted_pass": proposal["predicted_pass"], "promotion": "FORBIDDEN"})
-        report = evaluate(patch_file=proposal["patch"], **evaluation_args)
+    for proposal, digest, validated_text in prepared:
+        # Never reopen mutable inbox bytes for candidate execution. Pass the exact
+        # snapshot that was validated and preregistered, even if inbox changes.
+        with tempfile.TemporaryDirectory(prefix="apl-proposal-") as directory:
+            frozen = Path(directory) / "candidate.diff"
+            frozen.write_text(validated_text, encoding="utf-8")
+            append_lineage(Path(evaluation_args["ledger"]), {
+                "event": "proposal_prediction", "candidate_id": digest,
+                "base_revision": evaluation_args["revision"],
+                "predicted_pass": proposal["predicted_pass"], "promotion": "FORBIDDEN"})
+            report = evaluate(patch_file=str(frozen), **evaluation_args)
         if report["candidate_id"] != digest:
             raise ValueError("Evaluated proposal differs from preregistered proposal")
         results.append(report)
