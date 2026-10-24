@@ -6,7 +6,8 @@ from sonny_one.inference import InferenceFailure, InferenceTimeout
 from sonny_one.inference_config import InferenceSettings, build_provider
 from sonny_one.inference_async import generate_with_deadline
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
+from sonny.auth import authenticated_user
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
@@ -78,6 +79,12 @@ async def inference_demo(body: ChatRequest):
         raise HTTPException(status_code=503, detail="Inference unavailable") from exc
     return {"text": result.text, "mode": "deterministic-demo",
             "model_id": result.model_id, "model_connected": not result.demo}
+
+
+@app.post("/api/inference/private")
+async def private_inference(body: ChatRequest, user_id: str = Depends(authenticated_user)):
+    """Authenticated, offline-only proof of the inference authorization boundary."""
+    return await inference_demo(body)
 
 
 @app.post("/api/chat")
