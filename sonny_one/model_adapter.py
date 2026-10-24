@@ -36,4 +36,6 @@ class TransportAdapter:
         output = self._transport(request.prompt, request.timeout_seconds)
         if not isinstance(output, str) or not output.strip() or len(output) > self._endpoint.max_output_chars:
             raise ValueError("Invalid transport response")
+        if any(ord(char) < 32 and char not in '\\n\\r\\t' for char in output):
+            raise ValueError("Invalid transport response")
         return Response(text=output, model_id=self._endpoint.model_id, demo=False)
