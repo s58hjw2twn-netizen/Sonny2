@@ -13,6 +13,7 @@ from sonny.store import Store
 
 @pytest.fixture
 def client(tmp_path, monkeypatch):
+    monkeypatch.setenv("SONNY_AUTH_SECRET", "test-only-signing-key-not-for-production")
     store = Store(str(tmp_path / "auth-boundary.sqlite3"))
     monkeypatch.setattr(app_module, "store", store)
     with TestClient(app_module.app) as test_client:
@@ -28,10 +29,6 @@ def test_project_requires_identity_header(client):
     assert response.status_code == 401
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="KNOWN VULNERABILITY: X-User-ID alone impersonates an account",
-)
 def test_untrusted_header_cannot_impersonate_user(client):
     http, store = client
     victim = store.create_user("victim")
@@ -42,4 +39,38 @@ def test_untrusted_header_cannot_impersonate_user(client):
         f"/projects/{project}",
         headers={"X-User-ID": victim},
     )
-    assert response.status_code in (401, 403)
+    assert response.status_code == 401
+
+
+def test_valid_signed_session_allows_own_project(client):
+    import jwt
+    import time
+    http, store = client
+    owner = store.create_user("owner")
+    project = store.create_project(owner, "private", "goal")
+    now = int(time.time())
+    token = jwt.encode(
+        {"sub": owner, "iat": now, "exp": now + 3600},
+        "test-only-signing-key-not-for-production", algorithm="HS256",
+    )
+    response = http.get(
+        f"/projects/{project}",
+        headers={"Authorization": f"Bearer {token}", "X-User-ID": owner},
+    )
+    assert response.status_code == 200
+
+
+def test_expired_session_rejected(client):
+    import jwt
+    http, store = client
+    owner = store.create_user("owner")
+    project = store.create_project(owner, "private", "goal")
+    token = jwt.encode(
+        {"sub": owner, "iat": 1, "exp": 2},
+        "test-only-signing-key-not-for-production", algorithm="HS256",
+    )
+    response = http.get(
+        f"/projects/{project}",
+        headers={"Authorization": f"Bearer {token}", "X-User-ID": owner},
+    )
+    assert response.status_code == 401
