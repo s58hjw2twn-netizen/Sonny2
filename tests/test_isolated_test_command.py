@@ -10,6 +10,7 @@ def test_command_has_isolation_guards(tmp_path):
     command = build_test_command(str(tmp_path), IMAGE)
     assert command[:2] == ["docker", "run"]
     assert "--network" in command and command[command.index("--network") + 1] == "none"
+    assert "--pull" in command and command[command.index("--pull") + 1] == "never"
     assert "--read-only" in command
     assert "--cap-drop" in command
     assert "--memory" in command
