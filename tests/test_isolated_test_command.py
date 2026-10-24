@@ -16,7 +16,9 @@ def test_command_has_isolation_guards(tmp_path):
     assert "--user" in command
     assert "--mount" in command
     assert "readonly" in command[command.index("--mount") + 1]
-    assert command[-5:] == ["python", "-m", "unittest", "discover", "-s", "tests"]
+    assert command[-4:-1] == ["python", "-B", "-c"]
+    assert "ast.parse" in command[-1]
+    assert "pytest" not in command[-1]
 
 
 @pytest.mark.parametrize("image", [
