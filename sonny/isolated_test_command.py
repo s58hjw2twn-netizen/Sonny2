@@ -8,7 +8,7 @@ from pathlib import Path
 
 def build_test_command(workspace: str, image: str) -> list[str]:
     root = Path(workspace)
-    if any(c in str(root) for c in (",", "\\n", "\\r")):\n        raise ValueError("workspace path contains unsupported mount characters")\n    if not root.is_absolute() or not root.is_dir() or root.is_symlink():
+    if any(c in str(root) for c in (",", "\n", "\r")):\n        raise ValueError("workspace path contains unsupported mount characters")\n    if not root.is_absolute() or not root.is_dir() or root.is_symlink():
         raise ValueError("workspace must be an existing absolute non-symlink directory")
     if not image.startswith("python:3.11-slim@sha256:"):
         raise ValueError("container image must be a pinned Python digest")
