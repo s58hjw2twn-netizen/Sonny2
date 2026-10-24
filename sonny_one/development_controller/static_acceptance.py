@@ -16,10 +16,20 @@ def check_mean_change(before: str, after: str) -> dict:
         raise ValueError("source must be text")
     old = ast.parse(before)
     new = ast.parse(after)
-    if any(not isinstance(node, ast.FunctionDef) for node in old.body + new.body):
-        raise ValueError("top-level executable statements and imports prohibited")
-    old_defs = {node.name: node for node in old.body if isinstance(node, ast.FunctionDef)}
-    new_defs = {node.name: node for node in new.body if isinstance(node, ast.FunctionDef)}
+    def split_module(module):
+        body = list(module.body)
+        doc = None
+        if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant) and isinstance(body[0].value.value, str):
+            doc = body.pop(0).value.value
+        if any(not isinstance(node, ast.FunctionDef) for node in body):
+            raise ValueError("top-level executable statements and imports prohibited")
+        return doc, body
+    old_doc, old_body = split_module(old)
+    new_doc, new_body = split_module(new)
+    if old_doc != new_doc:
+        raise ValueError("module documentation changed")
+    old_defs = {node.name: node for node in old_body}
+    new_defs = {node.name: node for node in new_body}
     if set(old_defs) != {"mean", "smallest", "largest"} or set(new_defs) != set(old_defs):
         raise ValueError("unexpected function changes")
     for name in ("smallest", "largest"):
