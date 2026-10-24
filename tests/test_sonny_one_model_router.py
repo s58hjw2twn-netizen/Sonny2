@@ -8,8 +8,8 @@ class Fake:
 
 class RouterTests(unittest.TestCase):
     def test_lowest_cost(self):
-        r = ModelRouter([ModelOption("paid", Fake(), frozenset({"chat"}), 3),
-                         ModelOption("free", Fake(), frozenset({"chat"}), 0)])
+        r = ModelRouter([ModelOption("paid", Fake(), frozenset({"chat"}), 3, approved=True, license_verified=True, available=True),
+                         ModelOption("free", Fake(), frozenset({"chat"}), 0, approved=True, license_verified=True, available=True)])
         self.assertEqual(r.select("chat").name, "free")
     def test_paid_blocked_by_default(self):
         r = ModelRouter([ModelOption("paid", Fake(), frozenset({"chat"}), 1)])
@@ -21,7 +21,7 @@ class RouterTests(unittest.TestCase):
         r = ModelRouter([ModelOption("a", Fake(), frozenset({"chat"}))])
         with self.assertRaises(LookupError): r.select("chat", preferred="b")
     def test_generate_returns_provenance(self):
-        r = ModelRouter([ModelOption("local", Fake("hello"), frozenset({"chat"}))])
+        r = ModelRouter([ModelOption("local", Fake("hello"), frozenset({"chat"}), approved=True, license_verified=True, available=True)])
         self.assertEqual(r.generate("chat", system="s", user="u"), ("hello", "local"))
     def test_reject_duplicates(self):
         with self.assertRaises(ValueError):
@@ -30,7 +30,7 @@ class RouterTests(unittest.TestCase):
     def test_reject_negative_budget(self):
         with self.assertRaises(ValueError): ModelRouter([], max_cost_units=-1)
     def test_reject_wrong_response_type(self):
-        r = ModelRouter([ModelOption("x", Fake(None), frozenset({"chat"}))])
+        r = ModelRouter([ModelOption("x", Fake(None), frozenset({"chat"}), approved=True, license_verified=True, available=True)])
         with self.assertRaises(TypeError): r.generate("chat", system="s", user="u")
 
 if __name__ == "__main__":
