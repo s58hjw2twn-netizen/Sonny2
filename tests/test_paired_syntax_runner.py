@@ -58,3 +58,13 @@ def test_second_run_failure_does_not_return_partial_evidence(tmp_path):
     ]):
         with pytest.raises(RuntimeError, match="unavailable"):
             run_paired_syntax_checks(str(base), str(candidate), IMAGE)
+
+
+def test_symlinked_workspace_root_rejected(tmp_path):
+    base, candidate = workspaces(tmp_path)
+    link = tmp_path / "alias"
+    link.symlink_to(base, target_is_directory=True)
+    with patch("sonny.isolated_syntax_executor.subprocess.run") as run:
+        with pytest.raises(ValueError, match="symlinked workspace"):
+            run_paired_syntax_checks(str(link), str(candidate), IMAGE)
+        run.assert_not_called()
