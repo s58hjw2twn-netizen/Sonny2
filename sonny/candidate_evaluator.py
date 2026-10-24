@@ -30,6 +30,20 @@ def evaluate_candidate(staged: dict, baseline_checks: dict[str, bool],
         raise ValueError("baseline checks must be boolean")
     if not all(isinstance(x, bool) for x in candidate_checks.values()):
         raise ValueError("candidate checks must be boolean")
+    # Caller-provided booleans are not trusted evidence on their own.
+    # Reject malformed changed Python code before reporting a candidate pass.
+    changed = staged.get("changed_paths")
+    if not isinstance(changed, list) or not changed:
+        raise ValueError("changed paths missing")
+    python_paths = [p for p in changed if isinstance(p, str) and p.endswith(".py")]
+    if python_paths:
+        for path in python_paths:
+            if path not in files:
+                raise ValueError("changed Python file missing")
+            try:
+                ast.parse(files[path], filename=path)
+            except (SyntaxError, ValueError, TypeError):
+                raise ValueError("candidate Python syntax invalid")
     regressions = sorted(
         name for name in baseline_checks
         if baseline_checks[name] and not candidate_checks[name]
@@ -41,6 +55,7 @@ def evaluate_candidate(staged: dict, baseline_checks: dict[str, bool],
         "regressions": regressions,
         "failed_checks": failures,
         "passed": not failures and not regressions,
+        "independently_verified": False,
         "status": "EVIDENCE_REVIEW_ONLY",
         "commit_allowed": False,
         "tests_executed_by_evaluator": 0,
