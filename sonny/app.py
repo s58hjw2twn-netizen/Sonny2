@@ -1,6 +1,7 @@
 import os
 import time
 import uuid
+import jwt
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import HTMLResponse
@@ -46,10 +47,26 @@ class FeedbackIn(BaseModel):
     status: str
 
 
-def user(x_user_id: str | None):
-    if not x_user_id:
-        raise HTTPException(401, "X-User-ID required")
-    return x_user_id
+def user(x_user_id: str | None, authorization: str | None = None):
+    # The legacy header is an identifier, never proof of authentication.
+    secret = os.getenv("SONNY_AUTH_SECRET")
+    if not secret:
+        raise HTTPException(503, "Authentication is not configured")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(401, "Bearer token required")
+    try:
+        claims = jwt.decode(
+            authorization[7:], secret, algorithms=["HS256"],
+            options={"require": ["sub", "exp", "iat"]},
+        )
+    except jwt.PyJWTError:
+        raise HTTPException(401, "Invalid or expired session")
+    identity = claims.get("sub")
+    if not isinstance(identity, str) or not identity:
+        raise HTTPException(401, "Invalid session identity")
+    if x_user_id and x_user_id != identity:
+        raise HTTPException(403, "Session identity mismatch")
+    return identity
 
 
 def require_project(u, pid):
@@ -680,6 +697,7 @@ function renderMarkdown(text) {
 }
 const state = {
     userId: null,
+    sessionToken: null,
     projectId: null,
     projectName: null,
     projectGoal: null
@@ -694,6 +712,9 @@ function apiHeaders() {
 
     if (state.userId) {
         h["X-User-ID"] = state.userId;
+    }
+    if (state.sessionToken) {
+        h["Authorization"] = "Bearer " + state.sessionToken;
     }
 
     return h;
@@ -762,6 +783,7 @@ function loadState() {
         if (
             saved &&
             saved.userId &&
+            saved.sessionToken &&
             saved.projectId
         ) {
 
@@ -919,6 +941,7 @@ async function startWorkspace() {
 
         state.userId =
             createdUser.user_id;
+        state.sessionToken = createdUser.session_token;
 
         const createdProject =
             await api(
@@ -1227,9 +1250,16 @@ def health():
 
 @app.post("/users")
 def users(b: UserIn):
-    return {
-        "user_id": store.create_user(b.name)
-    }
+    secret = os.getenv("SONNY_AUTH_SECRET")
+    if not secret:
+        raise HTTPException(503, "Authentication is not configured")
+    identity = store.create_user(b.name)
+    now = int(time.time())
+    token = jwt.encode(
+        {"sub": identity, "iat": now, "exp": now + 86400},
+        secret, algorithm="HS256",
+    )
+    return {"user_id": identity, "session_token": token}
 
 
 # ---------------------------------------------------------
@@ -1239,12 +1269,13 @@ def users(b: UserIn):
 @app.post("/projects")
 def projects(
     b: ProjectIn,
-    x_user_id: str | None = Header(None)
+    x_user_id: str | None = Header(None),
+    authorization: str | None = Header(None)
 ):
     return {
         "project_id":
             store.create_project(
-                user(x_user_id),
+                user(x_user_id, authorization),
                 b.name,
                 b.goal
             )
@@ -1254,9 +1285,10 @@ def projects(
 @app.get("/projects/{pid}")
 def get_project(
     pid: str,
-    x_user_id: str | None = Header(None)
+    x_user_id: str | None = Header(None),
+    authorization: str | None = Header(None)
 ):
-    u = user(x_user_id)
+    u = user(x_user_id, authorization)
 
     p = require_project(u, pid)
 
@@ -1279,9 +1311,10 @@ def get_project(
 def chat(
     pid: str,
     b: ChatIn,
-    x_user_id: str | None = Header(None)
+    x_user_id: str | None = Header(None),
+    authorization: str | None = Header(None)
 ):
-    u = user(x_user_id)
+    u = user(x_user_id, authorization)
 
     p = require_project(u, pid)
 
@@ -1358,10 +1391,11 @@ def chat(
 def propose_memory(
     pid: str,
     b: MemoryIn,
-    x_user_id: str | None = Header(None)
+    x_user_id: str | None = Header(None),
+    authorization: str | None = Header(None)
 ):
 
-    u = user(x_user_id)
+    u = user(x_user_id, authorization)
 
     require_project(u, pid)
 
@@ -1384,10 +1418,11 @@ def propose_memory(
 def confirm(
     pid: str,
     mid: str,
-    x_user_id: str | None = Header(None)
+    x_user_id: str | None = Header(None),
+    authorization: str | None = Header(None)
 ):
 
-    u = user(x_user_id)
+    u = user(x_user_id, authorization)
 
     require_project(u, pid)
 
@@ -1410,10 +1445,11 @@ def correct(
     pid: str,
     mid: str,
     b: CorrectionIn,
-    x_user_id: str | None = Header(None)
+    x_user_id: str | None = Header(None),
+    authorization: str | None = Header(None)
 ):
 
-    u = user(x_user_id)
+    u = user(x_user_id, authorization)
 
     require_project(u, pid)
 
@@ -1439,10 +1475,11 @@ def correct(
 def delete(
     pid: str,
     mid: str,
-    x_user_id: str | None = Header(None)
+    x_user_id: str | None = Header(None),
+    authorization: str | None = Header(None)
 ):
 
-    u = user(x_user_id)
+    u = user(x_user_id, authorization)
 
     require_project(u, pid)
 
@@ -1466,10 +1503,11 @@ def delete(
 def action(
     pid: str,
     b: ActionIn,
-    x_user_id: str | None = Header(None)
+    x_user_id: str | None = Header(None),
+    authorization: str | None = Header(None)
 ):
 
-    u = user(x_user_id)
+    u = user(x_user_id, authorization)
 
     require_project(u, pid)
 
@@ -1494,10 +1532,11 @@ def feedback(
     pid: str,
     aid: str,
     b: FeedbackIn,
-    x_user_id: str | None = Header(None)
+    x_user_id: str | None = Header(None),
+    authorization: str | None = Header(None)
 ):
 
-    u = user(x_user_id)
+    u = user(x_user_id, authorization)
 
     require_project(u, pid)
 
