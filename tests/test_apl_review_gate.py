@@ -1,4 +1,4 @@
-import pytest
+import unittest
 from sonny_one.apl.metrics import compare_metrics
 from sonny_one.apl.review_gate import assess_candidate
 
@@ -20,21 +20,21 @@ def test_positive_only_recommends_review():
     assert r["promotion"] == "FORBIDDEN"
     assert r["recursive_improvement_proven"] is False
 
-@pytest.mark.parametrize("field,value", [
-    ("local_lineage_verified", False), ("grader", "candidate"),
-    ("candidate_id", "different"), ("promotion", "ALLOWED"),
-    ("runner_status", "REJECTED"),
-])
-def test_fail_closed_attachment(field, value):
-    e, a, b, c = fixture()
-    a[field] = value
-    with pytest.raises(ValueError):
-        assess_candidate(e, a, b, c, resamples=200)
+def test_fail_closed_attachment():
+    for field, value in [
+        ("local_lineage_verified", False), ("grader", "candidate"),
+        ("candidate_id", "different"), ("promotion", "ALLOWED"),
+        ("runner_status", "REJECTED"),
+    ]:
+        e, a, b, c = fixture()
+        a[field] = value
+        with unittest.TestCase().assertRaises(ValueError):
+            assess_candidate(e, a, b, c, resamples=200)
 
 def test_rejects_score_substitution():
     e, a, b, c = fixture()
     c["t0"] = 0.0
-    with pytest.raises(ValueError):
+    with unittest.TestCase().assertRaises(ValueError):
         assess_candidate(e, a, b, c, resamples=200)
 
 def test_no_gain_no_review():
@@ -45,5 +45,5 @@ def test_no_gain_no_review():
 def test_rejected_runner_fails_closed():
     e, a, b, c = fixture()
     e["status"] = "REJECTED"
-    with pytest.raises(ValueError):
+    with unittest.TestCase().assertRaises(ValueError):
         assess_candidate(e, a, b, c, resamples=200)
