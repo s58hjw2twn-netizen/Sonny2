@@ -163,3 +163,17 @@ for measuring the orchestration pipeline, **not** autonomous candidate
 generation or RSI. Candidate predictions are intentionally unset; the existing
 queue requires preregistered probabilities and an independently approved
 sandbox before running proposed changes.
+
+## Offline proposal packaging
+
+`package.prepare_bundle(source)` connects the deterministic recipe generator
+to the disposable Git applicability checker and returns a reproducible
+review-only proposal bundle. `package.write_bundle(bundle, path)` creates a
+new JSON artifact without overwriting existing files. Bundles include patch
+bytes and SHA-256 IDs but intentionally leave `predicted_pass=None` and
+`ready_for_runner=False`: they are **not** executable queue manifests.
+
+No candidate code is executed during packaging. Running the Docker evaluator
+still requires a separately audited image, independently controlled test suites,
+preregistered predictions and explicit sandbox readiness. Do not substitute
+GitHub Actions hosted runners for a validated hostile-code isolation boundary.
