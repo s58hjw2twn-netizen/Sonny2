@@ -29,7 +29,7 @@ def validate_model_patch(proposal: dict) -> dict:
             any(part in ("", ".", "..") for part in path.split("/")) or
             not path.endswith(".py") or path.startswith("tests/__")):
         raise ValueError("unsafe patch path")
-    if path in PROTECTED_FILES or path.startswith(("sonny/security_", "sonny/auth", "sonny/model_", "sonny/isolated_", "sonny/paired_", "sonny/candidate_", "sonny/research_")):
+    if (path in PROTECTED_FILES or path.startswith(("sonny/security_", "sonny/auth", "sonny/model_", "sonny/isolated_", "sonny/paired_", "sonny/candidate_", "sonny/research_", "tests/test_model_", "tests/test_candidate_", "tests/test_research_", "tests/test_isolated_", "tests/test_paired_"))):
         raise ValueError("model cannot modify research safety controls")
     if not isinstance(content, str) or not isinstance(reason, str):
         raise ValueError("invalid patch fields")
