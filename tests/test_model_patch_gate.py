@@ -185,3 +185,35 @@ def test_model_json_response_rejects_oversized_payload():
     from sonny.model_patch_gate import parse_model_response
     with pytest.raises(ValueError, match="size limit"):
         parse_model_response("x" * 40000)
+
+
+def test_raw_model_response_stages_scoped_candidate_without_side_effects():
+    import json
+    import hashlib
+    from sonny.model_patch_gate import stage_model_response
+    from sonny.research_agent import Task
+    response = json.dumps({
+        "path": "sonny/example.py",
+        "content": "value = 2\n",
+        "reason": "Update example",
+    })
+    task = Task("MODEL1", "Update example", ("sonny/example.py",), "low")
+    result = stage_model_response(task, {"sonny/example.py": "value = 1\n"}, response)
+    assert result["candidate"]["sonny/example.py"] == "value = 2\n"
+    assert result["model_response_sha256"] == hashlib.sha256(response.encode()).hexdigest()
+    assert result["writes_performed"] == 0
+    assert result["execution_allowed"] is False
+    assert result["commit_allowed"] is False
+
+
+def test_raw_model_response_rejects_out_of_scope_target():
+    import json
+    from sonny.model_patch_gate import stage_model_response
+    from sonny.research_agent import Task
+    task = Task("MODEL2", "Update example", ("sonny/other.py",), "low")
+    response = json.dumps({
+        "path": "sonny/example.py", "content": "value = 2",
+        "reason": "Update example",
+    })
+    with pytest.raises(ValueError, match="outside approved task scope"):
+        stage_model_response(task, {"sonny/example.py": "value = 1"}, response)
