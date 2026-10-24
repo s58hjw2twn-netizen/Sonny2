@@ -36,6 +36,19 @@ class StaticAcceptanceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             check_mean_change(BASE, GOOD.replace("sum(values)", "max(values)"))
 
+    def test_rejects_top_level_side_effect(self):
+        with self.assertRaises(ValueError):
+            check_mean_change(BASE, GOOD + '\\nprint("side effect")\\n')
+
+    def test_rejects_top_level_import(self):
+        with self.assertRaises(ValueError):
+            check_mean_change(BASE, 'import os\\n' + GOOD)
+
+    def test_rejects_unapproved_call(self):
+        with self.assertRaises(ValueError):
+            check_mean_change(BASE, GOOD.replace('raise ValueError("empty")',
+                                                 'print("leak")\\n        raise ValueError("empty")'))
+
     def test_rejects_bad_syntax(self):
         with self.assertRaises(SyntaxError):
             check_mean_change(BASE, "def mean(")
