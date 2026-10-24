@@ -12,7 +12,7 @@
     {
       "id": "APP-002",
       "track": "app",
-      "title": "Design consent-based encrypted memory without enabling production storage",
+      "title": "Design consent-based encrypted memory architecture for local testing",
       "state": "ready",
       "priority": 2,
       "requires_approval": false
