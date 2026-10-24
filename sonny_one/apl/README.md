@@ -129,3 +129,14 @@ custody or statistical independence. These functions do not perform actual
 self-modification, validate the grader's identity, establish genuine RSI,
 or make deployment decisions. Independent review and unseen final evaluation
 remain mandatory. Run checks with `python -m unittest discover -s tests -p 'test_apl_*.py'`.
+
+## Offline evidence custody (experimental)
+
+`custody.seal_evidence` creates a canonical JSON SHA-256 evidence envelope
+with HMAC-SHA256 authentication under an independently held 32-byte-or-longer
+secret. `custody.verify_evidence` rejects altered records, wrong custodians,
+and invalid MACs. The key must **never** enter candidate containers, GitHub
+source, or public logs. This mechanism is not a digital signature or public
+proof of independent evaluation: anyone holding the shared secret can forge
+an envelope. Record custody, secure key distribution and independent evaluator
+identity remain external operational requirements. No real key is stored here.
