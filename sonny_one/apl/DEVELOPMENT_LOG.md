@@ -160,3 +160,13 @@ Next blocker remains a disposable audited Linux Docker host, vetted hash-pinned 
 - GitHub APL checks `40102033993`: SUCCESS. Full Sonny ONE tests `40102034108`: SUCCESS.
 - This protects against ordinary mutable-input races, not malicious host compromise or candidate process escape. Docker remains mocked for orchestration unit tests.
 - Remaining empirical blockers: rootless disposable Docker host, independently audited pinned image/dependencies, container escape/resource tests, protected independent holdouts/grader, and repeated real baseline/candidate experiments. No measurable functional improvement or genuine RSI established.
+
+
+## Continuation — incomplete-outcome stop gate (2026-10-24)
+
+- Verified both GitHub workflows successful on previous head `437b91c` before modifying code.
+- Detected fail-open loop behavior: missing suite-result dictionaries or omitted `exit_code` values were treated as zero by the infrastructure-stop predicate.
+- Commit `927fb5bf5d44399d459d5e9bd44213130d7bdf12` stops the bounded candidate queue when a required result is absent, non-integer, or outside pytest's normal 0/1 outcomes. Added regression test demonstrating that missing outcomes do not permit a second proposal to run.
+- APL workflow run `40102271424` succeeded. Full Sonny ONE workflow `40102271457` must be checked for final outcome.
+- This is fail-closed orchestration behavior, not real sandbox testing or proven functional improvements.
+- Docker infrastructure, independently held-out tasks, independent grading and repeated empirical evaluation remain unavailable as before.
