@@ -190,3 +190,12 @@ Next blocker remains a disposable audited Linux Docker host, vetted hash-pinned 
 - Verified **SUCCESS** at corrected commit: APL checks run `40102625376`, full Sonny ONE tests run `40102625432`. The earlier failure is retained as evidence, not suppressed.
 - Records are input assertions and are not independently signed/authenticated. The helper does not acquire private heldouts, independently verify actual evaluations, or prove generalization, self-awareness or RSI.
 - Empirical blockers unchanged: independent Docker containment, vetted pinned image, controlled private grader/holdouts, and repeated real experiments. No production merge/deploy/charges.
+
+
+## Continuation — local report-to-ledger provenance (2026-10-24)
+
+- Verified initial head `0c12db06e2d111743a94ec71c170dea40b1277e7` with both APL policy and complete Sonny ONE CI success.
+- Commit `9c6e1fb854091da3b5332f2118e20fef85e02892` adds local `verify_report_lineage`, checking report content against its SHA-256 ledger commitment and matching candidate/revision/image/fixture/status fields. Tests reject altered or missing records. Both workflows SUCCESS (APL 40102782858, full 40102782830).
+- Commit `499b26bfa7a760385f9b64089e691396442f818a` adds opt-in `attach_scores_verified`; external score attachment requires successful local ledger agreement. It does not change the legacy API or claim authenticated grader custody. Both workflows SUCCESS (APL 40102858838, full 40102858846).
+- Hash-chain validation detects ordinary edits only. A privileged attacker with access to both report and ledger can forge a consistent new chain. Independently authenticated grader identities, off-host audit anchoring, and inaccessible final heldouts are still missing.
+- No real Docker sandbox experiments, measured candidate functional gains, proven recursive self-improvement, or production promotion. Next: independent provenance anchoring/custody and vetted disposable rootless Docker host before empirical tests.
