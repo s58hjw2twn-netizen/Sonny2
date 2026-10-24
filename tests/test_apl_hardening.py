@@ -102,6 +102,22 @@ class HardeningTests(unittest.TestCase):
             self.assertEqual(captured, [DIFF])
             self.assertEqual(digest, result['reports'][0]['candidate_id'])
 
+    def test_queue_stops_on_missing_suite_outcomes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            first, second = root/'a.diff', root/'b.diff'
+            first.write_text(DIFF)
+            second.write_text(DIFF.replace('+new', '+newer'))
+            from sonny_one.apl.policy import sha256_bytes
+            incomplete = {'candidate_id': sha256_bytes(DIFF.encode()),
+                          'promotion': 'FORBIDDEN'}
+            proposals = [{'patch': str(first), 'predicted_pass': .5},
+                         {'patch': str(second), 'predicted_pass': .5}]
+            with patch('sonny_one.apl.loop.evaluate', return_value=incomplete) as evaluate:
+                result = run_queue(proposals, max_candidates=2, ledger=root/'ledger', revision='a'*40)
+            self.assertEqual(result['attempted'], 1)
+            evaluate.assert_called_once()
+
     def test_bootstrap_reproducible_and_not_proof(self):
         from sonny_one.apl.metrics import paired_uncertainty
         args = ({'a': 0, 'b': 1, 'c': 0}, {'a': 1, 'b': 0, 'c': 1})

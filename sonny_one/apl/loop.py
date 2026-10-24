@@ -50,7 +50,8 @@ def run_queue(proposals, *, max_candidates=3, **evaluation_args):
         results.append(report)
         # Infrastructure failures stop the batch; test failures do not.
         if report.get("error") or any(
-            report.get(k, {}).get("exit_code", 0) not in (0, 1)
+            type(report.get(k, {}).get("exit_code")) is not int
+            or report[k]["exit_code"] not in (0, 1)
             for k in ("baseline_deterministic", "baseline_heldout", "deterministic", "heldout")
         ):
             break
