@@ -26,10 +26,26 @@ def validate_patch(patch: str) -> list[str]:
         "old mode 120000", "Submodule ",
     )
     paths = []
+    current = None
+    old_seen = False
+    new_seen = False
     for line in patch.splitlines():
         if line.startswith(forbidden):
             raise ValueError("Binary, rename, copy, symlink or submodule changes prohibited")
+        if line.startswith(("old mode ", "new mode ", "deleted file mode ",
+                            "new file mode ", "index 160000")):
+            raise ValueError("File mode and submodule changes prohibited")
+        if line.startswith("--- "):
+            if current is None or old_seen or line != "--- a/" + current:
+                raise ValueError("Mismatched original file header")
+            old_seen = True
+        if line.startswith("+++ "):
+            if current is None or not old_seen or new_seen or line != "+++ b/" + current:
+                raise ValueError("Mismatched patched file header")
+            new_seen = True
         if line.startswith("diff --git "):
+            if current is not None and not (old_seen and new_seen):
+                raise ValueError("Incomplete file diff headers")
             match = HEADER_RE.fullmatch(line)
             if not match or match.group(1) != match.group(2):
                 raise ValueError("Invalid or renamed diff path")
@@ -39,6 +55,9 @@ def validate_patch(patch: str) -> list[str]:
                     or any(part in ("", ".", "..") for part in parts)):
                 raise ValueError("Patch touches a non-experimental path")
             paths.append(path)
+            current, old_seen, new_seen = path, False, False
+    if current is not None and not (old_seen and new_seen):
+        raise ValueError("Incomplete file diff headers")
     if not paths or len(paths) != len(set(paths)):
         raise ValueError("Missing or duplicate file diffs")
     return paths
