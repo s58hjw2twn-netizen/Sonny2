@@ -26,6 +26,14 @@ def stage_candidate(task: Task, files: dict[str, str], changes: list[Replacement
     if not changes or len(changes) > 8:
         raise ValueError("invalid change count")
     allowed = set(task.paths)
+    # Validate the complete snapshot, not just the paths being patched.
+    # Reject unsafe keys and oversized or non-text inputs before fingerprinting.
+    for path, content in files.items():
+        if not isinstance(path, str) or not path.startswith(("sonny/", "tests/", "docs/")):
+            raise ValueError("snapshot path outside allowed roots")
+        validate_task(Task(task.task_id, task.objective, (path,), task.risk))
+        if not isinstance(content, str) or len(content.encode()) > MAX_FILE_BYTES:
+            raise ValueError("invalid snapshot file")
     staged = dict(files)
     touched = set()
     total = 0
