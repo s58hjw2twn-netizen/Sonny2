@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "APP-001",
+      "track": "app",
+      "title": "Verify conversation security integration and regression tests",
+      "state": "ready",
+      "priority": 1,
+      "requires_approval": false
+    },
+    {
+      "id": "APP-002",
+      "track": "app",
+      "title": "Design consent-based encrypted memory without enabling production storage",
+      "state": "ready",
+      "priority": 2,
+      "requires_approval": false
+    },
+    {
+      "id": "RES-001",
+      "track": "research",
+      "title": "Verify APL custody and held-out self-prediction test pipeline",
+      "state": "ready",
+      "priority": 1,
+      "requires_approval": false
+    },
+    {
+      "id": "APP-003",
+      "track": "app",
+      "title": "Production deployment and secret provisioning",
+      "state": "blocked",
+      "priority": 5,
+      "requires_approval": true
+    }
+  ]
+}
