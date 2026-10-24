@@ -20,7 +20,8 @@ class LocalModelCliTests(unittest.TestCase):
     def test_writes_review_only_artifact(self):
         class FakeAdapter:
             def __init__(self, producer):
-                pass
+                self.model_producer = producer
+                self.model_producer.last_source_sha256 = 'a' * 64
 
             def propose(self, task):
                 return {"task_id": "RES-001", "candidate_id": "a" * 64,
@@ -44,7 +45,8 @@ class LocalModelCliTests(unittest.TestCase):
     def test_failed_static_gate_never_writes_artifact(self):
         class FakeAdapter:
             def __init__(self, producer):
-                pass
+                self.model_producer = producer
+                self.model_producer.last_source_sha256 = 'a' * 64
             def propose(self, task):
                 return {"patch_text": "invalid"}
         with patch("sonny_one.development_controller.local_model_cli.ModelProposalAdapter",
