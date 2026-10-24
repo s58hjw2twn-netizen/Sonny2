@@ -1,0 +1,28 @@
+name: Sonny live Gemini coding trial (manual only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-isolated-trial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install bounded transport dependency
+        run: python -m pip install httpx==0.28.1
+      - name: Prepare isolated test image
+        run: docker pull python:3.11-slim
+      - name: Generate live patch and verify in Docker
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SONNY_GEMINI_MODEL: gemini-2.5-flash
+        run: PYTHONPATH=. python tests/run_live_gemini_trial.py
