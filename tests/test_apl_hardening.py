@@ -148,7 +148,7 @@ class HardeningTests(unittest.TestCase):
             trusted, heldout = root/'trusted', root/'heldout'
             trusted.mkdir()
             heldout.mkdir()
-            def mutate(*args):
+            def mutate(*args, **kwargs):
                 (heldout/'test_changed.py').write_text('assert True')
                 return {'exit_code': 0}
             with patch.object(runner, 'docker_test', side_effect=mutate):
