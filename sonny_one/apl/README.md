@@ -113,3 +113,19 @@ infrastructure blockers, and the ordered next-action queue.
 This experiment is separate from commercial `sonny/app.py` and from frozen
 research artifacts. Even a perfect local test result remains experimental.
 The owner must explicitly approve any production promotion.
+
+## Repeated-cycle evidence gate (experimental)
+
+`review_gate.assess_candidate` compares independently supplied paired scores
+with the recorded evaluation identity and locally verified lineage.
+`cycles.assess_cycles` requires at least three separately identified cycles,
+unique candidate IDs, and distinct SHA-256 suite fingerprints. A positive
+recommendation requires every cycle to exceed the configured improvement
+threshold with a positive task-bootstrap lower bound. Both interfaces are
+read-only and always forbid automatic promotion.
+
+**Important:** A fingerprint is an identifier, not proof of independent suite
+custody or statistical independence. These functions do not perform actual
+self-modification, validate the grader's identity, establish genuine RSI,
+or make deployment decisions. Independent review and unseen final evaluation
+remain mandatory. Run checks with `python -m unittest discover -s tests -p 'test_apl_*.py'`.
