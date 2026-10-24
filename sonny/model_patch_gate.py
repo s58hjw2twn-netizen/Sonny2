@@ -109,3 +109,16 @@ def parse_model_response(response: str) -> dict:
         raise ValueError("model response must be valid JSON") from exc
     validate_model_patch(proposal)
     return proposal
+
+
+def stage_model_response(task, files: dict[str, str], response: str) -> dict:
+    """Validate a model's raw JSON and stage a scoped candidate in memory.
+
+    This is a dry-run boundary: no model calls, filesystem writes, execution,
+    Git operations, or commit authorization occur here.
+    """
+    proposal = parse_model_response(response)
+    staged = stage_scoped_model_patch(task, files, proposal)
+    staged["model_response_sha256"] = hashlib.sha256(response.encode("utf-8")).hexdigest()
+    staged["commit_allowed"] = False
+    return staged
