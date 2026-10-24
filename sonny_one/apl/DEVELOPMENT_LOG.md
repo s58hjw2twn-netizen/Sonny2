@@ -180,3 +180,13 @@ Next blocker remains a disposable audited Linux Docker host, vetted hash-pinned 
 - This is analysis of externally supplied completed records; there is no independently graded experiment dataset, live Sonny self-prediction evaluation, or measured model improvement.
 - APL GitHub workflow `40102440248` SUCCESS; full workflow `40102440307` requires outcome verification.
 - Empirical constraints remain a vetted rootless disposable Docker host, audited offline image, independent held-out grader/test custody, repeated real experiments and human-reviewed promotion. No production merge, deployment or charges.
+
+
+## Continuation — calibrated queue evidence (2026-10-24)
+
+- Starting head `760358e35d3718c77c0ba34943c1000258fdcebc` passed both GitHub Actions workflows.
+- Added `calibrate_queue`: requires every preregistered candidate in a frozen patch-text manifest to match, in order and by SHA-256, a complete candidate report; rejects missing/mismatched/infrastructure-failed evidence. Calculates descriptive calibration of human-review eligibility, **not** task improvement. Commit `77d6104608c0c74fd9eb95ad33d6a43391412a10`.
+- Initial remote CI on `77d6104` failed: test fixture encoded literal backslash-n instead of real patch newlines. Inspected CI logs, corrected fixture in `78356ed6e8781f4b45c87cce707cca8639c73525`.
+- Verified **SUCCESS** at corrected commit: APL checks run `40102625376`, full Sonny ONE tests run `40102625432`. The earlier failure is retained as evidence, not suppressed.
+- Records are input assertions and are not independently signed/authenticated. The helper does not acquire private heldouts, independently verify actual evaluations, or prove generalization, self-awareness or RSI.
+- Empirical blockers unchanged: independent Docker containment, vetted pinned image, controlled private grader/holdouts, and repeated real experiments. No production merge/deploy/charges.
