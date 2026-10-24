@@ -10,7 +10,7 @@ import tempfile
 
 from sonny.coding_model_provider import generate_and_stage_patch
 from sonny.research_agent import Task
-from tests.run_isolated_coding_trial import run_container
+from run_isolated_coding_trial import run_container
 
 
 def main():
