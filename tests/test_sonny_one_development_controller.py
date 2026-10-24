@@ -9,6 +9,15 @@ def task(ident, track="app", priority=1, approval=False, state="ready", title="T
 
 
 class ControllerTests(unittest.TestCase):
+    def test_committed_task_queue_is_valid(self):
+        import json
+        from pathlib import Path
+        queue_path = Path(__file__).resolve().parents[1] / "sonny_one" / "development_controller" / "tasks.json"
+        queue = json.loads(queue_path.read_text(encoding="utf-8"))
+        result = plan(queue)
+        self.assertIsNotNone(result["next_task"])
+        self.assertFalse(result["execution_started"])
+
     def test_priorities(self):
         result = plan({"version": 1, "tasks": [task("B", priority=2), task("A")]})
         self.assertEqual(result["next_task"]["id"], "A")
