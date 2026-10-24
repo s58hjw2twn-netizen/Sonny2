@@ -26,6 +26,15 @@ class ModelAdapterTests(unittest.TestCase):
         with self.assertRaises(InferenceFailure):
             generate(adapter, "hello")
 
+    def test_control_character_rejected(self):
+        adapter = TransportAdapter(ModelEndpoint("local-test"), lambda p, t: "ok" + chr(0))
+        with self.assertRaises(InferenceFailure):
+            generate(adapter, "hello")
+
+    def test_newline_allowed(self):
+        adapter = TransportAdapter(ModelEndpoint("local-test"), lambda p, t: "line 1" + chr(10) + "line 2")
+        self.assertIn(chr(10), generate(adapter, "hello").text)
+
     def test_bad_model_id(self):
         with self.assertRaises(ValueError):
             ModelEndpoint(" ")
