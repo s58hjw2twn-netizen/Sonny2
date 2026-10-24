@@ -111,3 +111,38 @@ def test_mismatched_header_and_signed_identity_rejected(client):
         headers={"Authorization": f"Bearer {token}", "X-User-ID": owner},
     )
     assert response.status_code == 403
+
+
+def test_registration_issues_working_session(client):
+    http, _ = client
+    created = http.post("/users", json={"name": "test account"})
+    assert created.status_code == 200
+    payload = created.json()
+    assert payload["session_token"]
+    project = http.post(
+        "/projects",
+        json={"name": "new project", "goal": "test"},
+        headers={
+            "Authorization": f"Bearer {payload['session_token']}",
+            "X-User-ID": payload["user_id"],
+        },
+    )
+    assert project.status_code == 200
+
+
+def test_invalid_signature_rejected(client):
+    import jwt
+    import time
+    http, store = client
+    owner = store.create_user("owner")
+    project = store.create_project(owner, "private", "goal")
+    now = int(time.time())
+    forged = jwt.encode(
+        {"sub": owner, "iat": now, "exp": now + 3600},
+        "wrong-signing-key", algorithm="HS256",
+    )
+    response = http.get(
+        f"/projects/{project}",
+        headers={"Authorization": f"Bearer {forged}", "X-User-ID": owner},
+    )
+    assert response.status_code == 401
