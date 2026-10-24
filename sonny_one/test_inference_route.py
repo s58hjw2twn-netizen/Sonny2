@@ -1,5 +1,7 @@
 """Regression checks for the isolated local inference endpoint."""
 import unittest
+import os
+from sonny.auth import create_access_token
 from unittest.mock import patch
 
 from sonny_one.inference import InferenceFailure, InferenceTimeout
@@ -40,6 +42,25 @@ class InferenceRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 504)
         self.assertEqual(response.json()["detail"], "Inference timed out")
         self.assertNotIn("private", response.text)
+
+    def test_private_route_requires_authentication(self):
+        response = self.client.post("/api/inference/private", json={"message": "hello"})
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["detail"], "Authentication required")
+
+    def test_private_route_rejects_invalid_token(self):
+        with patch.dict(os.environ, {"SONNY_AUTH_SECRET": "test-only-secret"}):
+            response = self.client.post("/api/inference/private", json={"message": "hello"},
+                                        headers={"Authorization": "Bearer invalid.token"})
+        self.assertEqual(response.status_code, 401)
+
+    def test_private_route_accepts_valid_token(self):
+        with patch.dict(os.environ, {"SONNY_AUTH_SECRET": "test-only-secret"}):
+            token = create_access_token("local-test-user")
+            response = self.client.post("/api/inference/private", json={"message": "hello"},
+                                        headers={"Authorization": "Bearer " + token})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()["model_connected"])
 
     def test_empty_message_rejected(self):
         response = self.client.post("/api/inference/demo", json={"message": "  "})
