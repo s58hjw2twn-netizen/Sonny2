@@ -243,3 +243,50 @@ def test_existing_session_rejected_if_signing_key_removed(client, monkeypatch):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 503
+
+
+def test_renewal_requires_existing_session(client):
+    http, store = client
+    owner = store.create_user("owner")
+    response = http.post("/session/renew", headers={"X-User-ID": owner})
+    assert response.status_code == 401
+
+
+def test_renewal_returns_signed_token_for_same_account(client):
+    import jwt
+    import time
+    http, store = client
+    owner = store.create_user("owner")
+    now = int(time.time())
+    original = jwt.encode(
+        {"sub": owner, "iat": now, "exp": now + 3600},
+        "test-only-signing-key-not-for-production", algorithm="HS256",
+    )
+    response = http.post(
+        "/session/renew",
+        headers={"Authorization": f"Bearer {original}", "X-User-ID": owner},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["user_id"] == owner
+    claims = jwt.decode(
+        payload["session_token"],
+        "test-only-signing-key-not-for-production", algorithms=["HS256"],
+    )
+    assert claims["sub"] == owner
+    assert claims["exp"] > now + 3600
+
+
+def test_expired_session_cannot_be_renewed(client):
+    import jwt
+    http, store = client
+    owner = store.create_user("owner")
+    expired = jwt.encode(
+        {"sub": owner, "iat": 1, "exp": 2},
+        "test-only-signing-key-not-for-production", algorithm="HS256",
+    )
+    response = http.post(
+        "/session/renew",
+        headers={"Authorization": f"Bearer {expired}", "X-User-ID": owner},
+    )
+    assert response.status_code == 401
