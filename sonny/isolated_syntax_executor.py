@@ -73,6 +73,8 @@ def execute_syntax_check(workspace: str, image: str, snapshot_sha256: str) -> di
         stderr = b"execution timed out"
     except OSError as exc:
         raise RuntimeError("Docker executor unavailable") from exc
+    if fingerprint_workspace(workspace) != snapshot_sha256:
+        raise RuntimeError("workspace changed during execution")
     if code < 0:
         code = 128 + abs(code)
     if code > 255:
