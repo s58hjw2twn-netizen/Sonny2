@@ -16,6 +16,10 @@ class ModelOption:
     tasks: frozenset[str]
     estimated_cost_units: int = 0
     enabled: bool = True
+    approved: bool = False
+    license_verified: bool = False
+    available: bool = False
+    local: bool = True
 
 class ModelRouter:
     def __init__(self, options: list[ModelOption], *, max_cost_units: int = 0):
@@ -23,7 +27,11 @@ class ModelRouter:
             raise ValueError("max_cost_units must be nonnegative")
         if len({x.name for x in options}) != len(options):
             raise ValueError("duplicate model names")
-        if any(x.estimated_cost_units < 0 for x in options):
+        if any(not x.name or not x.name.strip() or len(x.name) > 128 for x in options):
+            raise ValueError("invalid model name")
+        if any(not x.tasks or any(not task.strip() for task in x.tasks) for x in options):
+            raise ValueError("invalid model tasks")
+        if any(isinstance(x.estimated_cost_units, bool) or not isinstance(x.estimated_cost_units, int) or x.estimated_cost_units < 0 for x in options):
             raise ValueError("negative model cost")
         self.options = tuple(options)
         self.max_cost_units = max_cost_units
@@ -32,6 +40,8 @@ class ModelRouter:
         if not task.strip():
             raise ValueError("task required")
         eligible = [x for x in self.options if x.enabled
+                    and x.approved and x.license_verified and x.available
+                    and x.local
                     and task in x.tasks
                     and x.estimated_cost_units <= self.max_cost_units]
         if preferred is not None:
