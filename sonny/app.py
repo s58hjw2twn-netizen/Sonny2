@@ -794,7 +794,22 @@ function loadState() {
                 saved
             );
 
-            showWorkspace();
+            // Renew a still-valid session before loading private project data.
+            api("/session/renew", {method: "POST"})
+                .then(function(session) {
+                    state.sessionToken = session.session_token;
+                    saveState();
+                    return showWorkspace();
+                })
+                .catch(function(error) {
+                    console.warn("Sonny session renewal failed:", error.message);
+                    document.getElementById("setupCard").classList.remove("hidden");
+                    document.getElementById("workspace").classList.add("hidden");
+                    document.getElementById("setupError").textContent =
+                        "Your Sonny session needs to be re-established. " +
+                        "Do not delete your existing browser data.";
+                    document.getElementById("setupError").classList.remove("hidden");
+                });
 
             return true;
         }
