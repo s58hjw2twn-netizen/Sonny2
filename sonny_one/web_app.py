@@ -2,7 +2,7 @@
 from pathlib import Path
 import re
 
-from sonny_one.inference import OfflineProvider, generate
+from sonny_one.inference_config import InferenceSettings, build_provider
 from sonny_one.inference_async import generate_with_deadline
 
 from fastapi import FastAPI
@@ -66,7 +66,7 @@ def status():
 @app.post("/api/inference/demo")
 async def inference_demo(body: ChatRequest):
     """Explicit offline adapter route, separate from the legacy deterministic chat."""
-    result = await generate_with_deadline(OfflineProvider(), body.message, timeout_seconds=5.0)
+    result = await generate_with_deadline(build_provider(InferenceSettings()), body.message, timeout_seconds=5.0)
     return {"text": result.text, "mode": "deterministic-demo",
             "model_id": result.model_id, "model_connected": not result.demo}
 
