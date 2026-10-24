@@ -3,7 +3,7 @@ from sonny_one.apl.selection import select_for_review
 
 
 def make_candidate(cid, delta=0.2):
-    cycles = [{"candidate_id": cid, "cycle_id": f"c{i}",
+    cycles = [{"candidate_id": f"{cid}-cycle-{i}", "cycle_id": f"c{i}",
                "mean_delta": delta, "bootstrap_95_percentile_interval": [0.01, 0.4],
                "review_recommended": True} for i in range(3)]
     return {"candidate_id": cid, "cycle_assessment": {
@@ -28,7 +28,7 @@ class SelectionTests(unittest.TestCase):
 
     def test_spoofed_cycle_identity_rejected(self):
         c = make_candidate("a")
-        c["cycle_assessment"]["cycles"][1]["candidate_id"] = "b"
+        c["cycle_assessment"]["cycles"][1]["candidate_id"] = c["cycle_assessment"]["cycles"][0]["candidate_id"]
         with self.assertRaises(ValueError):
             select_for_review([c])
 
