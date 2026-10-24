@@ -140,3 +140,15 @@ source, or public logs. This mechanism is not a digital signature or public
 proof of independent evaluation: anyone holding the shared secret can forge
 an envelope. Record custody, secure key distribution and independent evaluator
 identity remain external operational requirements. No real key is stored here.
+
+## Authenticated review-only selection
+
+`selection.select_custodied_for_review` authenticates each raw evaluation
+cycle with its independent-custodian HMAC envelope, rejects replayed identical
+records, recomputes the paired metrics and then ranks qualifying trajectories.
+The shared key must be provided securely by the offline custodian and must not
+be checked into the repository or exposed to candidate code. All selection
+results remain **review only** with `promotion=FORBIDDEN`.
+
+This function authenticates bytes relative to the key, not the grader's
+independence, the scientific truth of scores, or actual recursive improvement.
