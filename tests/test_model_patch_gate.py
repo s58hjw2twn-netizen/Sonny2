@@ -166,3 +166,22 @@ def test_model_accepts_valid_python_without_executing_it():
     result = validate_model_patch(proposal)
     assert result["commit_allowed"] is False
     assert result["approved_for_staging"] is False
+
+
+def test_model_json_response_parses_without_commit_authority():
+    import json
+    from sonny.model_patch_gate import parse_model_response
+    proposal = {"path": "sonny/example.py", "content": "x = 2", "reason": "Update example"}
+    assert parse_model_response(json.dumps(proposal)) == proposal
+
+
+def test_model_json_response_rejects_extra_output():
+    from sonny.model_patch_gate import parse_model_response
+    with pytest.raises(ValueError, match="valid JSON"):
+        parse_model_response('{"path": "sonny/example.py"} trailing')
+
+
+def test_model_json_response_rejects_oversized_payload():
+    from sonny.model_patch_gate import parse_model_response
+    with pytest.raises(ValueError, match="size limit"):
+        parse_model_response("x" * 40000)
