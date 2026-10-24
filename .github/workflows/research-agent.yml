@@ -11,12 +11,14 @@ on:
       - "sonny/isolated_test_command.py"
       - "sonny/paired_execution_review.py"
       - "sonny/isolated_syntax_executor.py"
+      - "sonny/paired_syntax_runner.py"
       - "tests/test_research_agent.py"
       - "tests/test_candidate_stager.py"
       - "tests/test_candidate_evaluator.py"
       - "tests/test_isolated_test_command.py"
       - "tests/test_paired_execution_review.py"
       - "tests/test_isolated_syntax_executor.py"
+      - "tests/test_paired_syntax_runner.py"
       - ".github/workflows/research-agent.yml"
   pull_request:
     paths:
@@ -24,9 +26,11 @@ on:
       - "sonny/isolated_test_command.py"
       - "sonny/paired_execution_review.py"
       - "sonny/isolated_syntax_executor.py"
+      - "sonny/paired_syntax_runner.py"
       - "tests/test_isolated_test_command.py"
       - "tests/test_paired_execution_review.py"
       - "tests/test_isolated_syntax_executor.py"
+      - "tests/test_paired_syntax_runner.py"
       - "sonny/candidate_stager.py"
       - "sonny/candidate_evaluator.py"
       - "tests/test_research_agent.py"
@@ -52,7 +56,7 @@ jobs:
         run: python -m pip install pytest==8.3.4
       - name: Run deterministic agent boundary tests
         run: |
-          python -m pytest -q tests/test_research_agent.py tests/test_candidate_stager.py tests/test_candidate_evaluator.py tests/test_isolated_test_command.py tests/test_paired_execution_review.py tests/test_isolated_syntax_executor.py --junitxml=agent-test-results.xml
+          python -m pytest -q tests/test_research_agent.py tests/test_candidate_stager.py tests/test_candidate_evaluator.py tests/test_isolated_test_command.py tests/test_paired_execution_review.py tests/test_isolated_syntax_executor.py tests/test_paired_syntax_runner.py --junitxml=agent-test-results.xml
       - name: Archive independent test report
         if: always()
         uses: actions/upload-artifact@v4
