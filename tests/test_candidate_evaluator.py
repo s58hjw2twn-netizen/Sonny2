@@ -89,3 +89,24 @@ def test_claimed_pass_is_explicitly_unverified():
     result = evaluate_candidate(candidate(), {"unit": True}, {"unit": True})
     assert result["independently_verified"] is False
     assert result["commit_allowed"] is False
+
+
+def test_plan_stage_syntax_evaluate_dry_run():
+    from sonny.research_agent import plan
+    task = Task("dry-run", "Change a constant", ("sonny/sample.py",))
+    proposal = plan([task])
+    assert proposal["mode"] == "plan-only"
+    source = {"sonny/sample.py": "answer = 1\n"}
+    staged = stage_candidate(
+        task, source,
+        [Replacement("sonny/sample.py", "answer = 1", "answer = 2")],
+    )
+    syntax = check_python_syntax(staged)
+    assessment = evaluate_candidate(
+        staged, {"syntax": True}, {"syntax": syntax["all_passed"]},
+    )
+    assert syntax["all_passed"] is True
+    assert assessment["passed"] is True
+    assert assessment["independently_verified"] is False
+    assert assessment["commit_allowed"] is False
+    assert source["sonny/sample.py"] == "answer = 1\n"
