@@ -50,8 +50,8 @@ class FeedbackIn(BaseModel):
 def user(x_user_id: str | None, authorization: str | None = None):
     # The legacy header is an identifier, never proof of authentication.
     secret = os.getenv("SONNY_AUTH_SECRET")
-    if not secret:
-        raise HTTPException(503, "Authentication is not configured")
+    if not secret or len(secret.encode("utf-8")) < 32:
+        raise HTTPException(503, "Authentication signing key is not configured securely")
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(401, "Bearer token required")
     try:
@@ -1253,8 +1253,8 @@ def health():
 @app.post("/users")
 def users(b: UserIn):
     secret = os.getenv("SONNY_AUTH_SECRET")
-    if not secret:
-        raise HTTPException(503, "Authentication is not configured")
+    if not secret or len(secret.encode("utf-8")) < 32:
+        raise HTTPException(503, "Authentication signing key is not configured securely")
     identity = store.create_user(b.name)
     now = int(time.time())
     token = jwt.encode(
