@@ -2,8 +2,6 @@ name: Sonny ONE development controller
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '17 13 * * 1-5'
   push:
     branches:
       - research/apl-001
