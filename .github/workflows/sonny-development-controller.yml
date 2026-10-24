@@ -37,6 +37,10 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_sonny_one_runner_gate.py' -v
       - name: Validate runner preflight
         run: python -m unittest discover -s tests -p 'test_sonny_one_runner_preflight.py' -v
+      - name: Test restricted validation executor
+        run: python -m unittest discover -s tests -p 'test_sonny_one_validation_runner.py' -v
+      - name: Execute allowlisted validation
+        run: python -m sonny_one.development_controller.validation_runner --validation controller > validation-report.json
       - name: Generate task plan without code execution
         run: |
           python -m sonny_one.development_controller.controller --output development-plan.json
@@ -53,4 +57,5 @@ jobs:
             development-plan.json
             coding-agent-handoff.json
             runner-preflight.json
+            validation-report.json
           retention-days: 7
