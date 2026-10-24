@@ -34,3 +34,13 @@ def validate_model_patch(proposal: dict) -> dict:
         "commit_allowed": False,
         "status": "MODEL_PATCH_VALIDATED_NOT_APPROVED",
     }
+
+
+def validate_scoped_model_patch(proposal: dict, allowed_paths: tuple[str, ...]) -> dict:
+    """Validate an untrusted proposal against an independently supplied task scope."""
+    result = validate_model_patch(proposal)
+    if not isinstance(allowed_paths, tuple) or not allowed_paths:
+        raise ValueError("task scope required")
+    if result["path"] not in allowed_paths:
+        raise ValueError("proposal outside approved task scope")
+    return result
