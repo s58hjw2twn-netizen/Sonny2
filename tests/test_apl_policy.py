@@ -62,5 +62,24 @@ class TestPatchPolicy(unittest.TestCase):
             self.assertFalse(verify_lineage(ledger))
 
 
+    def test_corrupted_lineage_cannot_be_extended(self):
+        with TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "ledger.jsonl"
+            append_lineage(ledger, {"candidate": "c1"})
+            entry = json.loads(ledger.read_text().splitlines()[0])
+            entry["candidate"] = "altered"
+            ledger.write_text(json.dumps(entry) + "\n")
+            with self.assertRaises(ValueError):
+                append_lineage(ledger, {"candidate": "c2"})
+
+    def test_reserved_lineage_fields_rejected(self):
+        with TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "ledger.jsonl"
+            with self.assertRaises(ValueError):
+                append_lineage(ledger, {"previous_hash": "forged"})
+            with self.assertRaises(ValueError):
+                append_lineage(ledger, {"record_hash": "forged"})
+
+
 if __name__ == "__main__":
     unittest.main()
