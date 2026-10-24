@@ -1,5 +1,8 @@
 """Regression checks for the isolated local inference endpoint."""
 import unittest
+from unittest.mock import patch
+
+from sonny_one.inference import InferenceFailure, InferenceTimeout
 
 from fastapi.testclient import TestClient
 from sonny_one.web_app import app
@@ -17,6 +20,24 @@ class InferenceRouteTests(unittest.TestCase):
         self.assertEqual(body["model_id"], "offline-demo-v1")
         self.assertFalse(body["model_connected"])
         self.assertIn("No language model", body["text"])
+
+    def test_provider_failure_returns_503(self):
+        async def broken(*args, **kwargs):
+            raise InferenceFailure("private internal detail")
+        with patch("sonny_one.web_app.generate_with_deadline", side_effect=broken):
+            response = self.client.post("/api/inference/demo", json={"message": "hello"})
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["detail"], "Inference unavailable")
+        self.assertNotIn("private", response.text)
+
+    def test_provider_timeout_returns_504(self):
+        async def slow(*args, **kwargs):
+            raise InferenceTimeout("private internal detail")
+        with patch("sonny_one.web_app.generate_with_deadline", side_effect=slow):
+            response = self.client.post("/api/inference/demo", json={"message": "hello"})
+        self.assertEqual(response.status_code, 504)
+        self.assertEqual(response.json()["detail"], "Inference timed out")
+        self.assertNotIn("private", response.text)
 
     def test_empty_message_rejected(self):
         response = self.client.post("/api/inference/demo", json={"message": "  "})
