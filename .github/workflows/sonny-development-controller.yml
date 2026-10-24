@@ -35,9 +35,13 @@ jobs:
         run: |
           python -m sonny_one.development_controller.controller --output development-plan.json
           cat development-plan.json
+          python -m sonny_one.development_controller.controller --handoff --output coding-agent-handoff.json
+          cat coding-agent-handoff.json
       - name: Preserve inspectable plan
         uses: actions/upload-artifact@v4
         with:
           name: sonny-development-plan
-          path: development-plan.json
+          path: |
+            development-plan.json
+            coding-agent-handoff.json
           retention-days: 7
