@@ -43,7 +43,7 @@ $('memory-form').onsubmit = event => {
   event.preventDefault(); const value = $('memory-input').value.trim();
   if (!value) return;
   if (value.length > 500) { $('error').textContent = 'A saved fact must be 500 characters or fewer.'; return; }
-  if (/[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f\\x7f]/.test(value)) { $('error').textContent = 'Saved facts cannot contain hidden control characters.'; return; }
+  if (/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(value)) { $('error').textContent = 'Saved facts cannot contain hidden control characters.'; return; }
   if (state.memories.includes(value)) { $('error').textContent = 'This fact is already saved.'; return; }
   if (state.memories.length >= 50) { $('error').textContent = 'Memory is full. Forget a fact before adding another.'; return; }
   state.memories.push(value); $('memory-input').value = ''; save(); render();
@@ -63,7 +63,7 @@ $('erase').onclick = () => {
 async function send(event) {
   event.preventDefault(); const message = $('message').value.trim();
   if (busy || !message) return;
-  if (message.length > 4000 || /[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f\\x7f]/.test(message)) { $('error').textContent = 'Message is too long or contains hidden control characters.'; return; }
+  if (message.length > 4000 || /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(message)) { $('error').textContent = 'Message is too long or contains hidden control characters.'; return; }
   const totalChars = message.length + state.goal.length + state.memories.reduce((sum, fact) => sum + fact.length, 0);
   if (totalChars > 12000) { $('error').textContent = 'Conversation exceeds the 12,000-character request limit. Forget a fact or shorten your message.'; return; }
   const draft = $('message').value;
