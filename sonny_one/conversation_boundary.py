@@ -22,8 +22,8 @@ def validate_conversation_payload(message: str, memories: list[str], *,
     # Reject control characters other than ordinary whitespace; avoid invisible
     # payload delimiters reaching logs, UI, or a future model adapter.
     fields = [message, goal, *memories]
-    if any(any(ord(ch) < 32 and ch not in "\\t\\n\\r" for ch in value)
-           or "\\x7f" in value for value in fields):
+    if any(any(ord(ch) < 32 and ch not in "\t\n\r" for ch in value)
+           or "\x7f" in value for value in fields):
         raise ValueError("control characters are not permitted")
     total = len(message) + len(goal) + sum(len(m) for m in memories)
     if total > max_total_chars:
