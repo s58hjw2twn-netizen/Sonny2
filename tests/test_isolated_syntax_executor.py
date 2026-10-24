@@ -68,3 +68,15 @@ def test_symlink_rejected(tmp_path):
     (tmp_path / "sonny" / "link.py").symlink_to(target)
     with pytest.raises(ValueError, match="symlink"):
         fingerprint_workspace(str(tmp_path))
+
+
+def test_workspace_mutation_during_execution_rejected(tmp_path):
+    original = snapshot(tmp_path)
+
+    def mutate(*args, **kwargs):
+        (tmp_path / "sonny" / "sample.py").write_text("x = 999\\n")
+        return subprocess.CompletedProcess([], 0, b"success", b"")
+
+    with patch("sonny.isolated_syntax_executor.subprocess.run", side_effect=mutate):
+        with pytest.raises(RuntimeError, match="workspace changed"):
+            execute_syntax_check(str(tmp_path), IMAGE, original)
