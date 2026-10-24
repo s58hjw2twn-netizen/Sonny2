@@ -14,6 +14,8 @@ from pathlib import Path
 
 from sonny_one.development_controller.model_proposal_adapter import ModelProposalAdapter
 from sonny_one.development_controller.ollama_proposal_producer import OllamaProposalProducer
+from sonny_one.development_controller.coding_context import build_coding_context
+from sonny_one.development_controller.proposal_static_gate import evaluate_static_proposal
 
 
 def generate_review_proposal(*, model: str, output: Path,
@@ -28,8 +30,13 @@ def generate_review_proposal(*, model: str, output: Path,
     adapter = ModelProposalAdapter(
         OllamaProposalProducer(model=model, enabled=True, repo_root=repo_root))
     proposal = adapter.propose(task)
+    if repo_root is None:
+        raise ValueError("repository root required for independent static checks")
+    baseline = build_coding_context(repo_root)
+    static_result = evaluate_static_proposal(baseline["source"], proposal["patch_text"])
     report = {"format": "sonny-one-review-only-model-proposal-v1",
-              "proposal": proposal, "approved_for_execution": False,
+              "proposal": proposal, "baseline_sha256": baseline["source_sha256"],
+              "static_evaluation": static_result, "approved_for_execution": False,
               "commit_created": False, "task_completed": False}
     serialized = json.dumps(report, sort_keys=True, indent=2) + "\n"
     if len(serialized.encode("utf-8")) > 50000:
