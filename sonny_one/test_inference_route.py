@@ -29,6 +29,8 @@ class InferenceRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json()["detail"], "Inference unavailable")
         self.assertNotIn("private", response.text)
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
+        self.assertEqual(response.headers["X-Frame-Options"], "DENY")
 
     def test_provider_timeout_returns_504(self):
         async def slow(*args, **kwargs):
@@ -56,6 +58,8 @@ class InferenceRouteTests(unittest.TestCase):
         response = self.client.get("/api/status")
         self.assertEqual(response.headers.get("X-Content-Type-Options"), "nosniff")
         self.assertEqual(response.headers.get("Cache-Control"), "no-store")
+        self.assertEqual(response.headers.get("Referrer-Policy"), "no-referrer")
+        self.assertIn("microphone=()", response.headers.get("Permissions-Policy", ""))
 
 
 if __name__ == "__main__":
