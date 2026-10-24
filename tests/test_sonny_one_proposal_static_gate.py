@@ -30,6 +30,14 @@ class ProposalStaticGateTests(unittest.TestCase):
         self.assertFalse(result["candidate_executed"])
         self.assertFalse(result["git_apply_checked"])
 
+    def test_rejects_truncated_patch(self):
+        with self.assertRaises(ValueError):
+            reconstruct_candidate(BASE, (HEADER + HUNK).rstrip("\\n"))
+
+    def test_rejects_nontext_patch(self):
+        with self.assertRaises(ValueError):
+            reconstruct_candidate(BASE, None)
+
     def test_rejects_wrong_context(self):
         bad = HUNK.replace(" def mean(values):", " def other(values):")
         with self.assertRaises(ValueError):
