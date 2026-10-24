@@ -177,3 +177,13 @@ No candidate code is executed during packaging. Running the Docker evaluator
 still requires a separately audited image, independently controlled test suites,
 preregistered predictions and explicit sandbox readiness. Do not substitute
 GitHub Actions hosted runners for a validated hostile-code isolation boundary.
+
+## Nonexecuting dry-run inspection
+
+`dryrun.inspect_bundle(bundle)` validates exact bundle and proposal schemas,
+SHA-256 candidate identities, allowlisted diff paths, shared immutable base
+revision, and review-only execution flags. It performs no Git operations or
+candidate execution. The result explicitly marks Git applicability as **not
+rechecked**; only the separate disposable-checkout stage establishes that.
+This inspector cannot authenticate evidence origin or substitute for a vetted
+Docker sandbox and independent holdout custody.
