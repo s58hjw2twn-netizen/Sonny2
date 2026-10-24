@@ -2,6 +2,8 @@
 from pathlib import Path
 import re
 
+from sonny_one.inference import OfflineProvider, generate
+
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -58,6 +60,14 @@ def service_worker():
 def status():
     return {"mode": "deterministic-demo", "model_connected": False, "api_cost": 0,
             "server_persistence": False}
+
+
+@app.post("/api/inference/demo")
+def inference_demo(body: ChatRequest):
+    """Explicit offline adapter route, separate from the legacy deterministic chat."""
+    result = generate(OfflineProvider(), body.message)
+    return {"text": result.text, "mode": "deterministic-demo",
+            "model_id": result.model_id, "model_connected": not result.demo}
 
 
 @app.post("/api/chat")
