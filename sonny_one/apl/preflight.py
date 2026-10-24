@@ -34,7 +34,7 @@ def check_host(image=None, *, which=shutil.which, run=subprocess.run):
                     options = json.loads(completed.stdout) if completed.returncode == 0 else []
                     if not isinstance(options, list):
                         options = []
-                    rootless = any("rootless" in str(x).lower() for x in options)
+                    rootless = any(isinstance(x, str) and x.lower() in ("name=rootless", "rootless") for x in options)
                     record(name, rootless, "Rootless indicated" if rootless else "Rootless not verified")
             except (OSError, subprocess.TimeoutExpired, ValueError, TypeError):
                 record(name, False, "Probe unavailable")

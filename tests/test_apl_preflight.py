@@ -45,6 +45,21 @@ class PreflightTests(unittest.TestCase):
         result = check_host(which=lambda _: "/usr/bin/docker", run=fake_run)
         self.assertFalse(result["ready_for_containment_validation"])
 
+    def test_ambiguous_rootless_text_is_not_accepted(self):
+        image = "runner@sha256:" + "a" * 64
+        for security_option in ("name=not-rootless", "name=rootless-disabled", 123, {"name": "rootless"}):
+            def fake_run(args, **kwargs):
+                if "inspect" in args:
+                    value = '["' + image + '"]'
+                elif ".SecurityOptions" in args[-1]:
+                    import json
+                    value = json.dumps([security_option])
+                else:
+                    value = "27.0"
+                return subprocess.CompletedProcess(args, 0, value, "")
+            result = check_host(image, which=lambda _: "/usr/bin/docker", run=fake_run)
+            self.assertFalse(result["ready_for_containment_validation"])
+
     def test_verified_local_digest_only_enables_validation(self):
         image = "runner@sha256:" + "a" * 64
         def fake_run(args, **kwargs):
