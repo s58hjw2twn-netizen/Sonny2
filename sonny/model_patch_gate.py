@@ -44,3 +44,29 @@ def validate_scoped_model_patch(proposal: dict, allowed_paths: tuple[str, ...]) 
     if result["path"] not in allowed_paths:
         raise ValueError("proposal outside approved task scope")
     return result
+
+
+def stage_scoped_model_patch(task, files: dict[str, str], proposal: dict) -> dict:
+    """Stage a whole-file model proposal in memory; never write or execute it."""
+    from sonny.candidate_stager import Replacement, stage_candidate
+    from sonny.research_agent import validate_task
+
+    validate_task(task)
+    if task.risk != "low":
+        raise ValueError("only low-risk model tasks can be staged")
+    validated = validate_scoped_model_patch(proposal, task.paths)
+    path = validated["path"]
+    if not isinstance(files, dict) or path not in files:
+        raise ValueError("target must exist in snapshot")
+    original = files[path]
+    if not isinstance(original, str) or not original:
+        raise ValueError("target must contain text")
+    replacement = proposal["content"]
+    if replacement == original:
+        raise ValueError("model proposal makes no change")
+    if len(original.encode()) + len(replacement.encode()) > MAX_PATCH_BYTES:
+        raise ValueError("whole-file replacement exceeds staging budget")
+    staged = stage_candidate(task, files, [Replacement(path, original, replacement)])
+    staged["model_proposal_sha256"] = validated["content_sha256"]
+    staged["commit_allowed"] = False
+    return staged
