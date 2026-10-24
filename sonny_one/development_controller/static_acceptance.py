@@ -16,6 +16,8 @@ def check_mean_change(before: str, after: str) -> dict:
         raise ValueError("source must be text")
     old = ast.parse(before)
     new = ast.parse(after)
+    if any(not isinstance(node, ast.FunctionDef) for node in old.body + new.body):
+        raise ValueError("top-level executable statements and imports prohibited")
     old_defs = {node.name: node for node in old.body if isinstance(node, ast.FunctionDef)}
     new_defs = {node.name: node for node in new.body if isinstance(node, ast.FunctionDef)}
     if set(old_defs) != {"mean", "smallest", "largest"} or set(new_defs) != set(old_defs):
@@ -26,6 +28,15 @@ def check_mean_change(before: str, after: str) -> dict:
         ):
             raise ValueError("unrelated function modified")
     mean = new_defs["mean"]
+    if mean.decorator_list or mean.args.defaults or mean.args.kw_defaults:
+        raise ValueError("decorators and defaults prohibited")
+    for node in ast.walk(mean):
+        if isinstance(node, (ast.Import, ast.ImportFrom, ast.Global, ast.Nonlocal,
+                             ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and node is not mean:
+            raise ValueError("nested definitions and imports prohibited")
+        if isinstance(node, ast.Call):
+            if not isinstance(node.func, ast.Name) or node.func.id not in {"sum", "len", "ValueError"}:
+                raise ValueError("unapproved function call")
     if len(mean.args.args) != 1 or mean.args.args[0].arg != "values":
         raise ValueError("mean signature changed")
     if not any(isinstance(n, ast.Raise)
