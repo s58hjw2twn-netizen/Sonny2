@@ -9,6 +9,7 @@ from sonny_one.rate_limit import LocalRateLimiter
 from sonny_one.concurrency_gate import LocalConcurrencyGate
 from sonny_one.private_provider import get_private_provider
 from sonny_one.global_quota import GlobalRequestQuota
+from sonny_one.outstanding_provider_gate import OutstandingProviderGate
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from sonny.auth import authenticated_user
@@ -20,6 +21,7 @@ WEB = Path(__file__).with_name("web")
 private_limiter = LocalRateLimiter(limit=30, window_seconds=60)
 private_concurrency = LocalConcurrencyGate(max_active=4)
 private_global_quota = GlobalRequestQuota(max_requests=100)
+private_provider_gate = OutstandingProviderGate(capacity=2)
 
 
 def private_authenticated_user(authorization: str | None = Header(None)) -> str:
@@ -106,7 +108,7 @@ async def private_inference(body: ChatRequest, user_id: str = Depends(private_au
         if not private_global_quota.allow():
             raise HTTPException(status_code=429, detail="Global inference budget exhausted", headers={"Retry-After": "3600"})
         try:
-            result = await generate_with_deadline(get_private_provider(), body.message, timeout_seconds=5.0)
+            result = await private_provider_gate.run(get_private_provider(), body.message, timeout_seconds=5.0)
         except InferenceTimeout as exc:
             raise HTTPException(status_code=504, detail="Inference timed out") from exc
         except InferenceFailure as exc:
