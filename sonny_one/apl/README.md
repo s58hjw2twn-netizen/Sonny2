@@ -38,7 +38,11 @@ python -m sonny_one.apl.runner \
 The trusted runner image must be built and audited independently with Python,
 pytest and required dependencies installed; its actual SHA-256 digest must be
 supplied. Neither test directory may be inside the source tree. Candidate
-generation must not see held-out cases. Do not run Docker against sensitive
+generation must not see held-out cases. However, because pytest and candidate
+code run inside the same container, a malicious candidate can inspect the
+mounted test files at evaluation time. Read-only mounts protect integrity, not
+confidentiality. Treat held-out scores as one signal, require static inspection
+and independent review, and never claim cryptographically secret evaluation. Do not run Docker against sensitive
 host volumes, secrets, or a privileged Docker socket accessible to candidates.
 
 The runner returns `ELIGIBLE_FOR_HUMAN_REVIEW` only when both test processes
@@ -68,6 +72,7 @@ consequential use.
 - **Empirical preprint:** Darwin Gödel Machine, arXiv:2505.22954. Archive
   multiple candidate lineages and measure edits on coding benchmarks.
   Its results do not demonstrate sentience or unlimited self-improvement.
+- **Empirical preprint (Oct 10, 2026):** *Does Failure Feedback Direct Agent Self-Modification?*, arXiv:2610.14662. Reports that selected improvements may not repair the targeted failure or generalize. Track target repair, related-task transfer, and held-out net change separately.
 - **Empirical preprint:** Mendel Gödel Machine, arXiv:2608.07645 (Aug 2026).
   Compare trajectories across tasks and lineages; defer cross-lineage
   hybridization until independent baselines exist.
