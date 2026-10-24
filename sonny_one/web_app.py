@@ -10,6 +10,7 @@ from sonny_one.concurrency_gate import LocalConcurrencyGate
 from sonny_one.private_provider import get_private_provider
 from sonny_one.global_quota import GlobalRequestQuota
 from sonny_one.outstanding_provider_gate import OutstandingProviderGate
+from sonny_one.conversation_boundary import validate_conversation_payload
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from sonny.auth import authenticated_user
@@ -53,6 +54,13 @@ class ChatRequest(BaseModel):
         return values
 
 
+def validate_request_boundary(body: ChatRequest) -> None:
+    try:
+        validate_conversation_payload(body.message, body.memories)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 @app.middleware("http")
 async def demo_headers(request, call_next):
     response = await call_next(request)
@@ -87,6 +95,7 @@ def status():
 @app.post("/api/inference/demo")
 async def inference_demo(body: ChatRequest):
     """Explicit offline adapter route, separate from the legacy deterministic chat."""
+    validate_request_boundary(body)
     try:
         result = await generate_with_deadline(build_provider(InferenceSettings()), body.message, timeout_seconds=5.0)
     except InferenceTimeout as exc:
@@ -100,6 +109,7 @@ async def inference_demo(body: ChatRequest):
 @app.post("/api/inference/private")
 async def private_inference(body: ChatRequest, user_id: str = Depends(private_authenticated_user)):
     """Authenticated private inference; external providers remain disabled by default."""
+    validate_request_boundary(body)
     if not private_limiter.allow(user_id):
         raise HTTPException(status_code=429, detail="Request limit exceeded", headers={"Retry-After": "60"})
     if not private_concurrency.acquire():
@@ -121,6 +131,7 @@ async def private_inference(body: ChatRequest, user_id: str = Depends(private_au
 
 @app.post("/api/chat")
 def chat(body: ChatRequest):
+    validate_request_boundary(body)
     message = body.message.lower()
     words = set(re.findall(r"[a-z]+", message))
     if (words & {"remember", "memory", "memories"} or "know about me" in message):
