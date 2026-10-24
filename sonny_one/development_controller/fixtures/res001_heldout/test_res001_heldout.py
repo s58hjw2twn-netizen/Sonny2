@@ -1,3 +1,9 @@
+import os
+import pytest
+
+if os.environ.get("SONNY_APL_CANDIDATE_TEST") != "1":
+    pytest.skip("APL candidate-only fixture; baseline expected to fail", allow_module_level=True)
+
 """Held-out RES-001 regression tests for isolated Docker evaluation.
 
 Keep these tests outside the model prompt. Running them against a generated
