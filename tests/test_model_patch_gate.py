@@ -18,3 +18,15 @@ def test_rejects_oversized_proposal():
 def test_rejects_unexpected_field():
     with pytest.raises(ValueError):
         validate_model_patch(dict(path='sonny/sample.py', content='x = 1', reason='simple change', approved=True))
+
+
+def test_scoped_patch_accepts_matching_task():
+    from sonny.model_patch_gate import validate_scoped_model_patch
+    result = validate_scoped_model_patch(dict(path='sonny/sample.py', content='x = 1', reason='simple change'), ('sonny/sample.py',))
+    assert result['commit_allowed'] is False
+
+
+def test_scoped_patch_rejects_unapproved_target():
+    from sonny.model_patch_gate import validate_scoped_model_patch
+    with pytest.raises(ValueError, match='outside approved task scope'):
+        validate_scoped_model_patch(dict(path='sonny/sample.py', content='x = 1', reason='simple change'), ('sonny/other.py',))
