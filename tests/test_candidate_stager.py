@@ -67,3 +67,19 @@ def test_snapshot_rejects_oversized_unmodified_file():
             task, {"sonny/ok.py": "x", "docs/huge.txt": "z" * 200001},
             [Replacement("sonny/ok.py", "x", "y")],
         )
+
+
+def test_snapshot_file_count_limit():
+    task = Task("limit", "Bound inputs", ("sonny/ok.py",))
+    files = {"sonny/ok.py": "x"}
+    files.update({f"docs/item_{i}.txt": "a" for i in range(128)})
+    with pytest.raises(ValueError, match="count"):
+        stage_candidate(task, files, [Replacement("sonny/ok.py", "x", "y")])
+
+
+def test_snapshot_total_size_limit():
+    task = Task("limit", "Bound inputs", ("sonny/ok.py",))
+    files = {"sonny/ok.py": "x"}
+    files.update({f"docs/item_{i}.txt": "a" * 190000 for i in range(11)})
+    with pytest.raises(ValueError, match="total size"):
+        stage_candidate(task, files, [Replacement("sonny/ok.py", "x", "y")])
