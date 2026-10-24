@@ -5,7 +5,7 @@ run code, or authorize commits.
 """
 import hashlib
 
-MAX_PATCH_BYTES = 100_000
+MAX_PATCH_BYTES = 32_000
 ALLOWED_PREFIXES = ("sonny/", "tests/")
 
 
