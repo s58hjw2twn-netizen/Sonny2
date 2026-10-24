@@ -15,6 +15,7 @@ def fixture():
     base = "https://api.github.com/repos/" + REPO
     records = {
         base + "/commits/" + COMMIT: {"sha": COMMIT, "parents": [{"sha": PARENT}]},
+        base + "/branches/research/apl-001": {"commit": {"sha": COMMIT}},
         base + "/actions/runs/101": {
             "id": 101, "head_sha": COMMIT, "head_branch": "research/apl-001",
             "name": "Sonny ONE Tests", "status": "completed", "conclusion": "success"},
@@ -40,6 +41,12 @@ class GitHubVerifierTests(unittest.TestCase):
         r, records, _ = fixture()
         with self.assertRaises(ValueError):
             self.verify(r, records, "other/repo")
+
+    def test_branch_head_mismatch(self):
+        r, records, base = fixture()
+        records[base + "/branches/research/apl-001"]["commit"]["sha"] = PARENT
+        with self.assertRaises(ValueError):
+            self.verify(r, records)
 
     def test_wrong_parent(self):
         r, records, base = fixture()
