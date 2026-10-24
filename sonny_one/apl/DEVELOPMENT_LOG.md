@@ -199,3 +199,13 @@ Next blocker remains a disposable audited Linux Docker host, vetted hash-pinned 
 - Commit `499b26bfa7a760385f9b64089e691396442f818a` adds opt-in `attach_scores_verified`; external score attachment requires successful local ledger agreement. It does not change the legacy API or claim authenticated grader custody. Both workflows SUCCESS (APL 40102858838, full 40102858846).
 - Hash-chain validation detects ordinary edits only. A privileged attacker with access to both report and ledger can forge a consistent new chain. Independently authenticated grader identities, off-host audit anchoring, and inaccessible final heldouts are still missing.
 - No real Docker sandbox experiments, measured candidate functional gains, proven recursive self-improvement, or production promotion. Next: independent provenance anchoring/custody and vetted disposable rootless Docker host before empirical tests.
+
+
+## Security-first continuation — keyed audit anchor (2026-10-24)
+
+- Starting HEAD `898b093b063d382fd46a17b9a0b9eed08631c1a3`: both APL and full Sonny ONE workflows SUCCESS.
+- Code commit `db3e2afc97a25b26cdaf1a8ca53dc8366f0d8fbf`: adds an optional HMAC-SHA-256 anchor for the complete hash-linked experiment ledger, with verification against a separately held key and regression tests for tampering, append drift, wrong keys, and invalid metadata.
+- APL policy workflow `40103177733` SUCCESS; complete Sonny ONE workflow `40103177691` SUCCESS.
+- Key custody is critical: a key kept on the experimental host does **not** provide independent authentication. There is no automatic key creation, storage, network upload, or external signing service. Store the anchor and key outside the candidate runner. A snapshot anchor attests only to exact ledger bytes at that point in time, not later entries or the truth of claims inside records.
+- This is security hardening, not penetration-tested containment. Real isolated Docker execution, independent grader custody, recovery/backup testing and actual intelligence-gain experiments remain outstanding.
+- No main merge, deployment, paid services, production modifications or changes to frozen research baselines.
