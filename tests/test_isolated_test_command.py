@@ -17,7 +17,7 @@ def test_command_has_isolation_guards(tmp_path):
     assert "--user" in command
     assert "--mount" in command
     assert "readonly" in command[command.index("--mount") + 1]
-    assert command[-3:-1] == ["python", "-B"]
+    assert command[-4:-1] == ["python", "-B", "-c"]
     assert "ast.parse" in command[-1]
     assert "pytest" not in command[-1]
 
@@ -54,7 +54,7 @@ def test_validator_rejects_bad_python_in_workspace(tmp_path):
     (tmp_path / "sonny" / "broken.py").write_text("def broken(:\n")
     command = build_test_command(str(tmp_path), IMAGE)
     result = subprocess.run(
-        command[-3:], cwd=tmp_path, capture_output=True, text=True, timeout=5,
+        command[-4:], cwd=tmp_path, capture_output=True, text=True, timeout=5,
     )
     assert result.returncode != 0
 
@@ -66,6 +66,6 @@ def test_validator_accepts_valid_python_in_workspace(tmp_path):
     (tmp_path / "sonny" / "good.py").write_text("answer = 42\n")
     command = build_test_command(str(tmp_path), IMAGE)
     result = subprocess.run(
-        command[-3:], cwd=tmp_path, capture_output=True, text=True, timeout=5,
+        command[-4:], cwd=tmp_path, capture_output=True, text=True, timeout=5,
     )
     assert result.returncode == 0, result.stderr
