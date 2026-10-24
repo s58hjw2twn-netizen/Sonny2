@@ -39,15 +39,15 @@ class ConversationBoundaryTests(unittest.TestCase):
 
     def test_control_character_rejected_in_message(self):
         with self.assertRaises(ValueError):
-            validate_conversation_payload("hello\\x00world", [])
+            validate_conversation_payload("hello\x00world", [])
 
     def test_control_character_rejected_in_memory(self):
         with self.assertRaises(ValueError):
-            validate_conversation_payload("hello", ["approved\\x1bmemory"])
+            validate_conversation_payload("hello", ["approved\x1bmemory"])
 
     def test_ordinary_newline_allowed(self):
-        result = validate_conversation_payload("hello\\nworld", [])
-        self.assertEqual(result["message"], "hello\\nworld")
+        result = validate_conversation_payload("hello\nworld", [])
+        self.assertEqual(result["message"], "hello\nworld")
 
     def test_live_chat_route_rejects_total_budget(self):
         from fastapi.testclient import TestClient
