@@ -13,7 +13,7 @@ async def generate_with_deadline(provider, prompt: str, *, timeout_seconds: floa
     request = Request(prompt, timeout_seconds=timeout_seconds)
     try:
         return await asyncio.wait_for(
-            asyncio.to_thread(generate, provider, request.prompt),
+            asyncio.to_thread(generate, provider, request.prompt, timeout_seconds=request.timeout_seconds),
             timeout=request.timeout_seconds,
         )
     except (TimeoutError, asyncio.TimeoutError) as exc:
