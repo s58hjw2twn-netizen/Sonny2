@@ -68,3 +68,12 @@ def test_symlinked_workspace_root_rejected(tmp_path):
         with pytest.raises(ValueError, match="symlinked workspace"):
             run_paired_syntax_checks(str(link), str(candidate), IMAGE)
         run.assert_not_called()
+
+def test_linked_parent_rejected(tmp_path):
+    base, candidate = workspaces(tmp_path)
+    alias = tmp_path / 'alias-parent'
+    alias.symlink_to(tmp_path, target_is_directory=True)
+    with patch('sonny.isolated_syntax_executor.subprocess.run') as run:
+        with pytest.raises(ValueError, match='symlinked workspace'):
+            run_paired_syntax_checks(str(alias / base.name), str(candidate), IMAGE)
+        run.assert_not_called()
