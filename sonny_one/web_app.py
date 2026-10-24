@@ -6,6 +6,7 @@ from sonny_one.inference import InferenceFailure, InferenceTimeout
 from sonny_one.inference_config import InferenceSettings, build_provider
 from sonny_one.inference_async import generate_with_deadline
 from sonny_one.rate_limit import LocalRateLimiter
+from sonny_one.concurrency_gate import LocalConcurrencyGate
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from sonny.auth import authenticated_user
@@ -15,6 +16,7 @@ from pydantic import BaseModel, Field, field_validator
 
 WEB = Path(__file__).with_name("web")
 private_limiter = LocalRateLimiter(limit=30, window_seconds=60)
+private_concurrency = LocalConcurrencyGate(max_active=4)
 
 
 def private_authenticated_user(authorization: str | None = Header(None)) -> str:
@@ -95,7 +97,12 @@ async def private_inference(body: ChatRequest, user_id: str = Depends(private_au
     """Authenticated, offline-only proof of the inference authorization boundary."""
     if not private_limiter.allow(user_id):
         raise HTTPException(status_code=429, detail="Request limit exceeded", headers={"Retry-After": "60"})
-    return await inference_demo(body)
+    if not private_concurrency.acquire():
+        raise HTTPException(status_code=503, detail="Inference capacity reached", headers={"Retry-After": "1"})
+    try:
+        return await inference_demo(body)
+    finally:
+        private_concurrency.release()
 
 
 @app.post("/api/chat")
