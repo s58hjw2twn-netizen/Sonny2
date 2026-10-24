@@ -33,6 +33,26 @@ class ConversationBoundaryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_conversation_payload("hello", [], max_total_chars=True)
 
+    def test_live_chat_route_rejects_total_budget(self):
+        from fastapi.testclient import TestClient
+        from sonny_one.web_app import app
+        client = TestClient(app)
+        response = client.post("/api/chat", json={
+            "message": "hello",
+            "memories": ["x" * 500] * 25
+        })
+        self.assertEqual(response.status_code, 422)
+
+    def test_demo_inference_rejects_total_budget(self):
+        from fastapi.testclient import TestClient
+        from sonny_one.web_app import app
+        client = TestClient(app)
+        response = client.post("/api/inference/demo", json={
+            "message": "hello",
+            "memories": ["x" * 500] * 25
+        })
+        self.assertEqual(response.status_code, 422)
+
 
 if __name__ == "__main__":
     unittest.main()
