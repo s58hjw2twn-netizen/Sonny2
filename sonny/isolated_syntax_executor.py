@@ -65,8 +65,10 @@ def execute_syntax_check(workspace: str, image: str, snapshot_sha256: str) -> di
             stdin=subprocess.DEVNULL,
         )
         code = result.returncode
-        stdout = result.stdout[:1048576]
-        stderr = result.stderr[:1048576]
+        if len(result.stdout) > 1048576 or len(result.stderr) > 1048576:
+            raise RuntimeError("executor output limit exceeded")
+        stdout = result.stdout
+        stderr = result.stderr
     except subprocess.TimeoutExpired:
         code = 124
         stdout = b""
@@ -75,6 +77,8 @@ def execute_syntax_check(workspace: str, image: str, snapshot_sha256: str) -> di
         raise RuntimeError("Docker executor unavailable") from exc
     if fingerprint_workspace(workspace) != snapshot_sha256:
         raise RuntimeError("workspace changed during execution")
+    if code in (125, 126, 127):
+        raise RuntimeError("Docker failed to start or execute the container")
     if code < 0:
         code = 128 + abs(code)
     if code > 255:
