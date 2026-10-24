@@ -1,3 +1,4 @@
+import ast
 import pytest
 
 from sonny.isolated_test_command import build_test_command
@@ -39,3 +40,20 @@ def test_mount_delimiter_rejected(tmp_path):
     bad.mkdir()
     with pytest.raises(ValueError):
         build_test_command(str(bad), IMAGE)
+
+
+def test_generated_validator_is_valid_python(tmp_path):
+    command = build_test_command(str(tmp_path), IMAGE)
+    ast.parse(command[-1])
+
+
+def test_validator_rejects_bad_python_in_workspace(tmp_path):
+    import subprocess
+    (tmp_path / "sonny").mkdir()
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "sonny" / "broken.py").write_text("def broken(:\n")
+    command = build_test_command(str(tmp_path), IMAGE)
+    result = subprocess.run(
+        command[-4:], cwd=tmp_path, capture_output=True, text=True, timeout=5,
+    )
+    assert result.returncode != 0
