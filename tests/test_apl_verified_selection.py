@@ -45,10 +45,11 @@ class VerifiedSelectionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             select_verified_for_review([c], resamples=100)
 
-    def test_wrong_bootstrap_seed_rejected(self):
+    def test_fabricated_interval_rejected(self):
         c = build("a")
+        c["cycle_assessment"]["cycles"][1]["bootstrap_95_percentile_interval"] = [0.2, 0.8]
         with self.assertRaises(ValueError):
-            select_verified_for_review([c], resamples=100, seed=99)
+            select_verified_for_review([c], resamples=100)
 
     def test_missing_raw_evidence_rejected(self):
         c = build("a")
