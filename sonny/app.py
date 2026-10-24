@@ -14,6 +14,18 @@ from .core import respond, CORE_VERSION
 app = FastAPI(title="Sonny Assistant", version="0.1.0")
 store = Store(os.getenv("SONNY_DB", "sonny.db"))
 
+@app.middleware("http")
+async def secure_response_headers(request, call_next):
+    response = await call_next(request)
+    # The application serves private conversations and bearer sessions.
+    # Do not allow shared or browser HTTP caches to retain API responses.
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["X-Frame-Options"] = "DENY"
+    return response
+
+
 
 class UserIn(BaseModel):
     name: str
