@@ -92,4 +92,4 @@ jobs:
       - name: Prepare isolated Python image
         run: docker pull python:3.11-slim
       - name: Verify paired functional repair in isolated containers
-        run: python tests/run_isolated_coding_trial.py
+        run: PYTHONPATH=. python tests/run_isolated_coding_trial.py
