@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import re
-from urllib.request import Request, build_opener, HTTPRedirectHandler
+from urllib.request import Request, build_opener, HTTPRedirectHandler, ProxyHandler
 
 _MODEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$")
 _ENDPOINT = "http://127.0.0.1:11434/api/generate"
@@ -52,7 +52,7 @@ class OllamaProposalProducer:
             "Content-Type": "application/json",
             "Accept": "application/json",
         })
-        with build_opener(_NoRedirect()).open(request, timeout=self.timeout) as response:
+        with build_opener(ProxyHandler({}), _NoRedirect()).open(request, timeout=self.timeout) as response:
             raw = response.read(65537)
         if len(raw) > 65536:
             raise ValueError("local model response too large")
