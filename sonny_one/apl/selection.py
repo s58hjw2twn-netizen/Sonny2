@@ -108,3 +108,52 @@ def select_verified_for_review(candidates, *, max_candidates=10, min_delta=0.08,
         " Raw records, independent grader and suite custody remain unauthenticated."
     )
     return result
+
+
+def select_custodied_for_review(candidates, key, *, expected_custodian,
+                                max_candidates=10, min_delta=0.08,
+                                resamples=1000, seed=20261024):
+    """Authenticate each complete raw cycle before recomputing scores.
+
+    Authentication is relative to an independently controlled HMAC key.
+    It cannot establish evaluator independence or the truth of the data.
+    """
+    from .custody import verify_evidence
+    if type(max_candidates) is not int or not 1 <= max_candidates <= 10:
+        raise ValueError("Candidate budget must be an integer in [1, 10]")
+    if not isinstance(candidates, list) or not 1 <= len(candidates) <= max_candidates:
+        raise ValueError("Invalid candidate count")
+    verified = []
+    seen_envelopes = set()
+    for candidate in candidates:
+        if not isinstance(candidate, dict) or set(candidate) != {
+            "candidate_id", "raw_cycles", "cycle_assessment", "envelopes"
+        }:
+            raise ValueError("Complete raw cycles and custody envelopes required")
+        cycles = candidate["raw_cycles"]
+        envelopes = candidate["envelopes"]
+        if (not isinstance(cycles, list) or not isinstance(envelopes, list)
+                or not 3 <= len(cycles) <= 20 or len(cycles) != len(envelopes)):
+            raise ValueError("Every cycle requires a custody envelope")
+        for cycle, envelope in zip(cycles, envelopes):
+            if not verify_evidence(cycle, envelope, key,
+                                   expected_custodian=expected_custodian):
+                raise ValueError("Cycle custody verification failed")
+            digest = envelope["payload_sha256"]
+            if digest in seen_envelopes:
+                raise ValueError("Replayed custody envelope")
+            seen_envelopes.add(digest)
+        verified.append({
+            "candidate_id": candidate["candidate_id"],
+            "raw_cycles": cycles,
+            "cycle_assessment": candidate["cycle_assessment"],
+        })
+    result = select_verified_for_review(
+        verified, max_candidates=max_candidates, min_delta=min_delta,
+        resamples=resamples, seed=seed)
+    result["custody_envelopes_verified"] = True
+    result["limitations"] += (
+        " HMAC verification assumes independent key custody; it does not "
+        "prove score truth, evaluator independence or scientific RSI."
+    )
+    return result
