@@ -4,6 +4,7 @@ The model is untrusted. This gate does not contact a model, write files,
 run code, or authorize commits.
 """
 import hashlib
+import ast
 
 MAX_PATCH_BYTES = 32_000
 ALLOWED_PREFIXES = ("sonny/", "tests/")
@@ -41,6 +42,10 @@ def validate_model_patch(proposal: dict) -> dict:
         raise ValueError("invalid patch size or content")
     if not reason.strip() or len(reason) > 500:
         raise ValueError("invalid patch rationale")
+    try:
+        ast.parse(content, filename=path)
+    except (SyntaxError, ValueError) as exc:
+        raise ValueError("proposal is not syntactically valid Python") from exc
     return {
         "path": path,
         "content_sha256": hashlib.sha256(encoded).hexdigest(),
