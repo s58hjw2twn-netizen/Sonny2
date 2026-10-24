@@ -17,9 +17,9 @@ def check_host(image=None, *, which=shutil.which, run=subprocess.run):
         checks.append({"check": name, "passed": bool(ok), "detail": detail})
     docker = which("docker")
     record("docker_cli", docker is not None, "Docker CLI found" if docker else "Docker CLI unavailable")
-    if image is not None:
-        record("pinned_image_reference", bool(PINNED_IMAGE.fullmatch(image)),
-               "Digest-pinned reference" if PINNED_IMAGE.fullmatch(image) else "Expected name@sha256:64 lowercase hex")
+    pinned = isinstance(image, str) and bool(PINNED_IMAGE.fullmatch(image))
+    record("pinned_image_reference", pinned,
+           "Digest-pinned reference" if pinned else "A locally vetted name@sha256:64 lowercase hex reference is required")
     if docker:
         for name, args in (
             ("daemon", [docker, "info", "--format", "{{.ServerVersion}}"]),
@@ -38,13 +38,14 @@ def check_host(image=None, *, which=shutil.which, run=subprocess.run):
                     record(name, rootless, "Rootless indicated" if rootless else "Rootless not verified")
             except (OSError, subprocess.TimeoutExpired, ValueError, TypeError):
                 record(name, False, "Probe unavailable")
-        if image and PINNED_IMAGE.fullmatch(image):
+        if pinned:
             try:
                 result = run([docker, "image", "inspect", image, "--format", "{{json .RepoDigests}}"],
                              capture_output=True, text=True, timeout=8, check=False)
                 digests = json.loads(result.stdout) if result.returncode == 0 else []
-                record("local_image", isinstance(digests, list) and image in digests,
-                       "Matching local digest" if image in digests else "Image/digest not verified locally")
+                verified = isinstance(digests, list) and image in digests
+                record("local_image", verified,
+                       "Matching local digest" if verified else "Image/digest not verified locally")
             except (OSError, subprocess.TimeoutExpired, ValueError, TypeError):
                 record("local_image", False, "Image inspection unavailable")
     return {"ready_for_containment_validation": all(c["passed"] for c in checks),
