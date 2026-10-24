@@ -35,12 +35,16 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_sonny_one_agent_handoff.py' -v
       - name: Validate runner execution review gate
         run: python -m unittest discover -s tests -p 'test_sonny_one_runner_gate.py' -v
+      - name: Validate runner preflight
+        run: python -m unittest discover -s tests -p 'test_sonny_one_runner_preflight.py' -v
       - name: Generate task plan without code execution
         run: |
           python -m sonny_one.development_controller.controller --output development-plan.json
           cat development-plan.json
           python -m sonny_one.development_controller.controller --handoff --output coding-agent-handoff.json
           cat coding-agent-handoff.json
+          python -m sonny_one.development_controller.runner_preflight > runner-preflight.json
+          cat runner-preflight.json
       - name: Preserve inspectable plan
         uses: actions/upload-artifact@v4
         with:
@@ -48,4 +52,5 @@ jobs:
           path: |
             development-plan.json
             coding-agent-handoff.json
+            runner-preflight.json
           retention-days: 7
