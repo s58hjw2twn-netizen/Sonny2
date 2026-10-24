@@ -4,7 +4,7 @@ Opt-in only: calling this function may make a metered provider request.
 No model credentials, Git writes, shell commands, or deployment here.
 """
 from .gemini_provider import generate_gemini
-from .model_patch_gate import stage_model_response
+from .model_patch_gate import stage_model_response, validate_scoped_model_patch
 
 INSTRUCTIONS = """You are an untrusted coding assistant.
 Return ONLY one JSON object with exactly three keys: path, content, reason.
@@ -28,6 +28,7 @@ def generate_and_stage_patch(task, files: dict[str, str], *, client=None) -> dic
     if task.risk != "low" or len(task.paths) != 1:
         raise ValueError("coding model requires one low-risk target")
     path = task.paths[0]
+    validate_scoped_model_patch({"path": path, "content": "pass\\n", "reason": "preflight"}, task.paths)
     if not isinstance(files, dict) or path not in files:
         raise ValueError("target file missing from snapshot")
     original = files[path]
