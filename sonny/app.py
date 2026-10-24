@@ -64,6 +64,8 @@ def user(x_user_id: str | None, authorization: str | None = None):
     identity = claims.get("sub")
     if not isinstance(identity, str) or not identity:
         raise HTTPException(401, "Invalid session identity")
+    if not store.db.execute("SELECT 1 FROM users WHERE id=?", (identity,)).fetchone():
+        raise HTTPException(401, "Session account no longer exists")
     if x_user_id and x_user_id != identity:
         raise HTTPException(403, "Session identity mismatch")
     return identity
