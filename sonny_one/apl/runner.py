@@ -125,10 +125,15 @@ def evaluate(source, revision, patch_file, trusted, heldout, image,
                 {"base_revision": revision,
                  "deterministic": report["deterministic"],
                  "heldout": report.get("heldout", {"exit_code": -1})})
+            baseline_ok = (report["baseline_deterministic"]["exit_code"] == 0
+                           and report["baseline_heldout"]["exit_code"] == 0)
+            candidate_ok = (report["deterministic"]["exit_code"] == 0
+                            and report.get("heldout", {}).get("exit_code") == 0)
             report["status"] = ("ELIGIBLE_FOR_HUMAN_REVIEW"
-                                if report["deterministic"]["exit_code"] == 0
-                                and report.get("heldout", {}).get("exit_code") == 0
+                                if baseline_ok and candidate_ok
                                 else "REJECTED")
+            if not baseline_ok:
+                report["error"] = "Baseline suite failed; comparison is not a valid clean baseline"
     except (RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
         report["error"] = str(exc)[:500]
     report["lineage_hash"] = append_lineage(Path(ledger), {
