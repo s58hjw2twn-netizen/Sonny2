@@ -7,7 +7,7 @@ preflight proves only that the local API listed the requested model.
 from __future__ import annotations
 
 import json
-from urllib.request import HTTPRedirectHandler, Request, build_opener
+from urllib.request import HTTPRedirectHandler, Request, build_opener, ProxyHandler
 
 from sonny_one.development_controller.ollama_proposal_producer import _MODEL
 
@@ -30,7 +30,7 @@ def check_local_model(model: str, *, enabled: bool = False,
     request = Request(_ENDPOINT, method="GET", headers={
         "Accept": "application/json",
     })
-    with build_opener(_NoRedirect()).open(request, timeout=timeout) as response:
+    with build_opener(ProxyHandler({}), _NoRedirect()).open(request, timeout=timeout) as response:
         raw = response.read(131073)
     if len(raw) > 131072:
         raise ValueError("local model list too large")
