@@ -58,5 +58,35 @@ class TestRunnerGuardrails(unittest.TestCase):
                 runner.suite_fingerprint(p)
 
 
+    def test_docker_invocation_has_network_and_privilege_restrictions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp)
+            workspace, suite = p / "workspace", p / "suite"
+            workspace.mkdir()
+            suite.mkdir()
+            fake = type("Result", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+            with patch.object(runner, "execute", return_value=fake) as execute:
+                result = runner.docker_test("runner@sha256:" + "a" * 64,
+                                            workspace, suite, 30)
+            argv = execute.call_args.args[0]
+            self.assertEqual(result["exit_code"], 0)
+            for restriction in ("--network=none", "--cap-drop=ALL",
+                                "--security-opt=no-new-privileges",
+                                "--read-only", "--pull=never",
+                                "--user=65534:65534"):
+                self.assertIn(restriction, argv)
+            self.assertIn("--volume=" + str(workspace) + ":/src:ro", argv)
+            self.assertIn("--volume=" + str(suite) + ":/trusted:ro", argv)
+
+    def test_docker_timeout_is_rejected(self):
+        import subprocess
+        with patch.object(runner, "execute",
+                          side_effect=subprocess.TimeoutExpired(["docker"], 1)):
+            result = runner.docker_test("runner@sha256:" + "a" * 64,
+                                        Path("/tmp/workspace"), Path("/tmp/suite"), 1)
+        self.assertEqual(result["exit_code"], -1)
+        self.assertEqual(result["error"], "TimeoutExpired")
+
+
 if __name__ == "__main__":
     unittest.main()
