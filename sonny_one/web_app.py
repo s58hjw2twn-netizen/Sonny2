@@ -56,7 +56,7 @@ class ChatRequest(BaseModel):
 
 def validate_request_boundary(body: ChatRequest) -> None:
     try:
-        validate_conversation_payload(body.message, body.memories)
+        validate_conversation_payload(body.message, body.memories, goal=body.goal)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
