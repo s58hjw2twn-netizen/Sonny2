@@ -1,8 +1,7 @@
 """Authentication boundary regression tests.
 
-The known vulnerability is deliberately tracked as an expected failure until
-verified authentication replaces the untrusted X-User-ID header. Never turn
-this xfail into a skip or remove it to make CI green.
+Verify that forged identity headers, expired sessions, and cross-account
+access are rejected. Tests must pass before deployment.
 """
 import pytest
 from fastapi.testclient import TestClient
@@ -74,3 +73,41 @@ def test_expired_session_rejected(client):
         headers={"Authorization": f"Bearer {token}", "X-User-ID": owner},
     )
     assert response.status_code == 401
+
+
+def test_signed_session_cannot_access_other_users_project(client):
+    import jwt
+    import time
+    http, store = client
+    owner = store.create_user("owner")
+    intruder = store.create_user("intruder")
+    project = store.create_project(owner, "private", "goal")
+    now = int(time.time())
+    token = jwt.encode(
+        {"sub": intruder, "iat": now, "exp": now + 3600},
+        "test-only-signing-key-not-for-production", algorithm="HS256",
+    )
+    response = http.get(
+        f"/projects/{project}",
+        headers={"Authorization": f"Bearer {token}", "X-User-ID": intruder},
+    )
+    assert response.status_code == 404
+
+
+def test_mismatched_header_and_signed_identity_rejected(client):
+    import jwt
+    import time
+    http, store = client
+    owner = store.create_user("owner")
+    intruder = store.create_user("intruder")
+    project = store.create_project(owner, "private", "goal")
+    now = int(time.time())
+    token = jwt.encode(
+        {"sub": intruder, "iat": now, "exp": now + 3600},
+        "test-only-signing-key-not-for-production", algorithm="HS256",
+    )
+    response = http.get(
+        f"/projects/{project}",
+        headers={"Authorization": f"Bearer {token}", "X-User-ID": owner},
+    )
+    assert response.status_code == 403
