@@ -17,7 +17,7 @@ def test_command_has_isolation_guards(tmp_path):
     assert "--user" in command
     assert "--mount" in command
     assert "readonly" in command[command.index("--mount") + 1]
-    assert command[-3:] [:2] == ["python", "-B"]
+    assert command[-3:-1] == ["python", "-B"]
     assert "ast.parse" in command[-1]
     assert "pytest" not in command[-1]
 
