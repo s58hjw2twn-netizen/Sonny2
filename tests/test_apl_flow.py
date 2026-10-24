@@ -118,7 +118,8 @@ class TestAPLEvaluationFlow(unittest.TestCase):
             self.assertEqual(result["status"], "REJECTED")
             self.assertTrue(verify_lineage(ledger))
             self.assertNotIn(("workspace", "heldout"), calls)
-            self.assertEqual(result["comparison"]["regressions"], ["deterministic", "heldout"])
+            self.assertEqual(result["comparison"]["regressions"], ["deterministic"])
+            self.assertEqual(result["comparison"]["skipped"], ["heldout"])
 
 
 if __name__ == "__main__":
