@@ -1,6 +1,7 @@
 """Provider-neutral inference interface for Sonny ONE (offline-only default)."""
 from dataclasses import dataclass
 from typing import Protocol
+import math
 
 
 class InferenceFailure(Exception):
@@ -19,7 +20,7 @@ class Request:
     def __post_init__(self):
         if not isinstance(self.prompt, str) or not self.prompt.strip() or len(self.prompt) > 8000:
             raise ValueError("Prompt must be between 1 and 8000 characters")
-        if isinstance(self.timeout_seconds, bool) or not isinstance(self.timeout_seconds, (int, float)) or not 0 < self.timeout_seconds <= 120:
+        if isinstance(self.timeout_seconds, bool) or not isinstance(self.timeout_seconds, (int, float)) or not math.isfinite(self.timeout_seconds) or not 0 < self.timeout_seconds <= 120:
             raise ValueError("Timeout must be between 0 and 120 seconds")
 
 
@@ -43,7 +44,7 @@ def generate(provider: Provider, prompt: str) -> Response:
     request = Request(prompt)
     try:
         result = provider.generate(request)
-    except TimeoutError as exc:
+    except (TimeoutError, InferenceTimeout) as exc:
         raise InferenceTimeout("Inference timed out") from exc
     except Exception as exc:
         raise InferenceFailure("Inference unavailable") from exc
