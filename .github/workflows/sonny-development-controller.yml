@@ -31,6 +31,8 @@ jobs:
           python-version: '3.12'
       - name: Validate controller and approval boundaries
         run: python -m unittest discover -s tests -p 'test_sonny_one_development_controller.py' -v
+      - name: Validate coding-agent handoff safety
+        run: python -m unittest discover -s tests -p 'test_sonny_one_agent_handoff.py' -v
       - name: Generate task plan without code execution
         run: |
           python -m sonny_one.development_controller.controller --output development-plan.json
