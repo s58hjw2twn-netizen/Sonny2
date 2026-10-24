@@ -73,3 +73,38 @@ def select_for_review(candidates, *, max_candidates=10, min_delta=0.08):
         "recursive_improvement_proven": False,
         "limitations": "Candidate selection only. No external grader authentication, independent holdout custody or causal RSI proof.",
     }
+
+
+def select_verified_for_review(candidates, *, max_candidates=10, min_delta=0.08,
+                               resamples=1000, seed=20261024):
+    """Recompute all cycle decisions from raw evidence before ranking.
+
+    The caller supplies raw cycle records and an independently generated
+    assessment; this checks agreement but does not authenticate their source.
+    """
+    from .cycles import assess_cycles
+    if not isinstance(candidates, list) or not 1 <= len(candidates) <= max_candidates:
+        raise ValueError("Invalid candidate count")
+    checked = []
+    for candidate in candidates:
+        if not isinstance(candidate, dict) or set(candidate) != {
+            "candidate_id", "raw_cycles", "cycle_assessment"
+        }:
+            raise ValueError("Candidate must include raw cycles and assessment")
+        supplied = candidate["cycle_assessment"]
+        if not isinstance(supplied, dict):
+            raise ValueError("Invalid assessment")
+        computed = assess_cycles(candidate["raw_cycles"], min_delta=min_delta,
+                                 resamples=resamples, seed=seed)
+        # Compare complete results, not just the favorable decision or delta.
+        if supplied != computed:
+            raise ValueError("Supplied assessment disagrees with raw evidence")
+        checked.append({"candidate_id": candidate["candidate_id"],
+                        "cycle_assessment": computed})
+    result = select_for_review(checked, max_candidates=max_candidates,
+                               min_delta=min_delta)
+    result["raw_evidence_recomputed"] = True
+    result["limitations"] += (
+        " Raw records, independent grader and suite custody remain unauthenticated."
+    )
+    return result
