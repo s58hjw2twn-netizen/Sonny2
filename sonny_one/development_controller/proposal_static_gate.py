@@ -16,13 +16,15 @@ MAX_SOURCE_BYTES = 8192
 
 
 def reconstruct_candidate(before: str, patch_text: str) -> str:
-    if not isinstance(before, str) or len(before.encode("utf-8")) > MAX_SOURCE_BYTES:
+    if not isinstance(before, str) or not isinstance(patch_text, str) or len(before.encode("utf-8")) > MAX_SOURCE_BYTES:
         raise ValueError("invalid baseline source")
     if validate_patch(patch_text) != [TARGET]:
         raise ValueError("candidate must change exactly the research target")
     original = before.splitlines(keepends=True)
     if not before.endswith("\n"):
         raise ValueError("baseline must end with newline")
+    if not patch_text.endswith("\n"):
+        raise ValueError("patch must end with newline")
     lines = patch_text.splitlines()
     if len(lines) < 4 or lines[0] != f"diff --git a/{TARGET} b/{TARGET}":
         raise ValueError("invalid diff header")
