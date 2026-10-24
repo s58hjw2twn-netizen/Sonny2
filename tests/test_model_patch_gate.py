@@ -146,3 +146,23 @@ def test_model_cannot_modify_safety_regression_tests(protected_path):
             "content": "x = 1",
             "reason": "Proposed test change",
         })
+
+
+def test_model_rejects_invalid_python_syntax():
+    with pytest.raises(ValueError, match="syntactically valid Python"):
+        validate_model_patch({
+            "path": "sonny/example.py",
+            "content": "def incomplete(:",
+            "reason": "Example proposed change",
+        })
+
+
+def test_model_accepts_valid_python_without_executing_it():
+    proposal = {
+        "path": "sonny/example.py",
+        "content": "def compute():\n    return 42\n",
+        "reason": "Example proposed change",
+    }
+    result = validate_model_patch(proposal)
+    assert result["commit_allowed"] is False
+    assert result["approved_for_staging"] is False
