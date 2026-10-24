@@ -60,3 +60,36 @@ def test_model_patch_rejects_medium_risk_task():
 def test_invalid_unicode_proposal_is_rejected():
     with pytest.raises(ValueError, match='valid UTF-8'):
         validate_model_patch(dict(path='sonny/sample.py', content=chr(0xD800), reason='simple change'))
+
+
+def test_model_patch_rejects_out_of_scope_staging():
+    from sonny.model_patch_gate import stage_scoped_model_patch
+    from sonny.research_agent import Task
+    task = Task("T3", "Update other", ("sonny/other.py",), "low")
+    with pytest.raises(ValueError, match="outside approved task scope"):
+        stage_scoped_model_patch(
+            task, {"sonny/sample.py": "x = 1"},
+            {"path": "sonny/sample.py", "content": "x = 2", "reason": "Update value"},
+        )
+
+
+def test_model_patch_rejects_missing_target():
+    from sonny.model_patch_gate import stage_scoped_model_patch
+    from sonny.research_agent import Task
+    task = Task("T4", "Update sample", ("sonny/sample.py",), "low")
+    with pytest.raises(ValueError, match="target must exist"):
+        stage_scoped_model_patch(
+            task, {"sonny/other.py": "x = 1"},
+            {"path": "sonny/sample.py", "content": "x = 2", "reason": "Update value"},
+        )
+
+
+def test_model_patch_rejects_unchanged_source():
+    from sonny.model_patch_gate import stage_scoped_model_patch
+    from sonny.research_agent import Task
+    task = Task("T5", "Update sample", ("sonny/sample.py",), "low")
+    with pytest.raises(ValueError, match="no change"):
+        stage_scoped_model_patch(
+            task, {"sonny/sample.py": "x = 1"},
+            {"path": "sonny/sample.py", "content": "x = 1", "reason": "Update value"},
+        )
