@@ -18,7 +18,7 @@ def build_test_command(workspace: str, image: str) -> list[str]:
     if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
         raise ValueError("invalid image digest")
     return [
-        "docker", "run", "--rm", "--network", "none", "--read-only",
+        "docker", "run", "--rm", "--pull", "never", "--network", "none", "--read-only",
         "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
         "--pids-limit", "64", "--memory", "256m", "--cpus", "1",
         "--user", "65534:65534",
