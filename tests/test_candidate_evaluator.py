@@ -73,3 +73,19 @@ def test_syntax_checker_rejects_modified_snapshot():
     staged["candidate"]["sonny/sample.py"] = "value = 999\n"
     with pytest.raises(ValueError, match="fingerprint"):
         check_python_syntax(staged)
+
+
+def test_claimed_pass_does_not_override_invalid_python():
+    staged = stage_candidate(
+        Task("syntax", "Change constant", ("sonny/example.py",)),
+        {"sonny/example.py": "value = 1\n"},
+        [Replacement("sonny/example.py", "value = 1", "def broken(:")],
+    )
+    with pytest.raises(ValueError, match="syntax"):
+        evaluate_candidate(staged, {"unit": True}, {"unit": True})
+
+
+def test_claimed_pass_is_explicitly_unverified():
+    result = evaluate_candidate(candidate(), {"unit": True}, {"unit": True})
+    assert result["independently_verified"] is False
+    assert result["commit_allowed"] is False
