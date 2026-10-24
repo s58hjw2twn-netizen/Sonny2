@@ -170,3 +170,13 @@ Next blocker remains a disposable audited Linux Docker host, vetted hash-pinned 
 - APL workflow run `40102271424` succeeded. Full Sonny ONE workflow `40102271457` must be checked for final outcome.
 - This is fail-closed orchestration behavior, not real sandbox testing or proven functional improvements.
 - Docker infrastructure, independently held-out tasks, independent grading and repeated empirical evaluation remain unavailable as before.
+
+
+## Continuation — prediction calibration (2026-10-24)
+
+- Verified prior branch HEAD `7986026f4ddbedbf412e6c9ead93a2b1c9c0a5fc`: APL policy and full Sonny ONE CI both SUCCESS.
+- Added `sonny_one/apl/calibration.py` and `tests/test_apl_calibration.py` in `d7243ea289d38581faa137118f9dec70907e3f9f`.
+- Implements deterministic descriptive Brier score and mean probability bias for prediction of **human-review eligibility**, with candidate-ID alignment and strict rejection of missing, skipped, errored or contradictory suite reports.
+- This is analysis of externally supplied completed records; there is no independently graded experiment dataset, live Sonny self-prediction evaluation, or measured model improvement.
+- APL GitHub workflow `40102440248` SUCCESS; full workflow `40102440307` requires outcome verification.
+- Empirical constraints remain a vetted rootless disposable Docker host, audited offline image, independent held-out grader/test custody, repeated real experiments and human-reviewed promotion. No production merge, deployment or charges.
