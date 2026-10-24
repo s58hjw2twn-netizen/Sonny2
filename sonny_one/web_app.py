@@ -7,6 +7,7 @@ from sonny_one.inference_config import InferenceSettings, build_provider
 from sonny_one.inference_async import generate_with_deadline
 from sonny_one.rate_limit import LocalRateLimiter
 from sonny_one.concurrency_gate import LocalConcurrencyGate
+from sonny_one.private_provider import get_private_provider
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from sonny.auth import authenticated_user
@@ -94,13 +95,20 @@ async def inference_demo(body: ChatRequest):
 
 @app.post("/api/inference/private")
 async def private_inference(body: ChatRequest, user_id: str = Depends(private_authenticated_user)):
-    """Authenticated, offline-only proof of the inference authorization boundary."""
+    """Authenticated private inference; external providers remain disabled by default."""
     if not private_limiter.allow(user_id):
         raise HTTPException(status_code=429, detail="Request limit exceeded", headers={"Retry-After": "60"})
     if not private_concurrency.acquire():
         raise HTTPException(status_code=503, detail="Inference capacity reached", headers={"Retry-After": "1"})
     try:
-        return await inference_demo(body)
+        try:
+            result = await generate_with_deadline(get_private_provider(), body.message, timeout_seconds=5.0)
+        except InferenceTimeout as exc:
+            raise HTTPException(status_code=504, detail="Inference timed out") from exc
+        except InferenceFailure as exc:
+            raise HTTPException(status_code=503, detail="Inference unavailable") from exc
+        return {"text": result.text, "mode": "deterministic-demo" if result.demo else "private-inference",
+                "model_id": result.model_id, "model_connected": not result.demo}
     finally:
         private_concurrency.release()
 
