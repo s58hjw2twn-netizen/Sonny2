@@ -2,7 +2,7 @@ import pytest
 
 from sonny.research_agent import Task
 from sonny.candidate_stager import Replacement, stage_candidate
-from sonny.candidate_evaluator import evaluate_candidate, fingerprint
+from sonny.candidate_evaluator import evaluate_candidate, fingerprint, check_python_syntax
 
 
 def candidate():
@@ -44,3 +44,32 @@ def test_tampered_candidate_is_rejected():
 def test_unpaired_checks_rejected():
     with pytest.raises(ValueError, match="paired"):
         evaluate_candidate(candidate(), {"unit": True}, {"other": True})
+
+
+def test_valid_python_candidate_passes_syntax_check():
+    staged = stage_candidate(
+        Task("syntax", "Change constant", ("sonny/example.py",)),
+        {"sonny/example.py": "value = 1\n"},
+        [Replacement("sonny/example.py", "value = 1", "value = 2")],
+    )
+    result = check_python_syntax(staged)
+    assert result["all_passed"] is True
+    assert result["candidate_code_executed"] is False
+    assert result["commit_allowed"] is False
+
+
+def test_invalid_python_candidate_fails_syntax_check():
+    staged = stage_candidate(
+        Task("syntax", "Change constant", ("sonny/example.py",)),
+        {"sonny/example.py": "value = 1\n"},
+        [Replacement("sonny/example.py", "value = 1", "def broken(:")],
+    )
+    result = check_python_syntax(staged)
+    assert result["all_passed"] is False
+
+
+def test_syntax_checker_rejects_modified_snapshot():
+    staged = candidate()
+    staged["candidate"]["sonny/sample.py"] = "value = 999\n"
+    with pytest.raises(ValueError, match="fingerprint"):
+        check_python_syntax(staged)
