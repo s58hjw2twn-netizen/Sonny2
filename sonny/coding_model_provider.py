@@ -28,7 +28,7 @@ def generate_and_stage_patch(task, files: dict[str, str], *, client=None) -> dic
     if task.risk != "low" or len(task.paths) != 1:
         raise ValueError("coding model requires one low-risk target")
     path = task.paths[0]
-    validate_scoped_model_patch({"path": path, "content": "pass\\n", "reason": "preflight"}, task.paths)
+    validate_scoped_model_patch({"path": path, "content": "pass", "reason": "preflight"}, task.paths)
     if not isinstance(files, dict) or path not in files:
         raise ValueError("target file missing from snapshot")
     original = files[path]
