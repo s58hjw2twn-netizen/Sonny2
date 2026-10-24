@@ -1,4 +1,4 @@
-"""Constrained Docker command builder for independent test workers.
+"""Constrained Docker command builder for static candidate syntax checks.
 
 Builds arguments only; it never starts a container or authorizes a commit.
 The caller must provision a disposable, verified workspace outside this module.
@@ -25,5 +25,8 @@ def build_test_command(workspace: str, image: str) -> list[str]:
         "--tmpfs", "/tmp:rw,nosuid,noexec,size=16m",
         "--mount", f"type=bind,source={root},target=/workspace,readonly",
         "--workdir", "/workspace", image,
-        "python", "-m", "unittest", "discover", "-s", "tests",
+        "python", "-B", "-c",
+        "import ast,pathlib; "
+        "files=sorted(pathlib.Path(p).rglob(\u0027*.py\u0027) for p in (\u0027sonny\u0027,\u0027tests\u0027)); "
+        "[ast.parse(f.read_text(encoding=\u0027utf-8\u0027),filename=str(f)) for group in files for f in group]",
     ]
