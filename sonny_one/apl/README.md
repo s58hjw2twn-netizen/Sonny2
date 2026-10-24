@@ -152,3 +152,14 @@ results remain **review only** with `promotion=FORBIDDEN`.
 
 This function authenticates bytes relative to the key, not the grader's
 independence, the scientific truth of scores, or actual recursive improvement.
+
+## Offline proposal generator (toy baseline)
+
+`generator.generate_proposals(source)` deterministically constructs up to
+three policy-validated unified diffs against the isolated
+`sonny_one/apl_targets/offline_strategy.py` toy module. It does not execute
+patches, train or invoke AI models, or access held-out tests. It is a baseline
+for measuring the orchestration pipeline, **not** autonomous candidate
+generation or RSI. Candidate predictions are intentionally unset; the existing
+queue requires preregistered probabilities and an independently approved
+sandbox before running proposed changes.
