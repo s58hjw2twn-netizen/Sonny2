@@ -130,3 +130,19 @@ def test_model_cannot_edit_future_control_modules(protected_path):
             "content": "x = 1",
             "reason": "Proposed edit",
         })
+
+
+@pytest.mark.parametrize("protected_path", [
+    "tests/test_model_patch_gate.py",
+    "tests/test_candidate_stager.py",
+    "tests/test_research_agent.py",
+    "tests/test_isolated_syntax_executor.py",
+    "tests/test_paired_syntax_runner.py",
+])
+def test_model_cannot_modify_safety_regression_tests(protected_path):
+    with pytest.raises(ValueError, match="safety controls"):
+        validate_model_patch({
+            "path": protected_path,
+            "content": "x = 1",
+            "reason": "Proposed test change",
+        })
