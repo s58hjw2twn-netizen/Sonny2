@@ -36,8 +36,8 @@ def test_failure_is_not_converted_to_success(tmp_path):
 def test_timeout_is_failure(tmp_path):
     with patch("sonny.isolated_syntax_executor.subprocess.run",
                side_effect=subprocess.TimeoutExpired(["docker"], 30)):
-        evidence = execute_syntax_check(str(tmp_path), IMAGE, snapshot(tmp_path))
-    assert evidence["exit_code"] == 124
+        with pytest.raises(RuntimeError, match="timed out"):
+            execute_syntax_check(str(tmp_path), IMAGE, snapshot(tmp_path))
 
 
 def test_missing_docker_fails_closed(tmp_path):
