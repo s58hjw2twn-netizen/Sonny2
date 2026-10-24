@@ -25,7 +25,12 @@ def compare(baseline: dict, candidate: dict) -> dict:
         c = candidate[suite]["exit_code"] == 0
         outcomes[suite] = {"baseline_pass": b, "candidate_pass": c,
                            "regression": b and not c, "repair": not b and c}
+    regressions = [suite for suite, outcome in outcomes.items() if outcome["regression"]]
+    repairs = [suite for suite, outcome in outcomes.items() if outcome["repair"]]
     return {"base_revision": baseline["base_revision"], "suites": outcomes,
+            "regressions": regressions, "repairs": repairs,
+            "all_baseline_pass": all(outcome["baseline_pass"] for outcome in outcomes.values()),
+            "all_candidate_pass": all(outcome["candidate_pass"] for outcome in outcomes.values()),
             "review_required": True, "promotion": "FORBIDDEN",
             "improvement_proven": False,
             "note": "Suite exit codes alone cannot establish functional improvement."}
