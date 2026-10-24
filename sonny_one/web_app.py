@@ -7,7 +7,7 @@ from sonny_one.inference_config import InferenceSettings, build_provider
 from sonny_one.inference_async import generate_with_deadline
 from sonny_one.rate_limit import LocalRateLimiter
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from sonny.auth import authenticated_user
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -15,6 +15,13 @@ from pydantic import BaseModel, Field, field_validator
 
 WEB = Path(__file__).with_name("web")
 private_limiter = LocalRateLimiter(limit=30, window_seconds=60)
+
+
+def private_authenticated_user(authorization: str | None = Header(None)) -> str:
+    try:
+        return authenticated_user(authorization)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail="Authentication unavailable") from exc
 app = FastAPI(title="Sonny ONE local demo", docs_url=None, redoc_url=None)
 app.mount("/assets", StaticFiles(directory=WEB), name="assets")
 
@@ -84,7 +91,7 @@ async def inference_demo(body: ChatRequest):
 
 
 @app.post("/api/inference/private")
-async def private_inference(body: ChatRequest, user_id: str = Depends(authenticated_user)):
+async def private_inference(body: ChatRequest, user_id: str = Depends(private_authenticated_user)):
     """Authenticated, offline-only proof of the inference authorization boundary."""
     if not private_limiter.allow(user_id):
         raise HTTPException(status_code=429, detail="Request limit exceeded", headers={"Retry-After": "60"})
