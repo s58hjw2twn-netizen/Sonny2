@@ -32,5 +32,31 @@ class TestRunnerGuardrails(unittest.TestCase):
                                 "runner@sha256:" + "a" * 64, p / "ledger")
 
 
+    def test_suite_fingerprint_changes_with_content(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp)
+            (p / "test_sample.py").write_text("assert True")
+            before = runner.suite_fingerprint(p)
+            (p / "test_sample.py").write_text("assert False")
+            self.assertNotEqual(before, runner.suite_fingerprint(p))
+
+    def test_suite_fingerprint_stable_across_creation_order(self):
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
+            for name in ("b.py", "a.py"):
+                (Path(a) / name).write_text(name)
+            for name in ("a.py", "b.py"):
+                (Path(b) / name).write_text(name)
+            self.assertEqual(runner.suite_fingerprint(Path(a)),
+                             runner.suite_fingerprint(Path(b)))
+
+    def test_suite_fingerprint_rejects_symlink(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp)
+            (p / "test.py").write_text("pass")
+            (p / "alias.py").symlink_to(p / "test.py")
+            with self.assertRaises(ValueError):
+                runner.suite_fingerprint(p)
+
+
 if __name__ == "__main__":
     unittest.main()
