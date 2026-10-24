@@ -37,6 +37,22 @@ def attach_scores(evaluation: dict, evidence: dict) -> dict:
     }
 
 
+
+def attach_scores_verified(evaluation: dict, evidence: dict, ledger) -> dict:
+    """Require local report/ledger agreement before score attachment.
+
+    Ledger integrity does not authenticate external grader identity or custody.
+    """
+    from .provenance import verify_report_lineage
+    if not verify_report_lineage(evaluation, ledger):
+        raise ValueError("Evaluation report is not bound to a valid ledger entry")
+    attached = attach_scores(evaluation, evidence)
+    attached["local_lineage_verified"] = True
+    attached["note"] = ("Report agrees with local hash-linked ledger. "
+                        "Independent grader custody and scores remain unverified.")
+    return attached
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser()

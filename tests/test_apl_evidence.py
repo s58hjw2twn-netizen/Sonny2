@@ -1,5 +1,10 @@
 """Tests for read-only external grader evidence."""
 import unittest
+import json
+import tempfile
+from pathlib import Path
+from sonny_one.apl.policy import append_lineage, sha256_bytes
+from sonny_one.apl.evidence import attach_scores_verified
 from sonny_one.apl.evidence import attach_scores
 
 
@@ -22,6 +27,25 @@ class TestExternalEvidence(unittest.TestCase):
         self.assertFalse(result["improvement_proven"])
         self.assertEqual(result["metrics"]["improved_tasks"], 1)
         self.assertEqual(evaluation["status"], "REJECTED")
+
+    def test_verified_attachment_requires_intact_report_ledger(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "records.jsonl"
+            evaluation = dict(identity(), status="REJECTED")
+            digest = sha256_bytes(json.dumps(evaluation, sort_keys=True).encode())
+            entry = dict(evaluation, report_sha256=digest)
+            evaluation["lineage_hash"] = append_lineage(ledger, entry)
+            evidence = dict(identity(), grader="external-grader",
+                            baseline_scores={"T1": 0},
+                            candidate_scores={"T1": 1})
+            attached = attach_scores_verified(evaluation, evidence, ledger)
+            self.assertTrue(attached["local_lineage_verified"])
+            self.assertFalse(attached["improvement_proven"])
+            altered = dict(evaluation, status="ELIGIBLE_FOR_HUMAN_REVIEW")
+            with self.assertRaises(ValueError):
+                attach_scores_verified(altered, evidence, ledger)
+            with self.assertRaises(ValueError):
+                attach_scores_verified(evaluation, evidence, Path(tmp)/"missing")
 
     def test_wrong_fixture_hash_rejected(self):
         evaluation = identity()
