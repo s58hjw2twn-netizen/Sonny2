@@ -77,7 +77,16 @@ class TestRunnerGuardrails(unittest.TestCase):
                 self.assertIn(restriction, argv)
             self.assertIn("--volume=" + str(workspace) + ":/src:ro", argv)
             self.assertIn("--volume=" + str(suite) + ":/trusted:ro", argv)
-            self.assertIn("--env=SONNY_APL_CANDIDATE_TEST=1", argv)
+            self.assertIn("--env=SONNY_APL_EVALUATION=1", argv)
+            self.assertIn("--env=SONNY_APL_CANDIDATE_TEST=0", argv)
+
+    def test_candidate_mode_is_explicit(self):
+        with patch.object(runner, "execute") as execute:
+            execute.return_value = type("Result", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+            runner.docker_test("runner@sha256:" + "a" * 64,
+                               Path("/tmp/workspace"), Path("/tmp/suite"), 30,
+                               candidate=True)
+        self.assertIn("--env=SONNY_APL_CANDIDATE_TEST=1", execute.call_args.args[0])
 
     def test_docker_timeout_is_rejected(self):
         import subprocess
