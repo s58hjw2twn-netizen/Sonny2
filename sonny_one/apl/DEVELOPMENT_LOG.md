@@ -150,3 +150,13 @@ Unverified: real hostile-code containment, task improvement, generalization, con
 - These are unit/mock and standard CI results. They do not establish a real rootless daemon, pinned runtime, containment, or any candidate functional improvement.
 
 Next blocker remains a disposable audited Linux Docker host, vetted hash-pinned offline image, and independent private test/grader custody. Avoid candidate execution against a host not independently confirmed. No production promotion or deployment.
+
+
+## Continuation — immutable proposal intake (2026-10-24)
+
+- Prior research security fix `5dbfeb3` and log update `320eda7` both verified by full and APL GitHub CI.
+- Audited `loop.run_queue`: validated patch files were reopened by evaluator after intake, introducing an inbox time-of-check/time-of-use gap. The post-execution candidate hash guard detected mismatches too late.
+- Commit `c2e5947e8fdc40c37440c2d426c19af8a97a2b0b` now passes an isolated temporary snapshot of the originally validated patch text to the evaluator. The preregistered digest is tied to that content. Added a regression test that mutates the inbox during evaluation.
+- GitHub APL checks `40102033993`: SUCCESS. Full Sonny ONE tests `40102034108`: SUCCESS.
+- This protects against ordinary mutable-input races, not malicious host compromise or candidate process escape. Docker remains mocked for orchestration unit tests.
+- Remaining empirical blockers: rootless disposable Docker host, independently audited pinned image/dependencies, container escape/resource tests, protected independent holdouts/grader, and repeated real baseline/candidate experiments. No measurable functional improvement or genuine RSI established.
