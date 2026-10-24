@@ -45,3 +45,25 @@ def test_missing_file_cannot_be_created_implicitly():
     task = Task("t1", "Update", ("sonny/missing.py",))
     with pytest.raises(ValueError):
         stage_candidate(task, {}, [Replacement("sonny/missing.py", "x", "y")])
+
+
+@pytest.mark.parametrize("unsafe_path", [
+    "../secrets.txt", ".github/workflows/release.yml",
+    "sonny/../secrets.txt", "sonny//bad.py",
+])
+def test_snapshot_rejects_unsafe_unmodified_paths(unsafe_path):
+    task = Task("t1", "Update", ("sonny/ok.py",))
+    with pytest.raises(ValueError):
+        stage_candidate(
+            task, {"sonny/ok.py": "x", unsafe_path: "secret"},
+            [Replacement("sonny/ok.py", "x", "y")],
+        )
+
+
+def test_snapshot_rejects_oversized_unmodified_file():
+    task = Task("t1", "Update", ("sonny/ok.py",))
+    with pytest.raises(ValueError):
+        stage_candidate(
+            task, {"sonny/ok.py": "x", "docs/huge.txt": "z" * 200001},
+            [Replacement("sonny/ok.py", "x", "y")],
+        )
