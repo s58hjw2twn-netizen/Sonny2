@@ -18,11 +18,24 @@ def proposal():
 
 class ModelProposalAdapterTests(unittest.TestCase):
     def test_valid_proposal_remains_review_only(self):
-        with patch("sonny_one.development_controller.model_proposal_adapter.validate_patch"):
+        with patch("sonny_one.development_controller.model_proposal_adapter.validate_patch", return_value=["sonny_one/apl_targets/offline_strategy.py"]):
             result = validate_model_proposal(task(), proposal())
         self.assertTrue(result["review_only"])
         self.assertFalse(result["committed"])
         self.assertEqual(len(result["candidate_id"]), 64)
+
+    def test_rejects_other_experimental_path(self):
+        with patch("sonny_one.development_controller.model_proposal_adapter.validate_patch",
+                   return_value=["sonny_one/apl_targets/other.py"]):
+            with self.assertRaises(ValueError):
+                validate_model_proposal(task(), proposal())
+
+    def test_rejects_multiple_experimental_paths(self):
+        with patch("sonny_one.development_controller.model_proposal_adapter.validate_patch",
+                   return_value=["sonny_one/apl_targets/offline_strategy.py",
+                                 "sonny_one/apl_targets/other.py"]):
+            with self.assertRaises(ValueError):
+                validate_model_proposal(task(), proposal())
 
     def test_rejects_nonallowlisted_task(self):
         with self.assertRaises(PermissionError):
