@@ -290,3 +290,32 @@ def test_expired_session_cannot_be_renewed(client):
         headers={"Authorization": f"Bearer {expired}", "X-User-ID": owner},
     )
     assert response.status_code == 401
+
+
+def test_private_project_response_is_not_cacheable(client):
+    import jwt
+    import time
+    http, store = client
+    owner = store.create_user("owner")
+    project = store.create_project(owner, "private", "goal")
+    now = int(time.time())
+    token = jwt.encode(
+        {"sub": owner, "iat": now, "exp": now + 3600},
+        "test-only-signing-key-not-for-production", algorithm="HS256",
+    )
+    response = http.get(
+        f"/projects/{project}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["referrer-policy"] == "no-referrer"
+    assert response.headers["x-frame-options"] == "DENY"
+
+
+def test_registration_token_response_is_not_cacheable(client):
+    http, _ = client
+    response = http.post("/users", json={"name": "test"})
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
