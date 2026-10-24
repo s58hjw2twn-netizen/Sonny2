@@ -15,7 +15,7 @@ class Runtime:
 class AssistantRoutingTests(unittest.TestCase):
     def test_router_returns_model_provenance(self):
         assistant = SonnyOneAssistant(Runtime(), ModelRouter([
-            ModelOption("local", Fake(), frozenset({"chat"}))]))
+            ModelOption("local", Fake(), frozenset({"chat"}), approved=True, license_verified=True, available=True)]))
         self.assertEqual(assistant.reply("u", "hello").model_name, "local")
     def test_legacy_model_unchanged(self):
         assistant = SonnyOneAssistant(Runtime(), Fake())
