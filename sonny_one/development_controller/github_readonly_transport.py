@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 import re
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 _REPO = "s58hjw2twn-netizen/Sonny2"
 _BASE = "https://api.github.com/repos/" + _REPO
@@ -27,12 +27,12 @@ def github_readonly_json(url: str, *, timeout: int = 10) -> dict:
         "Accept": "application/vnd.github+json",
         "User-Agent": "Sonny-ONE-Research-Receipt-Reader",
     }, method="GET")
-    # GitHub redirects are not expected for these API endpoints. The default
-    # opener may follow redirects; never trust redirected response origins.
-    from urllib.parse import urlsplit
-    with urlopen(request, timeout=timeout) as response:
-        if urlsplit(response.geturl()).netloc != "api.github.com":
-            raise ValueError("redirected outside GitHub API")
+    # Fail closed on redirects, including redirects to private networks.
+    class NoRedirect(HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            raise ValueError("GitHub API redirect not allowed")
+
+    with build_opener(NoRedirect()).open(request, timeout=timeout) as response:
         raw = response.read(1024 * 1024 + 1)
         if len(raw) > 1024 * 1024:
             raise ValueError("GitHub response exceeds size limit")
