@@ -40,6 +40,8 @@ def generate(provider: Provider, prompt: str) -> Response:
         raise InferenceFailure("Inference unavailable") from exc
     if not isinstance(result, Response) or not isinstance(result.text, str) or not result.text.strip():
         raise InferenceFailure("Invalid provider response")
-    if not isinstance(result.model_id, str) or not result.model_id.strip():
+    if not isinstance(result.model_id, str) or not result.model_id.strip() or len(result.model_id) > 128:
         raise InferenceFailure("Invalid model identifier")
+    if len(result.text) > 16000 or not isinstance(result.demo, bool):
+        raise InferenceFailure("Invalid provider response")
     return result
