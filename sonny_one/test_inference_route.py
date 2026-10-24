@@ -92,9 +92,10 @@ class InferenceRouteTests(unittest.TestCase):
             token = create_access_token("secret-test-user")
         env = {key: value for key, value in os.environ.items() if key != "SONNY_AUTH_SECRET"}
         with patch.dict(os.environ, env, clear=True):
-            with self.assertRaises(RuntimeError):
-                self.client.post("/api/inference/private", json={"message": "hello"},
-                                 headers={"Authorization": "Bearer " + token})
+            response = self.client.post("/api/inference/private", json={"message": "hello"},
+                                        headers={"Authorization": "Bearer " + token})
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["detail"], "Authentication unavailable")
 
     def test_empty_message_rejected(self):
         response = self.client.post("/api/inference/demo", json={"message": "  "})
