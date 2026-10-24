@@ -17,7 +17,7 @@ from sonny_one.development_controller.ollama_proposal_producer import OllamaProp
 
 
 def generate_review_proposal(*, model: str, output: Path,
-                             enabled: bool = False) -> dict:
+                             enabled: bool = False, repo_root: Path | None = None) -> dict:
     if not enabled:
         raise PermissionError("explicit --allow-local-model flag required")
     if output.is_symlink() or output.exists():
@@ -26,7 +26,7 @@ def generate_review_proposal(*, model: str, output: Path,
             "title": "Offline research candidate proposal",
             "state": "ready", "priority": 1, "requires_approval": False}
     adapter = ModelProposalAdapter(
-        OllamaProposalProducer(model=model, enabled=True))
+        OllamaProposalProducer(model=model, enabled=True, repo_root=repo_root))
     proposal = adapter.propose(task)
     report = {"format": "sonny-one-review-only-model-proposal-v1",
               "proposal": proposal, "approved_for_execution": False,
@@ -46,11 +46,12 @@ def main(argv=None) -> int:
     parser.add_argument("--model", required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--allow-local-model", action="store_true")
+    parser.add_argument("--repo-root", type=Path, default=Path("."))
     args = parser.parse_args(argv)
     try:
         result = generate_review_proposal(
             model=args.model, output=args.output,
-            enabled=args.allow_local_model)
+            enabled=args.allow_local_model, repo_root=args.repo_root)
     except (ValueError, PermissionError, OSError, TypeError, json.JSONDecodeError) as exc:
         print(json.dumps({"ok": False, "error": str(exc)}))
         return 1
