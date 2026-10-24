@@ -34,6 +34,7 @@ class OllamaProposalProducer:
         self.enabled = enabled is True
         self.timeout = timeout
         self.repo_root = Path(repo_root) if repo_root is not None else None
+        self.last_source_sha256 = None
 
     def __call__(self, task: dict) -> dict:
         if not self.enabled:
@@ -50,8 +51,11 @@ class OllamaProposalProducer:
             "Use a unified git diff with diff --git, --- and +++ headers. "
             "Keep the change minimal. Your output will be rejected if unsafe."
         )
+        self.last_source_sha256 = None
         if self.repo_root is not None:
-            prompt = render_coding_prompt(build_coding_context(self.repo_root))
+            context = build_coding_context(self.repo_root)
+            prompt = render_coding_prompt(context)
+            self.last_source_sha256 = context["source_sha256"]
         body = json.dumps({"model": self.model, "prompt": prompt,
                            "stream": False, "format": "json",
                            "options": {"temperature": 0, "num_predict": 1024}}).encode()
