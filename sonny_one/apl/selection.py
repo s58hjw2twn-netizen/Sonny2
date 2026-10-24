@@ -31,10 +31,15 @@ def select_for_review(candidates, *, max_candidates=10, min_delta=0.08):
                 or assessment.get("cycle_count") != len(cycles)):
             raise ValueError("Invalid cycle evidence")
         seen = set()
+        cycle_candidates = set()
         deltas = []
         for cycle in cycles:
-            if not isinstance(cycle, dict) or cycle.get("candidate_id") != cid:
-                raise ValueError("Cycle identity mismatch")
+            if not isinstance(cycle, dict):
+                raise ValueError("Invalid cycle")
+            cycle_candidate = cycle.get("candidate_id")
+            if not isinstance(cycle_candidate, str) or not cycle_candidate.strip() or cycle_candidate in cycle_candidates:
+                raise ValueError("Duplicate or invalid per-cycle candidate ID")
+            cycle_candidates.add(cycle_candidate)
             cycle_id = cycle.get("cycle_id")
             if not isinstance(cycle_id, str) or not cycle_id.strip() or cycle_id in seen:
                 raise ValueError("Duplicate or invalid cycle ID")
