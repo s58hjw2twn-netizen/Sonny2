@@ -62,6 +62,23 @@ class InferenceRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.json()["model_connected"])
 
+    def test_private_route_rate_limited(self):
+        from sonny_one.rate_limit import LocalRateLimiter
+        with patch.dict(os.environ, {"SONNY_AUTH_SECRET": "test-only-secret"}):
+            token = create_access_token("rate-limit-test-user")
+            headers = {"Authorization": "Bearer " + token}
+            with patch("sonny_one.web_app.private_limiter", LocalRateLimiter(limit=1)):
+                first = self.client.post("/api/inference/private", json={"message": "hello"}, headers=headers)
+                second = self.client.post("/api/inference/private", json={"message": "hello"}, headers=headers)
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 429)
+        self.assertEqual(second.headers["Retry-After"], "60")
+
+    def test_private_route_does_not_accept_basic_auth(self):
+        response = self.client.post("/api/inference/private", json={"message": "hello"},
+                                    headers={"Authorization": "Basic abc"})
+        self.assertEqual(response.status_code, 401)
+
     def test_empty_message_rejected(self):
         response = self.client.post("/api/inference/demo", json={"message": "  "})
         self.assertEqual(response.status_code, 422)
