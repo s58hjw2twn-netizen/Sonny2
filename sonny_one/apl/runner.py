@@ -4,6 +4,7 @@ This never commits, merges, deploys, installs packages, or calls an LLM.
 Only externally supplied experimental patches are evaluated.
 """
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -46,6 +47,23 @@ def docker_test(image, workspace, suite, timeout):
         return {"exit_code": -1, "error": type(exc).__name__}
 
 
+def suite_fingerprint(directory):
+    """Stable digest of suite filenames and file contents."""
+    digest = hashlib.sha256()
+    for path in sorted(directory.rglob("*")):
+        if path.is_symlink():
+            raise ValueError("Test suite symlinks are prohibited")
+        if not path.is_file():
+            continue
+        relative = path.relative_to(directory).as_posix().encode("utf-8")
+        data = path.read_bytes()
+        digest.update(len(relative).to_bytes(8, "big"))
+        digest.update(relative)
+        digest.update(len(data).to_bytes(8, "big"))
+        digest.update(data)
+    return digest.hexdigest()
+
+
 def evaluate(source, revision, patch_file, trusted, heldout, image,
              ledger, timeout=90):
     source = Path(source).resolve(strict=True)
@@ -63,10 +81,14 @@ def evaluate(source, revision, patch_file, trusted, heldout, image,
     for suite in (trusted, heldout):
         if suite == source or source in suite.parents:
             raise ValueError("Independent test suites cannot live in the source tree")
+    trusted_hash = suite_fingerprint(trusted)
+    heldout_hash = suite_fingerprint(heldout)
     patch = patch_file.read_text(encoding="utf-8")
     paths = validate_patch(patch)
     candidate_id = sha256_bytes(patch.encode("utf-8"))
     report = {"candidate_id": candidate_id, "base_revision": revision,
+              "image": image, "trusted_suite_sha256": trusted_hash,
+              "heldout_suite_sha256": heldout_hash,
               "paths": paths, "status": "REJECTED", "promotion": "FORBIDDEN"}
     try:
         with tempfile.TemporaryDirectory(prefix="sonny-apl-") as tmp:
@@ -138,6 +160,8 @@ def evaluate(source, revision, patch_file, trusted, heldout, image,
         report["error"] = str(exc)[:500]
     report["lineage_hash"] = append_lineage(Path(ledger), {
         "candidate_id": candidate_id, "base_revision": revision,
+        "image": image, "trusted_suite_sha256": trusted_hash,
+        "heldout_suite_sha256": heldout_hash,
         "status": report["status"],
         "baseline_deterministic_exit": report.get("baseline_deterministic", {}).get("exit_code"),
         "baseline_heldout_exit": report.get("baseline_heldout", {}).get("exit_code"),
