@@ -56,8 +56,13 @@ def execute_syntax_check(workspace: str, image: str, snapshot_sha256: str) -> di
     command = build_test_command(workspace, image)
     if fingerprint_workspace(workspace) != snapshot_sha256:
         raise ValueError("workspace fingerprint mismatch")
+    if command.count("--mount") != 1:
+        raise ValueError("unexpected Docker mount configuration")
     canonical_command = command.copy()
     mount_index = canonical_command.index("--mount") + 1
+    expected_mount = f"type=bind,source={Path(workspace)},target=/workspace,readonly"
+    if canonical_command[mount_index] != expected_mount:
+        raise ValueError("unexpected Docker workspace mount")
     canonical_command[mount_index] = "type=bind,source=<workspace>,target=/workspace,readonly"
     command_hash = hashlib.sha256(
         json.dumps(canonical_command, separators=(",", ":")).encode()
