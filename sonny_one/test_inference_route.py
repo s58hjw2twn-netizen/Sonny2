@@ -97,6 +97,38 @@ class InferenceRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json()["detail"], "Authentication unavailable")
 
+    def test_unauthenticated_request_never_calls_provider(self):
+        with patch("sonny_one.web_app.generate_with_deadline") as provider:
+            response = self.client.post("/api/inference/private", json={"message": "hello"})
+        self.assertEqual(response.status_code, 401)
+        provider.assert_not_called()
+
+    def test_throttled_request_never_calls_provider(self):
+        from sonny_one.rate_limit import LocalRateLimiter
+        limiter = LocalRateLimiter(limit=1)
+        with patch.dict(os.environ, {"SONNY_AUTH_SECRET": "test-only-secret"}):
+            token = create_access_token("throttled-provider-test")
+            headers = {"Authorization": "Bearer " + token}
+            with patch("sonny_one.web_app.private_limiter", limiter):
+                self.assertEqual(self.client.post("/api/inference/private", json={"message": "hello"},
+                                                  headers=headers).status_code, 200)
+                with patch("sonny_one.web_app.generate_with_deadline") as provider:
+                    response = self.client.post("/api/inference/private",
+                                                json={"message": "hello"}, headers=headers)
+        self.assertEqual(response.status_code, 429)
+        provider.assert_not_called()
+
+    def test_private_limiter_isolates_users(self):
+        from sonny_one.rate_limit import LocalRateLimiter
+        with patch.dict(os.environ, {"SONNY_AUTH_SECRET": "test-only-secret"}):
+            alice = {"Authorization": "Bearer " + create_access_token("isolated-alice")}
+            bob = {"Authorization": "Bearer " + create_access_token("isolated-bob")}
+            with patch("sonny_one.web_app.private_limiter", LocalRateLimiter(limit=1)):
+                first = self.client.post("/api/inference/private", json={"message": "hello"}, headers=alice)
+                second = self.client.post("/api/inference/private", json={"message": "hello"}, headers=alice)
+                third = self.client.post("/api/inference/private", json={"message": "hello"}, headers=bob)
+        self.assertEqual([first.status_code, second.status_code, third.status_code], [200, 429, 200])
+
     def test_empty_message_rejected(self):
         response = self.client.post("/api/inference/demo", json={"message": "  "})
         self.assertEqual(response.status_code, 422)
