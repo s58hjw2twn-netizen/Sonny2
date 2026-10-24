@@ -79,6 +79,23 @@ class InferenceRouteTests(unittest.TestCase):
                                     headers={"Authorization": "Basic abc"})
         self.assertEqual(response.status_code, 401)
 
+    def test_private_route_wrong_signature_rejected(self):
+        with patch.dict(os.environ, {"SONNY_AUTH_SECRET": "issuer-secret"}):
+            token = create_access_token("signature-test-user")
+        with patch.dict(os.environ, {"SONNY_AUTH_SECRET": "verifier-secret"}):
+            response = self.client.post("/api/inference/private", json={"message": "hello"},
+                                        headers={"Authorization": "Bearer " + token})
+        self.assertEqual(response.status_code, 401)
+
+    def test_private_route_missing_secret_fails_closed(self):
+        with patch.dict(os.environ, {"SONNY_AUTH_SECRET": "issuer-secret"}):
+            token = create_access_token("secret-test-user")
+        env = {key: value for key, value in os.environ.items() if key != "SONNY_AUTH_SECRET"}
+        with patch.dict(os.environ, env, clear=True):
+            with self.assertRaises(RuntimeError):
+                self.client.post("/api/inference/private", json={"message": "hello"},
+                                 headers={"Authorization": "Bearer " + token})
+
     def test_empty_message_rejected(self):
         response = self.client.post("/api/inference/demo", json={"message": "  "})
         self.assertEqual(response.status_code, 422)
