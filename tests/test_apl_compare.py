@@ -34,5 +34,21 @@ class TestPairedEvaluation(unittest.TestCase):
             compare(report(0, 0), report(True, 0))
 
 
+    def test_explicit_regression_summary(self):
+        result = compare(report(0, 0), report(0, 1))
+        self.assertEqual(result["regressions"], ["heldout"])
+        self.assertEqual(result["repairs"], [])
+        self.assertTrue(result["all_baseline_pass"])
+        self.assertFalse(result["all_candidate_pass"])
+
+    def test_explicit_repair_summary(self):
+        result = compare(report(1, 0), report(0, 0))
+        self.assertEqual(result["repairs"], ["deterministic"])
+        self.assertEqual(result["regressions"], [])
+        self.assertFalse(result["all_baseline_pass"])
+        self.assertTrue(result["all_candidate_pass"])
+        self.assertFalse(result["improvement_proven"])
+
+
 if __name__ == "__main__":
     unittest.main()
