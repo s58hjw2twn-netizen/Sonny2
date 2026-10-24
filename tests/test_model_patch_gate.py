@@ -55,3 +55,8 @@ def test_model_patch_rejects_medium_risk_task():
             task, {"sonny/sample.py": "x = 1"},
             {"path": "sonny/sample.py", "content": "x = 2", "reason": "Update value"},
         )
+
+
+def test_invalid_unicode_proposal_is_rejected():
+    with pytest.raises(ValueError, match='valid UTF-8'):
+        validate_model_patch(dict(path='sonny/sample.py', content=chr(0xD800), reason='simple change'))
