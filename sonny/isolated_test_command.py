@@ -27,6 +27,6 @@ def build_test_command(workspace: str, image: str) -> list[str]:
         "--workdir", "/workspace", image,
         "python", "-B", "-c",
         "import ast,pathlib; "
-        "files=sorted(pathlib.Path(p).rglob(\u0027*.py\u0027) for p in (\u0027sonny\u0027,\u0027tests\u0027)); "
-        "[ast.parse(f.read_text(encoding=\u0027utf-8\u0027),filename=str(f)) for group in files for f in group]",
+        "paths=[f for p in ('sonny','tests') for f in pathlib.Path(p).rglob('*.py')]; "
+        "[ast.parse(f.read_text(encoding='utf-8'),filename=str(f)) for f in sorted(paths)]",
     ]
