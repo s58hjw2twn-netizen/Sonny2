@@ -25,6 +25,10 @@ def verify_github_receipt(receipt: dict, *, expected_task_id: str,
         isinstance(p, dict) and p.get("sha") == expected_parent_sha for p in parents
     ):
         raise ValueError("commit parent mismatch")
+    branch = fetch_json(base + "/branches/research/apl-001")
+    if (not isinstance(branch, dict) or not isinstance(branch.get("commit"), dict)
+            or branch["commit"].get("sha") != receipt["commit_sha"]):
+        raise ValueError("research branch does not point to candidate commit")
     for key, workflow in (
         ("test_run_id", "Sonny ONE Tests"),
         ("policy_run_id", "APL experimental policy checks"),
