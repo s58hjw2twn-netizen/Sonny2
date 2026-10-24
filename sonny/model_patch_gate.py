@@ -21,7 +21,10 @@ def validate_model_patch(proposal: dict) -> dict:
         raise ValueError("unsafe patch path")
     if not isinstance(content, str) or not isinstance(reason, str):
         raise ValueError("invalid patch fields")
-    encoded = content.encode("utf-8")
+    try:
+        encoded = content.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise ValueError("proposal content must be valid UTF-8") from exc
     if not encoded or len(encoded) > MAX_PATCH_BYTES or "\x00" in content:
         raise ValueError("invalid patch size or content")
     if not reason.strip() or len(reason) > 500:
