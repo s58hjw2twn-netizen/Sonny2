@@ -12,6 +12,7 @@ import tempfile
 from pathlib import Path
 
 from .policy import append_lineage, sha256_bytes, validate_patch
+from .compare import compare
 
 IMAGE_RE = re.compile(r"^[A-Za-z0-9._/-]+@sha256:[a-f0-9]{64}$")
 REV_RE = re.compile(r"^[a-f0-9]{40}$")
@@ -97,13 +98,33 @@ def evaluate(source, revision, patch_file, trusted, heldout, image,
                 actual.add(entry[3:])
             if actual != set(paths):
                 raise RuntimeError("Changed file set differs from approved patch")
+            baseline = Path(tmp) / "baseline"
+            base_clone = execute(["git", "clone", "--no-hardlinks", "--no-checkout",
+                                  "--", str(source), str(baseline)])
+            if base_clone.returncode:
+                raise RuntimeError("Unable to create disposable baseline checkout")
+            base_checkout = execute(["git", "-C", str(baseline), "checkout",
+                                     "--detach", revision])
+            if base_checkout.returncode:
+                raise RuntimeError("Base revision not available in baseline")
+            shutil.rmtree(baseline / ".git")
+            baseline.chmod(0o755)
             shutil.rmtree(workspace / ".git")
             # Docker user 65534 must be able to traverse the disposable checkout.
             Path(tmp).chmod(0o755)
             workspace.chmod(0o755)
+            report["baseline_deterministic"] = docker_test(image, baseline, trusted, timeout)
+            report["baseline_heldout"] = docker_test(image, baseline, heldout, timeout)
             report["deterministic"] = docker_test(image, workspace, trusted, timeout)
             if report["deterministic"]["exit_code"] == 0:
                 report["heldout"] = docker_test(image, workspace, heldout, timeout)
+            report["comparison"] = compare(
+                {"base_revision": revision,
+                 "deterministic": report["baseline_deterministic"],
+                 "heldout": report["baseline_heldout"]},
+                {"base_revision": revision,
+                 "deterministic": report["deterministic"],
+                 "heldout": report.get("heldout", {"exit_code": -1})})
             report["status"] = ("ELIGIBLE_FOR_HUMAN_REVIEW"
                                 if report["deterministic"]["exit_code"] == 0
                                 and report.get("heldout", {}).get("exit_code") == 0
@@ -113,6 +134,8 @@ def evaluate(source, revision, patch_file, trusted, heldout, image,
     report["lineage_hash"] = append_lineage(Path(ledger), {
         "candidate_id": candidate_id, "base_revision": revision,
         "status": report["status"],
+        "baseline_deterministic_exit": report.get("baseline_deterministic", {}).get("exit_code"),
+        "baseline_heldout_exit": report.get("baseline_heldout", {}).get("exit_code"),
         "deterministic_exit": report.get("deterministic", {}).get("exit_code"),
         "heldout_exit": report.get("heldout", {}).get("exit_code"),
     })
