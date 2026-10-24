@@ -210,3 +210,36 @@ def test_signed_token_for_nonexistent_account_rejected(client):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 401
+
+
+def test_registration_fails_closed_without_signing_secret(client, monkeypatch):
+    http, _ = client
+    monkeypatch.delenv("SONNY_AUTH_SECRET", raising=False)
+    response = http.post("/users", json={"name": "test"})
+    assert response.status_code == 503
+
+
+def test_registration_fails_closed_with_short_signing_secret(client, monkeypatch):
+    http, _ = client
+    monkeypatch.setenv("SONNY_AUTH_SECRET", "too-short")
+    response = http.post("/users", json={"name": "test"})
+    assert response.status_code == 503
+
+
+def test_existing_session_rejected_if_signing_key_removed(client, monkeypatch):
+    import jwt
+    import time
+    http, store = client
+    owner = store.create_user("owner")
+    project = store.create_project(owner, "private", "goal")
+    now = int(time.time())
+    token = jwt.encode(
+        {"sub": owner, "iat": now, "exp": now + 3600},
+        "test-only-signing-key-not-for-production", algorithm="HS256",
+    )
+    monkeypatch.delenv("SONNY_AUTH_SECRET", raising=False)
+    response = http.get(
+        f"/projects/{project}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 503
