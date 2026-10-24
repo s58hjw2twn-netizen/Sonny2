@@ -129,6 +129,22 @@ class InferenceRouteTests(unittest.TestCase):
                 third = self.client.post("/api/inference/private", json={"message": "hello"}, headers=bob)
         self.assertEqual([first.status_code, second.status_code, third.status_code], [200, 429, 200])
 
+    def test_private_route_concurrency_capacity(self):
+        from sonny_one.concurrency_gate import LocalConcurrencyGate
+        gate = LocalConcurrencyGate(max_active=1)
+        self.assertTrue(gate.acquire())
+        with patch.dict(os.environ, {"SONNY_AUTH_SECRET": "test-only-secret"}):
+            token = create_access_token("capacity-test-user")
+            with patch("sonny_one.web_app.private_concurrency", gate):
+                with patch("sonny_one.web_app.generate_with_deadline") as provider:
+                    response = self.client.post("/api/inference/private",
+                                                json={"message": "hello"},
+                                                headers={"Authorization": "Bearer " + token})
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["detail"], "Inference capacity reached")
+        provider.assert_not_called()
+        gate.release()
+
     def test_empty_message_rejected(self):
         response = self.client.post("/api/inference/demo", json={"message": "  "})
         self.assertEqual(response.status_code, 422)
