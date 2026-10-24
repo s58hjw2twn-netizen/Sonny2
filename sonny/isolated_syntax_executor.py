@@ -69,10 +69,8 @@ def execute_syntax_check(workspace: str, image: str, snapshot_sha256: str) -> di
             raise RuntimeError("executor output limit exceeded")
         stdout = result.stdout
         stderr = result.stderr
-    except subprocess.TimeoutExpired:
-        code = 124
-        stdout = b""
-        stderr = b"execution timed out"
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError("Docker validation timed out") from exc
     except OSError as exc:
         raise RuntimeError("Docker executor unavailable") from exc
     if fingerprint_workspace(workspace) != snapshot_sha256:
