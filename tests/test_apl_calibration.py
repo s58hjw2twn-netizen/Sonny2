@@ -56,10 +56,10 @@ class CalibrationTests(unittest.TestCase):
 class QueueCalibrationTests(unittest.TestCase):
     def test_complete_queue_can_be_calibrated(self):
         from sonny_one.apl.calibration import calibrate_queue
-        patch_text = ("diff --git a/sonny_one/apl_targets/x.py b/sonny_one/apl_targets/x.py\\n"
-                      "--- a/sonny_one/apl_targets/x.py\\n"
-                      "+++ b/sonny_one/apl_targets/x.py\\n"
-                      "@@ -1 +1 @@\\n-old\\n+new\\n")
+        patch_text = ("diff --git a/sonny_one/apl_targets/x.py b/sonny_one/apl_targets/x.py\n"
+                      "--- a/sonny_one/apl_targets/x.py\n"
+                      "+++ b/sonny_one/apl_targets/x.py\n"
+                      "@@ -1 +1 @@\n-old\n+new\n")
         from sonny_one.apl.policy import sha256_bytes
         cid = sha256_bytes(patch_text.encode())
         example = record(cid, .8, 0)
