@@ -32,7 +32,7 @@ class ProposalStaticGateTests(unittest.TestCase):
 
     def test_rejects_truncated_patch(self):
         with self.assertRaises(ValueError):
-            reconstruct_candidate(BASE, (HEADER + HUNK).rstrip("\\n"))
+            reconstruct_candidate(BASE, (HEADER + HUNK).rstrip("\n"))
 
     def test_rejects_nontext_patch(self):
         with self.assertRaises(ValueError):
