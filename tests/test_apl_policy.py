@@ -81,5 +81,32 @@ class TestPatchPolicy(unittest.TestCase):
                 append_lineage(ledger, {"record_hash": "forged"})
 
 
+    def test_non_experimental_second_diff_denied(self):
+        patch = GOOD + GOOD.replace("sonny_one/apl_targets/", "sonny/")
+        with self.assertRaises(ValueError):
+            validate_patch(patch)
+
+    def test_dot_component_denied(self):
+        with self.assertRaises(ValueError):
+            validate_patch(GOOD.replace("apl_targets/example.py", "apl_targets/./example.py"))
+
+    def test_empty_patch_denied(self):
+        with self.assertRaises(ValueError):
+            validate_patch("")
+
+    def test_binary_patch_denied(self):
+        with self.assertRaises(ValueError):
+            validate_patch(GOOD + "GIT binary patch\\n")
+
+    def test_lineage_rejects_appending_after_tamper(self):
+        with TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "ledger.jsonl"
+            append_lineage(ledger, {"candidate": "first"})
+            data = ledger.read_text()
+            ledger.write_text(data.replace("first", "altered"))
+            with self.assertRaises(ValueError):
+                append_lineage(ledger, {"candidate": "second"})
+
+
 if __name__ == "__main__":
     unittest.main()
