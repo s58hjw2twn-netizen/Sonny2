@@ -13,13 +13,14 @@ _REPO = "s58hjw2twn-netizen/Sonny2"
 _BASE = "https://api.github.com/repos/" + _REPO
 _COMMIT = re.compile(r"^/commits/[0-9a-f]{40}$")
 _RUN = re.compile(r"^/actions/runs/[1-9][0-9]{0,19}$")
+_BRANCH = "/branches/research/apl-001"
 
 
 def github_readonly_json(url: str, *, timeout: int = 10) -> dict:
     if type(url) is not str or not url.startswith(_BASE + "/"):
         raise ValueError("GitHub URL is outside allowed repository")
     suffix = url[len(_BASE):]
-    if not (_COMMIT.fullmatch(suffix) or _RUN.fullmatch(suffix)):
+    if not (_COMMIT.fullmatch(suffix) or _RUN.fullmatch(suffix) or suffix == _BRANCH):
         raise ValueError("GitHub endpoint is not allowlisted")
     if type(timeout) is not int or not 1 <= timeout <= 20:
         raise ValueError("invalid timeout")
