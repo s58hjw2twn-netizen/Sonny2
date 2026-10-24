@@ -122,7 +122,7 @@ class TestPatchPolicy(unittest.TestCase):
 
     def test_missing_unified_header_rejected(self):
         with self.assertRaises(ValueError):
-            validate_patch(GOOD.replace("+++ b/sonny_one/apl_targets/example.py\\n", ""))
+            validate_patch(GOOD.replace("+++ b/sonny_one/apl_targets/example.py" + chr(10), ""))
 
     def test_executable_mode_change_rejected(self):
         with self.assertRaises(ValueError):
