@@ -40,8 +40,8 @@ class OfflineProvider:
         return Response("Sonny ONE is in offline demo mode. No language model is connected.", "offline-demo-v1")
 
 
-def generate(provider: Provider, prompt: str) -> Response:
-    request = Request(prompt)
+def generate(provider: Provider, prompt: str, *, timeout_seconds: float = 20.0) -> Response:
+    request = Request(prompt, timeout_seconds=timeout_seconds)
     try:
         result = provider.generate(request)
     except (TimeoutError, InferenceTimeout) as exc:
