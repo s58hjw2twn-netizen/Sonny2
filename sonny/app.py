@@ -1265,6 +1265,25 @@ def users(b: UserIn):
 
 
 # ---------------------------------------------------------
+# SESSION RENEWAL (requires an unexpired authenticated session)
+# ---------------------------------------------------------
+
+@app.post("/session/renew")
+def renew_session(
+    x_user_id: str | None = Header(None),
+    authorization: str | None = Header(None),
+):
+    identity = user(x_user_id, authorization)
+    secret = os.environ["SONNY_AUTH_SECRET"]
+    now = int(time.time())
+    token = jwt.encode(
+        {"sub": identity, "iat": now, "exp": now + 86400},
+        secret, algorithm="HS256",
+    )
+    return {"user_id": identity, "session_token": token, "expires_in": 86400}
+
+
+# ---------------------------------------------------------
 # PROJECTS
 # ---------------------------------------------------------
 
