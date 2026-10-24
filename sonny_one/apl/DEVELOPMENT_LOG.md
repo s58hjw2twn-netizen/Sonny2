@@ -97,3 +97,26 @@ publication to the authorized research branch.
   APL coverage increases from 47 to 60 tests. No real Docker experiments run.
 - Local first-pass commit: `92834fa`. Shell push failed for lack of credentials;
   publish the final tested tree through the connected GitHub Git-data API.
+
+## Published verification
+
+- Published implementation commit:
+  `a5c5b0f08848bc78b22f0e9a7e8d4fe0f99ee7f6` on `research/apl-001`.
+- Remote tree `b6b2bc313c8bff23d72d047ad2437355cb0289b4` exactly matches the
+  locally tested tree (verified by Git tree SHA and empty tree diff).
+- GitHub APL checks: run `40101331018`, **SUCCESS**.
+- GitHub full Sonny ONE tests: run `40101331039`, job `120893913413`,
+  **SUCCESS**, including dependency installation, deterministic tests and all
+  browser JavaScript syntax checks.
+- The connected specialized commit-runs endpoint returned empty results;
+  direct Actions REST reads through the same connector supplied actual evidence.
+- Local checkpoint commits `92834fa` and `caea5c1` were consolidated into the
+  single published implementation commit. No untested source differences.
+- This final log update is documentation only; its own commit identifier is
+  available in repository history, avoiding a self-referential commit hash.
+
+Authorized implementation has reached the next empirical gate. Remaining
+scientific validation needs a real, vetted sandbox and independently controlled
+fixtures/grading. No new purchase, deployment, promotion, or frozen-baseline
+change was made. Current evidence supports tested engineering safeguards, not
+validated containment or a functional intelligence gain.
