@@ -1,3 +1,9 @@
+import os
+import pytest
+
+if os.environ.get("SONNY_APL_CANDIDATE_TEST") != "1":
+    pytest.skip("APL candidate-only fixture; baseline expected to fail", allow_module_level=True)
+
 """Trusted behavioral fixtures for the RES-001 mean() experiment.
 
 This file is intended for execution only inside the separately configured
