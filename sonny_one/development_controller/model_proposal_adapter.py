@@ -30,7 +30,9 @@ def validate_model_proposal(task: dict, proposal: dict) -> dict:
     data = patch_text.encode("utf-8")
     if len(data) > MAX_PATCH_BYTES:
         raise ValueError("proposal exceeds size budget")
-    validate_patch(patch_text)
+    changed_paths = validate_patch(patch_text)
+    if changed_paths != ["sonny_one/apl_targets/offline_strategy.py"]:
+        raise ValueError("model proposal changes a path outside its exact allowlist")
     return {"task_id": task["id"],
             "candidate_id": hashlib.sha256(data).hexdigest(),
             "patch_text": patch_text, "review_only": True,
