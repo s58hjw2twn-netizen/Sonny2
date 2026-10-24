@@ -60,8 +60,14 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--queue", default="sonny_one/development_controller/tasks.json")
     parser.add_argument("--output", default=None)
+    parser.add_argument("--handoff", action="store_true", help="Generate non-authorizing coding-agent handoff")
     args = parser.parse_args()
-    result = plan(json.loads(Path(args.queue).read_text(encoding="utf-8")))
+    queue = json.loads(Path(args.queue).read_text(encoding="utf-8"))
+    if args.handoff:
+        from sonny_one.development_controller.handoff import build_handoff
+        result = build_handoff(queue)
+    else:
+        result = plan(queue)
     output = json.dumps(result, indent=2, sort_keys=True) + "\n"
     if args.output:
         Path(args.output).write_text(output, encoding="utf-8")
