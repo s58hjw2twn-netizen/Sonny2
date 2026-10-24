@@ -17,6 +17,8 @@ on:
   pull_request:
     paths:
       - "sonny/research_agent.py"
+      - "sonny/isolated_test_command.py"
+      - "tests/test_isolated_test_command.py"
       - "sonny/candidate_stager.py"
       - "sonny/candidate_evaluator.py"
       - "tests/test_research_agent.py"
