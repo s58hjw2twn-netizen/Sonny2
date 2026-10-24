@@ -120,3 +120,21 @@ scientific validation needs a real, vetted sandbox and independently controlled
 fixtures/grading. No new purchase, deployment, promotion, or frozen-baseline
 change was made. Current evidence supports tested engineering safeguards, not
 validated containment or a functional intelligence gain.
+
+
+## Continuation checkpoint — 2026-10-24
+
+- Verified branch head `30556f30c252ff7050b0812757a31b510150dfcc` with successful APL policy checks (40101634158) and full Sonny ONE checks (40101634185).
+- Corrected fail-open Docker preflight: a missing image reference previously allowed a mock rootless daemon to pass readiness; invalid image-inspection results also needed defensive parsing. Fix: `43d20e97890dedb5a2ed2730ca6ff7d5a76f10c7`.
+- Added tests for omitted pinned image and malformed inspection response; focused APL remote checks passed (40101749179). The full-suite run 40101749198 was pending during this entry; verify it before claiming success.
+- Host readiness is **not** authorization to execute untrusted code; preflight never runs Docker containers. Docker behavior is mocked in these unit tests.
+
+### Ordered remaining empirical gates
+
+1. Provide an independently vetted disposable Linux/rootless Docker host and locally cached audited digest-pinned image. Confirm build reproducibility and offline dependencies.
+2. Run real container containment, networking, resource ceiling, timeout and cleanup tests on that host; inspect residual processes and mounted files.
+3. Independently source protected final-test fixtures and grader records that patch authors cannot choose or access before evaluation.
+4. Repeatedly run paired clean-baseline versus candidate tasks, record repair/regression deltas, uncertainty, and repeatability; avoid reusing final holdouts for optimization.
+5. Inspect results for tampering, benchmark contamination, and security problems, and require explicit owner approval before any promotion.
+
+Unverified: real hostile-code containment, task improvement, generalization, consciousness and recursive self-improvement. No production merge, public deployment, paid API charge or frozen-baseline modification.
