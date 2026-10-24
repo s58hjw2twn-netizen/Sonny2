@@ -13,7 +13,7 @@ class InferenceTests(unittest.TestCase):
         self.assertEqual(response.model_id, "offline-demo-v1")
 
     def test_timeout_budget_validation(self):
-        for timeout in (0, -1, 121, True, "10"):
+        for timeout in (0, -1, 121, True, "10", float("nan"), float("inf"), -float("inf")):
             with self.subTest(timeout=timeout), self.assertRaises(ValueError):
                 Request("hello", timeout_seconds=timeout)
 
@@ -21,6 +21,13 @@ class InferenceTests(unittest.TestCase):
         class Slow:
             def generate(self, request):
                 raise TimeoutError("private timeout details")
+        with self.assertRaisesRegex(InferenceTimeout, "^Inference timed out$"):
+            generate(Slow(), "hello")
+
+    def test_provider_timeout_type_sanitized(self):
+        class Slow:
+            def generate(self, request):
+                raise InferenceTimeout("private provider details")
         with self.assertRaisesRegex(InferenceTimeout, "^Inference timed out$"):
             generate(Slow(), "hello")
 
