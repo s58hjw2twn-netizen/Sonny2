@@ -112,3 +112,21 @@ def test_model_cannot_propose_changes_to_safety_controls(protected_path):
             "content": "x = 1",
             "reason": "Change protected source",
         })
+
+
+@pytest.mark.parametrize("protected_path", [
+    "sonny/security_new.py",
+    "sonny/auth_helpers.py",
+    "sonny/model_future_gate.py",
+    "sonny/isolated_future.py",
+    "sonny/paired_future.py",
+    "sonny/candidate_future.py",
+    "sonny/research_future.py",
+])
+def test_model_cannot_edit_future_control_modules(protected_path):
+    with pytest.raises(ValueError, match="safety controls"):
+        validate_model_patch({
+            "path": protected_path,
+            "content": "x = 1",
+            "reason": "Proposed edit",
+        })
