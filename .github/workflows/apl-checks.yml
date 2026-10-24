@@ -23,6 +23,6 @@ jobs:
         with:
           python-version: '3.11'
       - name: Check syntax
-        run: python -m compileall -q sonny_one/apl tests/test_apl_policy.py
+        run: python -m compileall -q sonny_one/apl tests
       - name: APL policy tests (stdlib unittest, no package installation)
         run: python -m unittest discover -s tests -p 'test_apl_*.py' -v
