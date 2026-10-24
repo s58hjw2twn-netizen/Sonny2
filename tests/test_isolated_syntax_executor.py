@@ -95,3 +95,18 @@ def test_oversized_output_rejected(tmp_path):
                return_value=subprocess.CompletedProcess([], 0, b"x" * 1048577, b"")):
         with pytest.raises(RuntimeError, match="output limit"):
             execute_syntax_check(str(tmp_path), IMAGE, snapshot(tmp_path))
+
+
+def test_command_fingerprint_includes_security_flags(tmp_path):
+    from sonny.isolated_test_command import build_test_command
+    original = build_test_command
+    with patch("sonny.isolated_syntax_executor.subprocess.run",
+               return_value=subprocess.CompletedProcess([], 0, b"", b"")):
+        first = execute_syntax_check(str(tmp_path), IMAGE, snapshot(tmp_path))
+        def altered(workspace, image):
+            args = original(workspace, image)
+            args[args.index("--network") + 1] = "bridge"
+            return args
+        with patch("sonny.isolated_syntax_executor.build_test_command", side_effect=altered):
+            second = execute_syntax_check(str(tmp_path), IMAGE, fingerprint_workspace(str(tmp_path)))
+    assert first["command_sha256"] != second["command_sha256"]
