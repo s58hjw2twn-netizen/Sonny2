@@ -138,3 +138,15 @@ validated containment or a functional intelligence gain.
 5. Inspect results for tampering, benchmark contamination, and security problems, and require explicit owner approval before any promotion.
 
 Unverified: real hostile-code containment, task improvement, generalization, consciousness and recursive self-improvement. No production merge, public deployment, paid API charge or frozen-baseline modification.
+
+
+## Continuation — rootless preflight security audit (2026-10-24)
+
+- Research branch before change: `47d3290`; both APL and full-suite CI workflows succeeded.
+- Found a false-positive readiness path: substring matching accepted misleading Docker security options such as `name=not-rootless`. Changed detection to accept only exact recognized tokens (`name=rootless` or `rootless`).
+- Added negative regression cases for misleading strings and non-string JSON security-option entries.
+- Code commit: `5dbfeb3278e566839a648ed28dba914a23f4e3c2`.
+- GitHub remote verification: APL policy checks run `40101935669` SUCCESS; full Sonny ONE tests run `40101935664` SUCCESS.
+- These are unit/mock and standard CI results. They do not establish a real rootless daemon, pinned runtime, containment, or any candidate functional improvement.
+
+Next blocker remains a disposable audited Linux Docker host, vetted hash-pinned offline image, and independent private test/grader custody. Avoid candidate execution against a host not independently confirmed. No production promotion or deployment.
