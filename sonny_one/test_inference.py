@@ -2,7 +2,7 @@
 import unittest
 
 from sonny_one.inference import (
-    InferenceFailure, OfflineProvider, Request, Response, generate,
+    InferenceFailure, InferenceTimeout, OfflineProvider, Request, Response, generate,
 )
 
 
@@ -11,6 +11,18 @@ class InferenceTests(unittest.TestCase):
         response = generate(OfflineProvider(), "hello")
         self.assertTrue(response.demo)
         self.assertEqual(response.model_id, "offline-demo-v1")
+
+    def test_timeout_budget_validation(self):
+        for timeout in (0, -1, 121, True, "10"):
+            with self.subTest(timeout=timeout), self.assertRaises(ValueError):
+                Request("hello", timeout_seconds=timeout)
+
+    def test_timeout_sanitized(self):
+        class Slow:
+            def generate(self, request):
+                raise TimeoutError("private timeout details")
+        with self.assertRaisesRegex(InferenceTimeout, "^Inference timed out$"):
+            generate(Slow(), "hello")
 
     def test_empty_input(self):
         with self.assertRaises(ValueError):
