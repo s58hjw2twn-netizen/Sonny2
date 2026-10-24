@@ -1,6 +1,6 @@
 """Isolated reference tests; run python -m unittest discover -s sonny_one/reference_architecture -p 'test_*.py'."""
 import unittest
-from sonny import Sonny, ConsentMemory, SelfModel
+from sonny_reference import Sonny, ConsentMemory, SelfModel
 
 class SonnyReferenceTests(unittest.TestCase):
     def test_offline_response(self):
