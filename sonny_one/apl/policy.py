@@ -51,7 +51,11 @@ def sha256_bytes(data: bytes) -> str:
 def append_lineage(ledger: Path, record: dict) -> str:
     """Hash-linked local audit trail. File permissions/backups still required."""
     ledger = Path(ledger)
+    if "previous_hash" in record or "record_hash" in record:
+        raise ValueError("Reserved lineage fields cannot be supplied by a candidate")
     ledger.parent.mkdir(parents=True, exist_ok=True)
+    if ledger.exists() and not verify_lineage(ledger):
+        raise ValueError("Existing lineage is invalid; refusing to append")
     previous = "0" * 64
     if ledger.exists():
         lines = ledger.read_text(encoding="utf-8").splitlines()
