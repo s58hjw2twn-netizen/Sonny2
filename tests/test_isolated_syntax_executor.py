@@ -80,3 +80,18 @@ def test_workspace_mutation_during_execution_rejected(tmp_path):
     with patch("sonny.isolated_syntax_executor.subprocess.run", side_effect=mutate):
         with pytest.raises(RuntimeError, match="workspace changed"):
             execute_syntax_check(str(tmp_path), IMAGE, original)
+
+
+@pytest.mark.parametrize("code", [125, 126, 127])
+def test_docker_infrastructure_failure_is_not_candidate_result(tmp_path, code):
+    with patch("sonny.isolated_syntax_executor.subprocess.run",
+               return_value=subprocess.CompletedProcess([], code, b"", b"docker error")):
+        with pytest.raises(RuntimeError, match="Docker failed"):
+            execute_syntax_check(str(tmp_path), IMAGE, snapshot(tmp_path))
+
+
+def test_oversized_output_rejected(tmp_path):
+    with patch("sonny.isolated_syntax_executor.subprocess.run",
+               return_value=subprocess.CompletedProcess([], 0, b"x" * 1048577, b"")):
+        with pytest.raises(RuntimeError, match="output limit"):
+            execute_syntax_check(str(tmp_path), IMAGE, snapshot(tmp_path))
