@@ -13,8 +13,9 @@ _EVIDENCE_KEYS = ("snapshot_sha256", "command_sha256", "exit_code", "stdout_sha2
 def run_paired_syntax_checks(baseline_workspace: str, candidate_workspace: str, image: str) -> dict:
     baseline_input = Path(baseline_workspace)
     candidate_input = Path(candidate_workspace)
-    if baseline_input.is_symlink() or candidate_input.is_symlink():
-        raise ValueError("symlinked workspace root is forbidden")
+    for root in (baseline_input, candidate_input):
+        if any(part.is_symlink() for part in (root, *root.parents)):
+            raise ValueError("symlinked workspace path is forbidden")
     baseline = baseline_input.resolve(strict=True)
     candidate = candidate_input.resolve(strict=True)
     if baseline == candidate or baseline in candidate.parents or candidate in baseline.parents:
