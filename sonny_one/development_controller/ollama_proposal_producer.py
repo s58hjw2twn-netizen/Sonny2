@@ -10,6 +10,9 @@ from __future__ import annotations
 import json
 import re
 from urllib.request import Request, build_opener, HTTPRedirectHandler, ProxyHandler
+from pathlib import Path
+
+from sonny_one.development_controller.coding_context import build_coding_context, render_coding_prompt
 
 _MODEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$")
 _ENDPOINT = "http://127.0.0.1:11434/api/generate"
@@ -21,7 +24,8 @@ class _NoRedirect(HTTPRedirectHandler):
 
 
 class OllamaProposalProducer:
-    def __init__(self, *, model: str, enabled: bool = False, timeout: int = 45):
+    def __init__(self, *, model: str, enabled: bool = False, timeout: int = 45,
+                 repo_root: Path | None = None):
         if not isinstance(model, str) or not _MODEL.fullmatch(model):
             raise ValueError("invalid local model name")
         if type(timeout) is not int or not 1 <= timeout <= 120:
@@ -29,6 +33,7 @@ class OllamaProposalProducer:
         self.model = model
         self.enabled = enabled is True
         self.timeout = timeout
+        self.repo_root = Path(repo_root) if repo_root is not None else None
 
     def __call__(self, task: dict) -> dict:
         if not self.enabled:
@@ -45,6 +50,8 @@ class OllamaProposalProducer:
             "Use a unified git diff with diff --git, --- and +++ headers. "
             "Keep the change minimal. Your output will be rejected if unsafe."
         )
+        if self.repo_root is not None:
+            prompt = render_coding_prompt(build_coding_context(self.repo_root))
         body = json.dumps({"model": self.model, "prompt": prompt,
                            "stream": False, "format": "json",
                            "options": {"temperature": 0, "num_predict": 1024}}).encode()
