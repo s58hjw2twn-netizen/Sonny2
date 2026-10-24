@@ -146,7 +146,7 @@ def evaluate(source, revision, patch_file, trusted, heldout, image,
                  "heldout": report["baseline_heldout"]},
                 {"base_revision": revision,
                  "deterministic": report["deterministic"],
-                 "heldout": report.get("heldout", {"exit_code": -1})})
+                 "heldout": report.get("heldout", {"exit_code": -1, "skipped": True})})
             baseline_ok = (report["baseline_deterministic"]["exit_code"] == 0
                            and report["baseline_heldout"]["exit_code"] == 0)
             candidate_ok = (report["deterministic"]["exit_code"] == 0
