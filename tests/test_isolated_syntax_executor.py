@@ -110,3 +110,17 @@ def test_command_fingerprint_includes_security_flags(tmp_path):
         with patch("sonny.isolated_syntax_executor.build_test_command", side_effect=altered):
             second = execute_syntax_check(str(tmp_path), IMAGE, fingerprint_workspace(str(tmp_path)))
     assert first["command_sha256"] != second["command_sha256"]
+
+
+def test_unexpected_mount_rejected_before_docker(tmp_path):
+    from sonny.isolated_test_command import build_test_command
+    original = build_test_command
+    def altered(workspace, image):
+        args = original(workspace, image)
+        args[args.index("--mount") + 1] = "type=bind,source=/tmp, target=/workspace,readonly"
+        return args
+    with patch("sonny.isolated_syntax_executor.build_test_command", side_effect=altered):
+        with patch("sonny.isolated_syntax_executor.subprocess.run") as run:
+            with pytest.raises(ValueError, match="unexpected Docker workspace mount"):
+                execute_syntax_check(str(tmp_path), IMAGE, snapshot(tmp_path))
+            run.assert_not_called()
