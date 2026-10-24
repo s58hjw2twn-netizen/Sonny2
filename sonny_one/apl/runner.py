@@ -72,7 +72,7 @@ def execute(argv, timeout=90):
                           timeout=timeout, check=False)
 
 
-def docker_test(image, workspace, suite, timeout):
+def docker_test(image, workspace, suite, timeout, *, candidate=False):
     name = "sonny-apl-" + uuid.uuid4().hex
     started = time.monotonic()
     command = [
@@ -83,7 +83,7 @@ def docker_test(image, workspace, suite, timeout):
         "--env=HOME=/tmp", "--env=PYTHONPATH=/src",
         "--env=PYTHONDONTWRITEBYTECODE=1",
         "--env=PYTEST_DISABLE_PLUGIN_AUTOLOAD=1",
-        "--env=SONNY_APL_CANDIDATE_TEST=1",
+        "--env=SONNY_APL_CANDIDATE_TEST=" + ("1" if candidate else "0"),
         "--volume=" + str(workspace) + ":/src:ro",
         "--volume=" + str(suite) + ":/trusted:ro",
         "--workdir=/src", "--entrypoint=python", image,
@@ -213,9 +213,9 @@ def evaluate(source, revision, patch_file, trusted, heldout, image,
             workspace.chmod(0o755)
             report["baseline_deterministic"] = docker_test(image, baseline, trusted_copy, timeout)
             report["baseline_heldout"] = docker_test(image, baseline, heldout_copy, timeout)
-            report["deterministic"] = docker_test(image, workspace, trusted_copy, timeout)
+            report["deterministic"] = docker_test(image, workspace, trusted_copy, timeout, candidate=True)
             if report["deterministic"]["exit_code"] == 0:
-                report["heldout"] = docker_test(image, workspace, heldout_copy, timeout)
+                report["heldout"] = docker_test(image, workspace, heldout_copy, timeout, candidate=True)
             if (suite_fingerprint(trusted) != trusted_hash or
                     suite_fingerprint(heldout) != heldout_hash or
                     suite_fingerprint(trusted_copy) != trusted_hash or
