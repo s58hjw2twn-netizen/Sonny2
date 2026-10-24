@@ -35,3 +35,48 @@ Never imply continuous autonomous work merely because ChatGPT remains open.
 ## Research integrity
 Frozen SEB-1.0, CSAT-1.3 and RSI v1.3 are read-only.
 Keep experimental self-improvement separate from production and require human approval for promotion.
+
+
+## Low-usage Work/Codex execution policy — 2026-10-24
+
+Applies to all further Sonny ONE research development sessions, especially
+`research/apl-001`. This policy controls engineering behavior; it does not
+change account tier, model selection, billing settings or product quotas.
+
+1. **Milestone-based work:** Batch closely related code, regression tests and
+   documentation into a coherent milestone. Avoid one-commit-per-small-edit
+   churn; don't generate status-only commits unless needed to preserve evidence.
+2. **Cheap-first tool routing:** Use efficient available models/settings for
+   routine inspection, refactoring and test maintenance. Escalate to a stronger
+   reasoning configuration for high-risk security reviews, hard debugging and
+   architecture changes. Do not assume the assistant can modify host model
+   settings or usage allowances.
+3. **Minimal tool calls:** Read the current branch HEAD and relevant paths once,
+   then reuse observed SHAs and file contents. Do not repeatedly fetch the
+   same repository tree. Avoid unnecessary speculative tool calls.
+4. **Tests before commit:** Run fast targeted offline/local tests first, then
+   the complete local suite when dependencies are available. Fix known failures
+   before publishing. Remote GitHub CI is the independent verification gate,
+   not a replacement for local testing.
+5. **CI economy:** Publish one grouped change after local verification; check
+   actual GitHub Actions conclusions once near completion (and as necessary
+   for genuine failures). Do not flood CI through trivial documentation commits
+   or rapid polling. Never claim a pending workflow passed.
+6. **Security first:** Never bypass security tests, provenance checks, review
+   boundaries, isolation rules, or evidence requirements to save usage.
+   No production promotion, deployment, secret access, paid API/service, or
+   frozen-research modification without explicit owner approval.
+7. **Stop rules:** Stop at a real infrastructure/permission blocker, an
+   exhausted session allowance, a necessary owner approval, or when further
+   work would be repetitive with little testable value. Work other independent
+   tasks first if productive.
+8. **Handoff:** Leave a concise checkpoint with exact branch/commit, tests
+   *actually run* and their results, remaining blockers and the next concrete
+   task. Keep the standing task queue up to date when priorities materially
+   change. Do not repeatedly ask the owner to type "Continue".
+9. **Cost discipline:** Use existing free resources and no unapproved
+   expenditure. Optimize for verified, security-reviewed improvements per
+   execution cycle, not commit count or agent activity.
+10. **Truth in status:** Scheduled or persistent background development must
+    not be implied without a real operating task/session. Work sessions and
+    ordinary ChatGPT conversations are not unlimited autonomous agents.
