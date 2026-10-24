@@ -31,7 +31,7 @@ def validate_task(task: Task) -> None:
         normalized = PurePosixPath(path)
         if (
             not path or path.startswith("/") or "\\" in path
-            or ".." in normalized.parts or str(normalized) != path
+            or ".." in normalized.parts or "//" in path or str(normalized) != path
             or path.startswith(PROTECTED_PREFIXES)
             or not path.startswith(ALLOWED_ROOTS)
         ):
