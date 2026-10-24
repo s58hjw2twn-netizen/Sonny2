@@ -108,5 +108,26 @@ class TestPatchPolicy(unittest.TestCase):
                 append_lineage(ledger, {"candidate": "second"})
 
 
+    def test_spoofed_original_header_rejected(self):
+        patch = GOOD.replace("--- a/sonny_one/apl_targets/example.py",
+                             "--- a/sonny_one/private.py")
+        with self.assertRaises(ValueError):
+            validate_patch(patch)
+
+    def test_spoofed_destination_header_rejected(self):
+        patch = GOOD.replace("+++ b/sonny_one/apl_targets/example.py",
+                             "+++ b/sonny_one/private.py")
+        with self.assertRaises(ValueError):
+            validate_patch(patch)
+
+    def test_missing_unified_header_rejected(self):
+        with self.assertRaises(ValueError):
+            validate_patch(GOOD.replace("+++ b/sonny_one/apl_targets/example.py\\n", ""))
+
+    def test_executable_mode_change_rejected(self):
+        with self.assertRaises(ValueError):
+            validate_patch(GOOD + "new mode 100755\\n")
+
+
 if __name__ == "__main__":
     unittest.main()
