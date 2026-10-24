@@ -57,8 +57,8 @@ def main():
     assert staged["candidate"]["sonny/example.py"] != source
     assert staged["changed_paths"] == ["sonny/example.py"]
     expected_digest = hashlib.sha256()
-    expected_digest.update(b"sonny/example.py\\x00")
-    expected_digest.update(staged["candidate"]["sonny/example.py"].encode() + b"\\x00")
+    expected_digest.update(b"sonny/example.py\x00")
+    expected_digest.update(staged["candidate"]["sonny/example.py"].encode() + b"\x00")
     assert staged["sha256"] == expected_digest.hexdigest()
     assert staged["commit_allowed"] is False
     assert staged["independently_verified"] is False
