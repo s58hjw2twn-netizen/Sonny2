@@ -7,6 +7,16 @@ import hashlib
 
 MAX_PATCH_BYTES = 32_000
 ALLOWED_PREFIXES = ("sonny/", "tests/")
+PROTECTED_FILES = frozenset({
+    "sonny/model_patch_gate.py",
+    "sonny/candidate_stager.py",
+    "sonny/research_agent.py",
+    "sonny/isolated_test_command.py",
+    "sonny/isolated_syntax_executor.py",
+    "sonny/paired_syntax_runner.py",
+    "sonny/paired_execution_review.py",
+    "sonny/candidate_evaluator.py",
+})
 
 
 def validate_model_patch(proposal: dict) -> dict:
@@ -19,6 +29,8 @@ def validate_model_patch(proposal: dict) -> dict:
             any(part in ("", ".", "..") for part in path.split("/")) or
             not path.endswith(".py") or path.startswith("tests/__")):
         raise ValueError("unsafe patch path")
+    if path in PROTECTED_FILES:
+        raise ValueError("model cannot modify research safety controls")
     if not isinstance(content, str) or not isinstance(reason, str):
         raise ValueError("invalid patch fields")
     try:
