@@ -193,3 +193,20 @@ def test_other_user_cannot_write_to_private_project(client):
     )
     assert response.status_code == 404
     assert store.memories(owner, project) == []
+
+
+def test_signed_token_for_nonexistent_account_rejected(client):
+    import jwt
+    import time
+    http, _ = client
+    now = int(time.time())
+    token = jwt.encode(
+        {"sub": "deleted-or-nonexistent-user", "iat": now, "exp": now + 3600},
+        "test-only-signing-key-not-for-production", algorithm="HS256",
+    )
+    response = http.post(
+        "/projects",
+        json={"name": "should not exist", "goal": "test"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 401
