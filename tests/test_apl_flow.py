@@ -39,7 +39,7 @@ class TestAPLEvaluationFlow(unittest.TestCase):
             (trusted / "test_basic.py").write_text("def test_basic(): assert True\n")
             (heldout / "test_hidden.py").write_text("def test_hidden(): assert True\n")
             calls = []
-            def fake_docker(image, workspace, suite, timeout):
+            def fake_docker(image, workspace, suite, timeout, *, candidate=False):
                 calls.append((Path(workspace).name, Path(suite).name))
                 return {"exit_code": 0, "stdout_tail": "", "stderr_tail": ""}
             with patch("sonny_one.apl.runner.docker_test", side_effect=fake_docker):
@@ -73,7 +73,7 @@ class TestAPLEvaluationFlow(unittest.TestCase):
             trusted, heldout = root / "trusted", root / "heldout"
             trusted.mkdir()
             heldout.mkdir()
-            def fake_docker(image, workspace, suite, timeout):
+            def fake_docker(image, workspace, suite, timeout, *, candidate=False):
                 code = 1 if Path(workspace).name == "baseline" else 0
                 return {"exit_code": code, "stdout_tail": "", "stderr_tail": ""}
             with patch("sonny_one.apl.runner.docker_test", side_effect=fake_docker):
@@ -107,7 +107,7 @@ class TestAPLEvaluationFlow(unittest.TestCase):
             trusted.mkdir()
             heldout.mkdir()
             calls = []
-            def fake_docker(image, workspace, suite, timeout):
+            def fake_docker(image, workspace, suite, timeout, *, candidate=False):
                 calls.append((Path(workspace).name, Path(suite).name))
                 code = 1 if Path(workspace).name == "workspace" else 0
                 return {"exit_code": code, "stdout_tail": "", "stderr_tail": ""}
