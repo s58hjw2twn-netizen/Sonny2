@@ -93,3 +93,22 @@ def test_model_patch_rejects_unchanged_source():
             task, {"sonny/sample.py": "x = 1"},
             {"path": "sonny/sample.py", "content": "x = 1", "reason": "Update value"},
         )
+
+
+@pytest.mark.parametrize("protected_path", [
+    "sonny/model_patch_gate.py",
+    "sonny/candidate_stager.py",
+    "sonny/research_agent.py",
+    "sonny/isolated_test_command.py",
+    "sonny/isolated_syntax_executor.py",
+    "sonny/paired_syntax_runner.py",
+    "sonny/paired_execution_review.py",
+    "sonny/candidate_evaluator.py",
+])
+def test_model_cannot_propose_changes_to_safety_controls(protected_path):
+    with pytest.raises(ValueError, match="safety controls"):
+        validate_model_patch({
+            "path": protected_path,
+            "content": "x = 1",
+            "reason": "Change protected source",
+        })
