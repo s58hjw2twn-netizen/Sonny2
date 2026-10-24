@@ -110,3 +110,16 @@ def test_plan_stage_syntax_evaluate_dry_run():
     assert assessment["independently_verified"] is False
     assert assessment["commit_allowed"] is False
     assert source["sonny/sample.py"] == "answer = 1\n"
+
+
+def test_dry_run_blocks_broken_python_before_evaluation():
+    from sonny.research_agent import plan
+    task = Task("broken", "Check invalid change", ("sonny/sample.py",))
+    assert plan([task])["tasks"][0]["execution_allowed"] is False
+    staged = stage_candidate(
+        task, {"sonny/sample.py": "answer = 1\n"},
+        [Replacement("sonny/sample.py", "answer = 1", "def invalid(:")],
+    )
+    assert check_python_syntax(staged)["all_passed"] is False
+    with pytest.raises(ValueError, match="syntax"):
+        evaluate_candidate(staged, {"syntax": True}, {"syntax": True})
