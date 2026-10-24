@@ -29,3 +29,26 @@ class ProvenanceTests(unittest.TestCase):
             ledger = Path(tmp) / "missing"
             self.assertFalse(verify_report_lineage({}, ledger))
             self.assertFalse(verify_report_lineage({"lineage_hash": "a"}, ledger))
+
+    def test_independent_hmac_anchor_detects_rewrite_and_wrong_key(self):
+        from sonny_one.apl.provenance import create_authenticated_anchor, verify_authenticated_anchor
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "ledger"
+            append_lineage(ledger, {"event": "first"})
+            secret = b"k" * 32
+            anchor = create_authenticated_anchor(ledger, secret, key_id="offline-custodian")
+            self.assertTrue(verify_authenticated_anchor(ledger, anchor, secret))
+            self.assertFalse(verify_authenticated_anchor(ledger, anchor, b"x" * 32))
+            append_lineage(ledger, {"event": "next"})
+            self.assertFalse(verify_authenticated_anchor(ledger, anchor, secret))
+            with self.assertRaises(ValueError):
+                create_authenticated_anchor(ledger, b"weak", key_id="offline")
+
+    def test_anchor_rejects_invalid_metadata(self):
+        from sonny_one.apl.provenance import create_authenticated_anchor, verify_authenticated_anchor
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "ledger"
+            append_lineage(ledger, {"event": "first"})
+            anchor = create_authenticated_anchor(ledger, b"k" * 32, key_id="custodian")
+            altered = dict(anchor, format="unknown")
+            self.assertFalse(verify_authenticated_anchor(ledger, altered, b"k" * 32))
