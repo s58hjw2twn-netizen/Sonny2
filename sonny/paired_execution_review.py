@@ -3,8 +3,6 @@
 Evidence is descriptive, not authenticated. This module never executes code,
 approves commits, or treats caller-supplied results as independent verification.
 """
-import hashlib
-
 
 def summarize_pair(baseline: dict, candidate: dict) -> dict:
     def validate(record: dict) -> dict:
