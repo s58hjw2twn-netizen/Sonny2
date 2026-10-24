@@ -6,9 +6,47 @@ This is not a general-purpose untrusted-code sandbox.
 import hashlib
 import json
 import subprocess
+from pathlib import Path
 
 from sonny.isolated_test_command import build_test_command
 
+
+
+def fingerprint_workspace(workspace: str) -> str:
+    """Hash a bounded, symlink-free source snapshot using evaluator framing."""
+    root = Path(workspace)
+    if not root.is_dir() or root.is_symlink():
+        raise ValueError("invalid workspace")
+    digest = hashlib.sha256()
+    count = total = 0
+    for folder in ("sonny", "tests"):
+        base = root / folder
+        if base.is_symlink():
+            raise ValueError("symlinked source directory")
+        if not base.is_dir():
+            continue
+        for path in sorted(base.rglob("*")):
+            if path.is_symlink():
+                raise ValueError("symlinked workspace entry")
+            if path.is_dir():
+                continue
+            if not path.is_file():
+                raise ValueError("non-regular workspace entry")
+            if path.suffix != ".py":
+                raise ValueError("unexpected workspace file")
+            count += 1
+            if count > 128 or path.stat().st_size > 200000:
+                raise ValueError("workspace limit exceeded")
+            raw = path.read_bytes()
+            total += len(raw)
+            if total > 2000000:
+                raise ValueError("workspace limit exceeded")
+            relative = path.relative_to(root).as_posix()
+            digest.update(relative.encode() + bytes([0]))
+            digest.update(raw + bytes([0]))
+    if count == 0:
+        raise ValueError("empty workspace")
+    return digest.hexdigest()
 
 def execute_syntax_check(workspace: str, image: str, snapshot_sha256: str) -> dict:
     if not isinstance(snapshot_sha256, str) or len(snapshot_sha256) != 64 or any(
@@ -16,6 +54,8 @@ def execute_syntax_check(workspace: str, image: str, snapshot_sha256: str) -> di
     ):
         raise ValueError("invalid snapshot fingerprint")
     command = build_test_command(workspace, image)
+    if fingerprint_workspace(workspace) != snapshot_sha256:
+        raise ValueError("workspace fingerprint mismatch")
     command_hash = hashlib.sha256(
         json.dumps(command[command.index(image):], separators=(",", ":")).encode()
     ).hexdigest()
