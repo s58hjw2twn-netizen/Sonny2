@@ -51,3 +51,26 @@ class CalibrationTests(unittest.TestCase):
         r["report"]["status"] = "REJECTED"
         with self.assertRaises(ValueError):
             prediction_calibration([r])
+
+
+class QueueCalibrationTests(unittest.TestCase):
+    def test_complete_queue_can_be_calibrated(self):
+        from sonny_one.apl.calibration import calibrate_queue
+        patch_text = ("diff --git a/sonny_one/apl_targets/x.py b/sonny_one/apl_targets/x.py\\n"
+                      "--- a/sonny_one/apl_targets/x.py\\n"
+                      "+++ b/sonny_one/apl_targets/x.py\\n"
+                      "@@ -1 +1 @@\\n-old\\n+new\\n")
+        from sonny_one.apl.policy import sha256_bytes
+        cid = sha256_bytes(patch_text.encode())
+        example = record(cid, .8, 0)
+        result = calibrate_queue([{"patch_text": patch_text, "predicted_pass": .8}],
+                                 {"attempted": 1, "reports": [example["report"]],
+                                  "promotion": "FORBIDDEN", "improvement_proven": False})
+        self.assertAlmostEqual(result["brier_score"], .04)
+
+    def test_queue_rejects_unmatched_or_incomplete_evidence(self):
+        from sonny_one.apl.calibration import calibrate_queue
+        proposal = {"patch_text": "not a patch", "predicted_pass": .9}
+        with self.assertRaises(ValueError):
+            calibrate_queue([proposal], {"attempted": 0, "reports": [],
+                                         "promotion": "FORBIDDEN", "improvement_proven": False})
