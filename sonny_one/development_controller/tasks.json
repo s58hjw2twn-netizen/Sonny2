@@ -10,6 +10,14 @@
       "requires_approval": false
     },
     {
+      "id": "DEV-001",
+      "track": "app",
+      "title": "Connect isolated coding executor with verified test and commit receipts",
+      "state": "ready",
+      "priority": 1,
+      "requires_approval": false
+    },
+    {
       "id": "APP-002",
       "track": "app",
       "title": "Design consent-based encrypted memory architecture for local testing",
