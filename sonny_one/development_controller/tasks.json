@@ -5,7 +5,7 @@
       "id": "APP-001",
       "track": "app",
       "title": "Verify conversation security integration and regression tests",
-      "state": "ready",
+      "state": "done",
       "priority": 1,
       "requires_approval": false
     },
