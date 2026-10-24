@@ -1,0 +1,41 @@
+"""Regression checks for the isolated local inference endpoint."""
+import unittest
+
+from fastapi.testclient import TestClient
+from sonny_one.web_app import app
+
+
+class InferenceRouteTests(unittest.TestCase):
+    def setUp(self):
+        self.client = TestClient(app)
+
+    def test_demo_endpoint(self):
+        response = self.client.post("/api/inference/demo", json={"message": "hello"})
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["mode"], "deterministic-demo")
+        self.assertEqual(body["model_id"], "offline-demo-v1")
+        self.assertFalse(body["model_connected"])
+        self.assertIn("No language model", body["text"])
+
+    def test_empty_message_rejected(self):
+        response = self.client.post("/api/inference/demo", json={"message": "  "})
+        self.assertEqual(response.status_code, 422)
+
+    def test_long_message_rejected(self):
+        response = self.client.post("/api/inference/demo", json={"message": "x" * 4001})
+        self.assertEqual(response.status_code, 422)
+
+    def test_legacy_chat_route_preserved(self):
+        response = self.client.post("/api/chat", json={"message": "hello"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["mode"], "deterministic-demo")
+
+    def test_security_headers_preserved(self):
+        response = self.client.get("/api/status")
+        self.assertEqual(response.headers.get("X-Content-Type-Options"), "nosniff")
+        self.assertEqual(response.headers.get("Cache-Control"), "no-store")
+
+
+if __name__ == "__main__":
+    unittest.main()
