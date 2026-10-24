@@ -3,7 +3,6 @@
 Does not execute candidate code, run Docker, access test suites or promote.
 """
 import hashlib
-import shutil
 import subprocess
 import tempfile
 from pathlib import Path
