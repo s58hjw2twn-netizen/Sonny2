@@ -80,8 +80,12 @@ def main():
             (workspace / "sonny").chmod(0o755)
             result = run_container(workspace)
             print(f"{name}: exit={result.returncode}; output={result.stdout[-500:]} {result.stderr[-500:]}")
+            if result.returncode in (125, 126, 127):
+                raise RuntimeError("Docker infrastructure failure")
+            if name == "baseline" and "FAIL" not in result.stderr:
+                raise AssertionError("baseline failure must be a unittest assertion")
             results.append(result.returncode)
-        assert results[0] != 0, "baseline should fail the functional test"
+        assert results[0] == 1, "baseline must fail as a test failure (not Docker infrastructure)"
         assert results[1] == 0, "candidate must pass the functional test"
     print("PASS: isolated functional repair; no commit authority granted")
 
