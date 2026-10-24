@@ -23,12 +23,16 @@ def compare(baseline: dict, candidate: dict) -> dict:
     for suite in ("deterministic", "heldout"):
         b = baseline[suite]["exit_code"] == 0
         c = candidate[suite]["exit_code"] == 0
+        skipped = candidate[suite].get("skipped") is True
         outcomes[suite] = {"baseline_pass": b, "candidate_pass": c,
-                           "regression": b and not c, "repair": not b and c}
+                           "candidate_skipped": skipped,
+                           "regression": b and not c and not skipped,
+                           "repair": not b and c}
     regressions = [suite for suite, outcome in outcomes.items() if outcome["regression"]]
     repairs = [suite for suite, outcome in outcomes.items() if outcome["repair"]]
+    skipped = [suite for suite, outcome in outcomes.items() if outcome["candidate_skipped"]]
     return {"base_revision": baseline["base_revision"], "suites": outcomes,
-            "regressions": regressions, "repairs": repairs,
+            "regressions": regressions, "repairs": repairs, "skipped": skipped,
             "all_baseline_pass": all(outcome["baseline_pass"] for outcome in outcomes.values()),
             "all_candidate_pass": all(outcome["candidate_pass"] for outcome in outcomes.values()),
             "review_required": True, "promotion": "FORBIDDEN",
