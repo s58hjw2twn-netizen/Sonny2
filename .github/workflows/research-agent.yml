@@ -67,7 +67,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install test runner
-        run: python -m pip install pytest==8.3.4
+        run: python -m pip install pytest==8.3.4 httpx==0.28.1
       - name: Run deterministic agent boundary tests
         run: |
           python -m pytest -q tests/test_research_agent.py tests/test_candidate_stager.py tests/test_candidate_evaluator.py tests/test_isolated_test_command.py tests/test_paired_execution_review.py tests/test_isolated_syntax_executor.py tests/test_paired_syntax_runner.py tests/test_model_patch_gate.py tests/test_coding_model_provider.py tests/test_gemini_provider.py --junitxml=agent-test-results.xml
