@@ -6,7 +6,7 @@ on:
       - research/apl-001
     paths:
       - 'sonny_vision/**'
-      - 'tests/test_sonny_vision_archival_engine.py'
+      - 'tests/test_sonny_vision_*.py'
       - '.github/workflows/sonny-vision-v17.yml'
   workflow_dispatch:
 
@@ -30,4 +30,4 @@ jobs:
       - name: Run archival regression tests
         env:
           PYTHONPATH: .
-        run: python -m unittest discover -s tests -p 'test_sonny_vision_archival_engine.py' -v
+        run: python -m unittest discover -s tests -p 'test_sonny_vision_*.py' -v
