@@ -42,10 +42,12 @@ for name in ("alpha", "beta"):
         if report[suite]["exit_code"] != 0:
             raise RuntimeError("Nonzero Docker test exit: " + name + "/" + suite)
     benchmark = json.loads((directory / "benchmark.json").read_text())
-    if benchmark["rounds"] != 12 or benchmark["calls_per_round"] != 40:
+    if benchmark["rounds"] != 12 or benchmark["calls_per_round"] != 60:
         raise RuntimeError("Benchmark protocol mismatch")
     if not 0 < benchmark["candidate_over_baseline_ratio"] < 100:
         raise RuntimeError("Invalid benchmark ratio")
+    if benchmark.get("input_shapes") != ["descending", "ascending", "seeded_shuffled"] or benchmark.get("seed") != 1729:
+        raise RuntimeError("Benchmark input protocol mismatch")
     for metric in ("baseline_median_ns", "candidate_median_ns"):
         if not isinstance(benchmark[metric], (int, float)) or benchmark[metric] <= 0:
             raise RuntimeError("Invalid timing measurement: " + metric)
