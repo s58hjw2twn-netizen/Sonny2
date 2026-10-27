@@ -55,8 +55,8 @@ class ModelIntakeTests(unittest.TestCase):
             with open(manifest[0]["patch"], encoding="utf-8") as handle:
                 self.assertEqual(handle.read(), PATCH)
             return {"attempted": 1, "promotion": "FORBIDDEN"}
-        with patch("sonny_one.apl.policy.append_lineage", side_effect=append), \
-             patch("sonny_one.apl.loop.run_queue", side_effect=queue):
+        with (patch("sonny_one.apl.policy.append_lineage", side_effect=append),
+              patch("sonny_one.apl.loop.run_queue", side_effect=queue)):
             result = evaluate_model_proposals(
                 [proposal()], revision=REV, ledger="/tmp/apl-test-ledger.jsonl")
         self.assertEqual(result["promotion"], "FORBIDDEN")
