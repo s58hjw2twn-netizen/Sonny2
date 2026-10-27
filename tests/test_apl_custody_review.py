@@ -111,6 +111,7 @@ def anchored_fixture(tmp):
     report = runner_report()
     ledger = Path(tmp) / "ledger.jsonl"
     payload = dict(report)
+    payload.pop("lineage_hash", None)
     entry = {k: report[k] for k in (
         "candidate_id", "base_revision", "image", "trusted_suite_sha256",
         "heldout_suite_sha256", "status")}
