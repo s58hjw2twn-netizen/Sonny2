@@ -46,6 +46,16 @@ for name in ("alpha", "beta"):
         raise RuntimeError("Benchmark protocol mismatch")
     if not 0 < benchmark["candidate_over_baseline_ratio"] < 100:
         raise RuntimeError("Invalid benchmark ratio")
+    for metric in ("baseline_median_ns", "candidate_median_ns"):
+        if not isinstance(benchmark[metric], (int, float)) or benchmark[metric] <= 0:
+            raise RuntimeError("Invalid timing measurement: " + metric)
+    measured_ratio = benchmark["candidate_median_ns"] / benchmark["baseline_median_ns"]
+    if abs(measured_ratio - benchmark["candidate_over_baseline_ratio"]) > 1e-9:
+        raise RuntimeError("Reported timing ratio does not match measured medians")
+    if benchmark.get("shared_runner_noise_uncontrolled") is not True:
+        raise RuntimeError("Shared-runner uncertainty must remain explicit")
+    if benchmark.get("independent_external_benchmark_verified") is not False:
+        raise RuntimeError("External benchmark verification is not established")
     if benchmark["promotion_allowed"] is not False:
         raise RuntimeError("Benchmark must not permit promotion")
     benchmarks.append(benchmark)
