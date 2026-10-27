@@ -88,6 +88,22 @@ class TestRunnerGuardrails(unittest.TestCase):
                                candidate=True)
         self.assertIn("--env=SONNY_APL_CANDIDATE_TEST=1", execute.call_args.args[0])
 
+    def test_evaluate_fails_before_candidate_execution_if_image_missing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp)
+            for name in ("source", "trusted", "heldout"):
+                (p / name).mkdir()
+            (p / "candidate.diff").write_text("not relevant")
+            with patch.object(runner, "preflight_docker_image",
+                              side_effect=RuntimeError("image unavailable")) as preflight:
+                with patch.object(runner, "docker_test") as docker:
+                    with self.assertRaisesRegex(RuntimeError, "image unavailable"):
+                        runner.evaluate(p / "source", "a" * 40, p / "candidate.diff",
+                                        p / "trusted", p / "heldout",
+                                        "runner@sha256:" + "a" * 64, p / "ledger")
+                    preflight.assert_called_once()
+                    docker.assert_not_called()
+
     def test_preflight_rejects_unpinned_image_without_docker(self):
         with patch.object(runner, "execute") as execute:
             with self.assertRaises(ValueError):
