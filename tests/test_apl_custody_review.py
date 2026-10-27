@@ -224,3 +224,21 @@ def test_paired_replication_rejects_ledger_alias():
                                       second, alias, {}, {},
                                       anchor_key=KEY, custody_key=KEY,
                                       expected_custodian="independent-test")
+
+
+def test_paired_replication_rejects_hardlinked_ledger():
+    import os
+    import tempfile
+    from pathlib import Path
+    first, second = runner_report(), runner_report()
+    second["lineage_hash"] = "e" * 64
+    with tempfile.TemporaryDirectory() as tmp:
+        original = Path(tmp) / "first.jsonl"
+        alias = Path(tmp) / "second.jsonl"
+        original.write_text("same evidence")
+        os.link(original, alias)
+        with unittest.TestCase().assertRaisesRegex(ValueError, "distinct ledger paths"):
+            review_paired_replication(first, original, {}, {},
+                                      second, alias, {}, {},
+                                      anchor_key=KEY, custody_key=KEY,
+                                      expected_custodian="independent-test")
