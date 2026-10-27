@@ -1,5 +1,8 @@
 import os,tempfile,sqlite3
 from unittest.mock import patch
+# Test-only signing key; production must provide its own secret.
+os.environ['SONNY_AUTH_SECRET'] = 'sonny-gate1-test-only-secret-2026-do-not-use-in-production'
+_sessions = {}
 fd,path=tempfile.mkstemp(); os.close(fd); os.unlink(path); os.environ['SONNY_DB']=path
 from fastapi.testclient import TestClient
 import sonny.app as appmod
@@ -8,13 +11,17 @@ from sonny.store import Store
 c=TestClient(appmod.app)
 
 def mkuser(n='U'):
-    return c.post('/users',json={'name':n}).json()['user_id']
+    response = c.post('/users', json={'name': n})
+    response.raise_for_status()
+    account = response.json()
+    _sessions[account['user_id']] = account['session_token']
+    return account['user_id']
 
 def mkproject(u,n='Test',g='Ship MVP'):
-    return c.post('/projects',headers={'X-User-ID':u},json={'name':n,'goal':g}).json()['project_id']
+    return c.post('/projects',headers=H(u),json={'name':n,'goal':g}).json()['project_id']
 
 def H(u):
-    return {'X-User-ID':u}
+    return {'X-User-ID': u, 'Authorization': 'Bearer ' + _sessions[u]}
 
 def test_G1_01_create_isolated_account():
     u=mkuser()
