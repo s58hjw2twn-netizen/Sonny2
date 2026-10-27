@@ -108,6 +108,31 @@ def docker_test(image, workspace, suite, timeout, *, candidate=False):
                 "elapsed_seconds": time.monotonic() - started}
 
 
+
+def preflight_docker_image(image: str) -> dict:
+    """Read-only host check: require an already-present digest-pinned image.
+
+    Never pulls images, starts containers, or treats Docker access as safe by itself.
+    """
+    if not isinstance(image, str) or not IMAGE_RE.fullmatch(image):
+        raise ValueError("A digest-pinned Docker image is required")
+    try:
+        result = execute(["docker", "image", "inspect", "--format",
+                          "{{json .RepoDigests}}", image], timeout=15)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise RuntimeError("Docker image preflight unavailable") from exc
+    if result.returncode != 0:
+        raise RuntimeError("Digest-pinned image is not locally available")
+    try:
+        digests = json.loads(result.stdout)
+    except (TypeError, ValueError) as exc:
+        raise RuntimeError("Docker returned invalid image metadata") from exc
+    if not isinstance(digests, list) or image not in digests:
+        raise RuntimeError("Local image digest does not match requested image")
+    return {"image": image, "locally_verified": True,
+            "container_executed": False, "network_used": False}
+
+
 def suite_fingerprint(directory):
     """Stable digest of suite filenames and file contents."""
     digest = hashlib.sha256()
