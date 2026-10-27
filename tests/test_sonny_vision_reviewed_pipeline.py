@@ -30,12 +30,13 @@ class ReviewedPipelineTests(unittest.TestCase):
                              hashlib.sha256(self.candidate.read_bytes()).hexdigest(),
                              "operator", "candidate_review", True, self.secret)
 
-    def release(self, decision, mask=None, identity=False, signed_identity=True):
+    def release(self, decision, mask=None, identity=False, signed_identity=True, reviewers=frozenset({"operator"})):
         return release_with_quality_review(str(self.source), str(self.candidate),
                                            str(self.destination),
                                            self.mask if mask is None else mask,
                                            decision, self.secret, identity_reviewed=identity,
-                                           identity_decision=self.identity_decision() if signed_identity else None)
+                                           identity_decision=self.identity_decision() if signed_identity else None,
+                                           authorized_reviewers=reviewers)
 
     def test_unreviewed_identity_denied(self):
         result = self.release(self.decision())
@@ -59,6 +60,16 @@ class ReviewedPipelineTests(unittest.TestCase):
 
     def test_unsigned_identity_review_denied(self):
         result = self.release(self.decision(), identity=True, signed_identity=False)
+        self.assertFalse(result["exported"])
+        self.assertFalse(self.destination.exists())
+
+    def test_missing_reviewer_policy_denied(self):
+        result = self.release(self.decision(), identity=True, reviewers=None)
+        self.assertFalse(result["exported"])
+        self.assertFalse(self.destination.exists())
+
+    def test_unknown_reviewer_denied(self):
+        result = self.release(self.decision(), identity=True, reviewers=frozenset({"other"}))
         self.assertFalse(result["exported"])
         self.assertFalse(self.destination.exists())
 
