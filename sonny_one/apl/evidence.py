@@ -58,9 +58,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--evaluation", type=Path, required=True)
     parser.add_argument("--evidence", type=Path, required=True)
+    parser.add_argument("--ledger", type=Path, required=True,
+                        help="Required hash-linked experiment ledger")
     args = parser.parse_args()
-    print(json.dumps(attach_scores(json.loads(args.evaluation.read_text()),
-                                   json.loads(args.evidence.read_text())), indent=2))
+    print(json.dumps(attach_scores_verified(json.loads(args.evaluation.read_text()),
+                                            json.loads(args.evidence.read_text()),
+                                            args.ledger), indent=2))
 
 
 if __name__ == "__main__":
