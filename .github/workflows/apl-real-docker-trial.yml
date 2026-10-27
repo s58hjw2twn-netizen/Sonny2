@@ -5,6 +5,8 @@ on:
     branches: [research/apl-001]
     paths:
       - '.github/workflows/apl-real-docker-trial.yml'
+      - 'tests/apl_real_docker_trial.py'
+      - 'tests/apl_verify_ci_replication.py'
   workflow_dispatch:
 
 permissions:
