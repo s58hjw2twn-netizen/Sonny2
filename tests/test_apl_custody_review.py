@@ -176,3 +176,13 @@ def test_paired_replication_rejects_missing_report():
         review_paired_replication(None, None, {}, {}, {}, None, {}, {},
                                   anchor_key=KEY, custody_key=KEY,
                                   expected_custodian="independent-test")
+
+
+def test_paired_replication_rejects_reused_ledger_path():
+    first, second = runner_report(), runner_report()
+    second["lineage_hash"] = "e" * 64
+    with unittest.TestCase().assertRaisesRegex(ValueError, "distinct ledger paths"):
+        review_paired_replication(first, "same-ledger", {}, {},
+                                  second, "same-ledger", {}, {},
+                                  anchor_key=KEY, custody_key=KEY,
+                                  expected_custodian="independent-test")
