@@ -27,8 +27,8 @@ class EvidenceGateTests(unittest.TestCase):
             assess_experiment(self.manifest, self.baseline, {"a": float("nan"), "b": 0.8})
 
     def test_zero_gain_rejected(self):
-        with self.assertRaises(ValueError):
-            assess_experiment(self.manifest, self.baseline, self.baseline)
+        result = assess_experiment(self.manifest, self.baseline, self.baseline)
+        self.assertFalse(result['meets_preregistered_thresholds'])
 
     def test_invalid_manifest_rejected(self):
         self.manifest["maximum_regressions"] = True
