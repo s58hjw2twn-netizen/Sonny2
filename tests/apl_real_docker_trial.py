@@ -120,10 +120,32 @@ with tempfile.TemporaryDirectory(prefix="apl-perf-") as scratch:
             if results != [answer for answer in expected for _ in range(20)]:
                 raise RuntimeError("Benchmark postcheck failed")
             timings[label].append(elapsed)
+    # Shape-level measurements expose cases hidden by the aggregate median.
+    shape_timings = {}
+    for shape, values, answer in zip(("descending", "ascending", "seeded_shuffled"),
+                                     inputs, expected):
+        per_shape = {"baseline": [], "candidate": []}
+        for round_no in range(12):
+            for label in (("baseline", "candidate") if round_no % 2 == 0
+                          else ("candidate", "baseline")):
+                fn = funcs[label]
+                start = time.perf_counter_ns()
+                results = [fn(values) for _ in range(20)]
+                elapsed = time.perf_counter_ns() - start
+                if results != [answer] * 20:
+                    raise RuntimeError("Shape benchmark correctness mismatch")
+                per_shape[label].append(elapsed)
+        base = statistics.median(per_shape["baseline"])
+        candidate = statistics.median(per_shape["candidate"])
+        shape_timings[shape] = {
+            "baseline_median_ns": base,
+            "candidate_median_ns": candidate,
+            "candidate_over_baseline_ratio": candidate / base}
     medians = {label: statistics.median(values) for label, values in timings.items()}
     benchmark = {"method": "alternating_wall_clock_ns_prepostcheck",
                  "rounds": 12, "calls_per_round": len(inputs) * 20,
                  "input_shapes": ["descending", "ascending", "seeded_shuffled"],
+                 "shape_timings": shape_timings,
                  "seed": 1729,
                  "baseline_median_ns": medians["baseline"],
                  "candidate_median_ns": medians["candidate"],
