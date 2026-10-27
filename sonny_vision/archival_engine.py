@@ -89,9 +89,15 @@ def process_file(source_path: str, output_path: str, audit_path: str) -> dict:
     if not ok:
         raise RuntimeError("PNG encoding failed")
     output = Path(output_path)
-    if output.resolve() == src.resolve():
-        raise ValueError("Output must not overwrite the original")
-    output.write_bytes(png.tobytes())
+    audit = Path(audit_path)
+    if len({src.resolve(), output.resolve(), audit.resolve()}) != 3:
+        raise ValueError("Source, output and audit must have distinct paths")
+    if src.is_symlink() or output.is_symlink() or audit.is_symlink():
+        raise ValueError("Symlink paths are not allowed")
+    if output.exists() or audit.exists():
+        raise FileExistsError("Existing restoration or audit file")
+    with output.open("xb") as handle:
+        handle.write(png.tobytes())
     report = {"source_sha256": sha256(original_bytes).hexdigest(),
               "output_sha256": sha256(output.read_bytes()).hexdigest(),
               "analysis": analyze(image).__dict__,
@@ -99,5 +105,6 @@ def process_file(source_path: str, output_path: str, audit_path: str) -> dict:
               "identity_verified": False, "release_allowed": False,
               "manual_review_required": True,
               "algorithm": "bounded luminance CLAHE; no generative synthesis"}
-    Path(audit_path).write_text(json.dumps(report, indent=2), encoding="utf-8")
+    with audit.open("x", encoding="utf-8") as handle:
+        handle.write(json.dumps(report, indent=2))
     return report
