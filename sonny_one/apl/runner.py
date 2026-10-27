@@ -157,9 +157,11 @@ def suite_fingerprint(directory):
 
 
 def evaluate(source, revision, patch_file, trusted, heldout, image,
-             ledger, timeout=90, *, framework="pytest"):
+             ledger, timeout=90, *, framework="pytest", require_confidential_holdout=False):
     if framework not in ("pytest", "unittest"):
         raise ValueError("Unsupported test framework")
+    if require_confidential_holdout is not False:
+        raise RuntimeError("Confidential holdout evaluation is not supported by the candidate-readable test mount")
     if type(timeout) is not int or not 1 <= timeout <= 600:
         raise ValueError("Timeout must be an integer in [1, 600]")
     source = Path(source).resolve(strict=True)
@@ -296,12 +298,14 @@ def main():
         parser.add_argument("--" + arg, required=True)
     parser.add_argument("--timeout", type=int, default=90)
     parser.add_argument("--framework", choices=("pytest", "unittest"), default="pytest")
+    parser.add_argument("--require-confidential-holdout", action="store_true")
     args = parser.parse_args()
     if not 1 <= args.timeout <= 600:
         parser.error("Timeout must be 1–600 seconds")
     print(json.dumps(evaluate(args.source, args.revision, args.patch,
                               args.trusted, args.heldout, args.image,
-                              args.ledger, args.timeout, framework=args.framework), indent=2))
+                              args.ledger, args.timeout, framework=args.framework,
+                              require_confidential_holdout=args.require_confidential_holdout), indent=2))
 
 
 if __name__ == "__main__":
