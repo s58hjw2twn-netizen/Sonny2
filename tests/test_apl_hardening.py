@@ -151,7 +151,8 @@ class HardeningTests(unittest.TestCase):
             def mutate(*args, **kwargs):
                 (heldout/'test_changed.py').write_text('assert True')
                 return {'exit_code': 0}
-            with patch.object(runner, 'docker_test', side_effect=mutate):
+            with patch.object(runner, 'preflight_docker_image'), \
+                 patch.object(runner, 'docker_test', side_effect=mutate):
                 result = runner.evaluate(source, revision, proposal, trusted, heldout,
                     'runner@sha256:'+'a'*64, root/'ledger')
             self.assertEqual(result['status'], 'REJECTED')
