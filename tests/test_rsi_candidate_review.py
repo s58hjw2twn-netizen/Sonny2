@@ -2,7 +2,7 @@ import unittest
 
 from sonny.research_agent import Task
 from sonny.candidate_stager import Replacement, stage_candidate
-from sonny.rsi_candidate_review import review_candidate_experiment
+from sonny.rsi_candidate_review import review_candidate_experiment, review_replication_records
 
 
 class CombinedReviewTests(unittest.TestCase):
@@ -47,6 +47,29 @@ class CombinedReviewTests(unittest.TestCase):
         self.staged["candidate"]["sonny/sample.py"] = "value = 999\n"
         with self.assertRaises(ValueError):
             self.review()
+
+    def test_replication_record_matches_candidate_but_stays_unverified(self):
+        review = self.review()
+        base = dict(snapshot_sha256="b" * 64, command_sha256="c" * 64,
+                    exit_code=0, stdout_sha256="d" * 64, stderr_sha256="e" * 64)
+        candidate = dict(base, snapshot_sha256=review["candidate_sha256"])
+        result = review_replication_records(review, base, candidate)
+        self.assertTrue(result["execution_records_consistent"])
+        self.assertFalse(result["independently_verified"])
+        self.assertFalse(result["commit_allowed"])
+
+    def test_replication_record_wrong_candidate_digest_rejected(self):
+        review = self.review()
+        base = dict(snapshot_sha256="b" * 64, command_sha256="c" * 64,
+                    exit_code=0, stdout_sha256="d" * 64, stderr_sha256="e" * 64)
+        candidate = dict(base, snapshot_sha256="f" * 64)
+        with self.assertRaises(ValueError):
+            review_replication_records(review, base, candidate)
+
+    def test_failed_preliminary_review_blocks_replication(self):
+        review = self.review(scores={"a": 0.5, "b": 0.5})
+        with self.assertRaises(ValueError):
+            review_replication_records(review, {}, {})
 
 
 if __name__ == "__main__":
