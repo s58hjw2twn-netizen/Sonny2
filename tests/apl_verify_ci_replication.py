@@ -48,6 +48,8 @@ for name in ("alpha", "beta"):
         raise RuntimeError("Invalid benchmark ratio")
     if benchmark.get("input_shapes") != ["descending", "ascending", "seeded_shuffled"] or benchmark.get("seed") != 1729:
         raise RuntimeError("Benchmark input protocol mismatch")
+    if set(benchmark.get("shape_timings", {})) != set(benchmark["input_shapes"]):
+        raise RuntimeError("Unexpected or missing benchmark input shapes")
     for shape in benchmark["input_shapes"]:
         record = benchmark.get("shape_timings", {}).get(shape)
         if not isinstance(record, dict):
@@ -76,6 +78,9 @@ identity = ("candidate_id", "base_revision", "image",
             "trusted_suite_sha256", "heldout_suite_sha256", "test_framework")
 if any(reports[0][key] != reports[1][key] for key in identity):
     raise RuntimeError("Replicas disagree on candidate, image, revision or frozen suites")
+if any(benchmarks[0][key] != benchmarks[1][key]
+       for key in ("method", "rounds", "calls_per_round", "input_shapes", "seed")):
+    raise RuntimeError("Replicas disagree on benchmark protocol")
 if job_records[0]["replica_id"] == job_records[1]["replica_id"]:
     raise RuntimeError("Replicas have identical job labels")
 if reports[0]["lineage_hash"] == reports[1]["lineage_hash"]:
