@@ -2,11 +2,13 @@ name: APL real isolated Docker replication trial
 
 on:
   push:
-    branches: [research/apl-001]
+    branches: [research/apl-001, research/apl-001-benchmark-isolation-20261027]
     paths:
       - '.github/workflows/apl-real-docker-trial.yml'
       - 'tests/apl_real_docker_trial.py'
       - 'tests/apl_verify_ci_replication.py'
+      - 'tests/apl_benchmark_container.py'
+      - 'sonny_one/apl/perf_runner.py'
   workflow_dispatch:
 
 permissions:
