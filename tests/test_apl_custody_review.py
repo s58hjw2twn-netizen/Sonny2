@@ -209,3 +209,18 @@ def test_paired_custody_consistent_but_independence_not_proven():
         assert result["independently_verified"] is False
         assert result["separate_execution_independently_established"] is False
         assert result["commit_allowed"] is False
+
+
+def test_paired_replication_rejects_ledger_alias():
+    import tempfile
+    from pathlib import Path
+    first, second = runner_report(), runner_report()
+    second["lineage_hash"] = "e" * 64
+    with tempfile.TemporaryDirectory() as tmp:
+        ledger = Path(tmp) / "ledger"
+        alias = Path(tmp) / "subdir" / ".." / "ledger"
+        with unittest.TestCase().assertRaisesRegex(ValueError, "distinct ledger paths"):
+            review_paired_replication(first, ledger, {}, {},
+                                      second, alias, {}, {},
+                                      anchor_key=KEY, custody_key=KEY,
+                                      expected_custodian="independent-test")
