@@ -8,7 +8,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 from .archival_engine import quality_gate
-from .review_gate_v17 import ReviewDecision
+from .review_gate_v17 import ReviewDecision, verify_decision\nimport hashlib
 from .release_export import export_reviewed
 
 
