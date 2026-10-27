@@ -53,7 +53,9 @@ image = subprocess.check_output(
 ledger = out / "ledger.jsonl"
 append_lineage(ledger, {"replica_id": os.environ["APL_REPLICA_ID"],
                         "github_run_id": os.environ["GITHUB_RUN_ID"],
-                        "github_job": os.environ["GITHUB_JOB"]})
+                        "github_job": os.environ["GITHUB_JOB"],
+                        "github_sha": os.environ["GITHUB_SHA"],
+                        "github_run_attempt": os.environ["GITHUB_RUN_ATTEMPT"]})
 report = evaluate(source, revision, patch, trusted, heldout, image, ledger,
                   timeout=75, framework="unittest")
 (out / "report.json").write_text(json.dumps(report, indent=2, sort_keys=True))
