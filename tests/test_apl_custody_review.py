@@ -1,4 +1,4 @@
-import pytest
+import unittest
 
 from sonny_one.apl.custody import seal_evidence
 from sonny_one.apl.custody_review import review_custodied_apl_evidence, review_runner_report
@@ -48,7 +48,7 @@ def test_tampered_identity_rejected_even_if_resigned():
     item = record()
     item["candidate_id"] = "f" * 64
     envelope = seal_evidence(item, KEY, custodian_id="independent-test")
-    with pytest.raises(ValueError, match="does not match"):
+    with unittest.TestCase().assertRaisesRegex(ValueError, "does not match"):
         review_custodied_apl_evidence(
             EVALUATION, item, envelope, KEY, "independent-test")
 
@@ -57,7 +57,7 @@ def test_promotion_claim_rejected():
     item = record()
     item["promotion"] = "ALLOWED"
     envelope = seal_evidence(item, KEY, custodian_id="independent-test")
-    with pytest.raises(ValueError, match="promotion boundary"):
+    with unittest.TestCase().assertRaisesRegex(ValueError, "promotion boundary"):
         review_custodied_apl_evidence(
             EVALUATION, item, envelope, KEY, "independent-test")
 
@@ -99,5 +99,5 @@ def test_runner_result_tampering_breaks_custody():
 def test_runner_missing_heldout_result_fails_closed():
     report = runner_report()
     del report["heldout"]
-    with pytest.raises(ValueError, match="incomplete"):
+    with unittest.TestCase().assertRaisesRegex(ValueError, "incomplete"):
         review_runner_report(report, {}, KEY, "independent-test")
