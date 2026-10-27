@@ -6,9 +6,6 @@ import json
 import os
 import subprocess
 import sys
-import statistics
-import time
-import random
 from pathlib import Path
 
 from sonny_one.apl.provenance import verify_report_lineage
@@ -79,81 +76,14 @@ if report["status"] != "ELIGIBLE_FOR_HUMAN_REVIEW" or report["promotion"] != "FO
 for name in ("baseline_deterministic", "baseline_heldout", "deterministic", "heldout"):
     if report[name]["exit_code"] != 0:
         raise RuntimeError("Docker test failure: " + name)
-# Controlled local benchmark, run only after both correctness suites succeed.
-# Alternating order reduces systematic first-run advantage; results are
-# descriptive only because shared CI hosts have uncontrolled noise.
-import importlib.util
-import tempfile
-with tempfile.TemporaryDirectory(prefix="apl-perf-") as scratch:
-    baseline_file = Path(scratch) / "baseline.py"
-    candidate_file = Path(scratch) / "candidate.py"
-    baseline_file.write_text(original)
-    candidate_file.write_text(original.replace("    return sorted(values)[0]", "    return min(values)"))
-    def load_function(path, name):
-        spec = importlib.util.spec_from_file_location(name, path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module.smallest
-    funcs = {"baseline": load_function(baseline_file, "apl_base"),
-             "candidate": load_function(candidate_file, "apl_candidate")}
-    rng = random.Random(1729)
-    shuffled = list(range(12000))
-    rng.shuffle(shuffled)
-    inputs = [list(range(12000, 0, -1)),
-              list(range(-6000, 6000)), shuffled]
-    expected = [min(values) for values in inputs]
-    for fn in funcs.values():
-        for values, answer in zip(inputs, expected):
-            if fn(values) != answer:
-                raise RuntimeError("Benchmark precheck failed")
-    timings = {"baseline": [], "candidate": []}
-    for round_no in range(12):
-        for label in (("baseline", "candidate") if round_no % 2 == 0
-                      else ("candidate", "baseline")):
-            fn = funcs[label]
-            start = time.perf_counter_ns()
-            results = []
-            for values in inputs:
-                for _ in range(20):
-                    results.append(fn(values))
-            elapsed = time.perf_counter_ns() - start
-            if results != [answer for answer in expected for _ in range(20)]:
-                raise RuntimeError("Benchmark postcheck failed")
-            timings[label].append(elapsed)
-    # Shape-level measurements expose cases hidden by the aggregate median.
-    shape_timings = {}
-    for shape, values, answer in zip(("descending", "ascending", "seeded_shuffled"),
-                                     inputs, expected):
-        per_shape = {"baseline": [], "candidate": []}
-        for round_no in range(12):
-            for label in (("baseline", "candidate") if round_no % 2 == 0
-                          else ("candidate", "baseline")):
-                fn = funcs[label]
-                start = time.perf_counter_ns()
-                results = [fn(values) for _ in range(20)]
-                elapsed = time.perf_counter_ns() - start
-                if results != [answer] * 20:
-                    raise RuntimeError("Shape benchmark correctness mismatch")
-                per_shape[label].append(elapsed)
-        base = statistics.median(per_shape["baseline"])
-        candidate = statistics.median(per_shape["candidate"])
-        shape_timings[shape] = {
-            "baseline_median_ns": base,
-            "candidate_median_ns": candidate,
-            "candidate_over_baseline_ratio": candidate / base}
-    medians = {label: statistics.median(values) for label, values in timings.items()}
-    benchmark = {"method": "alternating_wall_clock_ns_prepostcheck",
-                 "rounds": 12, "calls_per_round": len(inputs) * 20,
-                 "input_shapes": ["descending", "ascending", "seeded_shuffled"],
-                 "shape_timings": shape_timings,
-                 "seed": 1729,
-                 "baseline_median_ns": medians["baseline"],
-                 "candidate_median_ns": medians["candidate"],
-                 "candidate_over_baseline_ratio": medians["candidate"] / medians["baseline"],
-                 "shared_runner_noise_uncontrolled": True,
-                 "independent_external_benchmark_verified": False,
-                 "promotion_allowed": False}
-    (out / "benchmark.json").write_text(json.dumps(benchmark, sort_keys=True, indent=2))
+# Execute experimental candidate modules ONLY in a restricted Docker container.
+# The host prepares source text and parses descriptive results; it never imports
+# or executes baseline/candidate code during performance measurement.
+from sonny_one.apl.perf_runner import benchmark_in_docker
+benchmark = benchmark_in_docker(
+    image, original, original.replace(before, after),
+    root / "tests/apl_benchmark_container.py", timeout=75)
+(out / "benchmark.json").write_text(json.dumps(benchmark, sort_keys=True, indent=2))
 manifest = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
             for p in (out / "report.json", ledger, patch, out / "benchmark.json")}
 (out / "manifest.json").write_text(json.dumps(manifest, sort_keys=True, indent=2))
