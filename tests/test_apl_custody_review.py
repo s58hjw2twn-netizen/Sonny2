@@ -103,13 +103,15 @@ def test_runner_missing_heldout_result_fails_closed():
         review_runner_report(report, {}, KEY, "independent-test")
 
 
-def anchored_fixture(tmp):
+def anchored_fixture(tmp, *, prefix=None):
     import json
     from pathlib import Path
     from sonny_one.apl.policy import append_lineage, sha256_bytes
     from sonny_one.apl.provenance import create_authenticated_anchor
     report = runner_report()
     ledger = Path(tmp) / "ledger.jsonl"
+    if prefix is not None:
+        append_lineage(ledger, {"replication_run": prefix})
     payload = dict(report)
     payload.pop("lineage_hash", None)
     entry = {k: report[k] for k in (
@@ -186,3 +188,24 @@ def test_paired_replication_rejects_reused_ledger_path():
                                   second, "same-ledger", {}, {},
                                   anchor_key=KEY, custody_key=KEY,
                                   expected_custodian="independent-test")
+
+
+def test_paired_custody_consistent_but_independence_not_proven():
+    import tempfile
+    from pathlib import Path
+    with tempfile.TemporaryDirectory() as tmp:
+        Path(tmp, "first").mkdir()
+        Path(tmp, "second").mkdir()
+        first, first_ledger, first_anchor, first_envelope = anchored_fixture(
+            Path(tmp, "first"), prefix="first")
+        second, second_ledger, second_anchor, second_envelope = anchored_fixture(
+            Path(tmp, "second"), prefix="second")
+        result = review_paired_replication(
+            first, first_ledger, first_anchor, first_envelope,
+            second, second_ledger, second_anchor, second_envelope,
+            anchor_key=KEY, custody_key=KEY,
+            expected_custodian="independent-test")
+        assert result["paired_custody_valid"] is True
+        assert result["independently_verified"] is False
+        assert result["separate_execution_independently_established"] is False
+        assert result["commit_allowed"] is False
