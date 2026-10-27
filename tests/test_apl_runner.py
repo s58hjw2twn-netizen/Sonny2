@@ -88,6 +88,33 @@ class TestRunnerGuardrails(unittest.TestCase):
                                candidate=True)
         self.assertIn("--env=SONNY_APL_CANDIDATE_TEST=1", execute.call_args.args[0])
 
+    def test_preflight_rejects_unpinned_image_without_docker(self):
+        with patch.object(runner, "execute") as execute:
+            with self.assertRaises(ValueError):
+                runner.preflight_docker_image("python:latest")
+            execute.assert_not_called()
+
+    def test_preflight_accepts_only_matching_local_digest(self):
+        image = "runner@sha256:" + "a" * 64
+        fake = type("Result", (), {"returncode": 0,
+            "stdout": __import__("json").dumps([image]), "stderr": ""})()
+        with patch.object(runner, "execute", return_value=fake) as execute:
+            result = runner.preflight_docker_image(image)
+        self.assertTrue(result["locally_verified"])
+        self.assertFalse(result["container_executed"])
+        self.assertEqual(execute.call_args.args[0][:3],
+                         ["docker", "image", "inspect"])
+
+    def test_preflight_rejects_mismatched_or_missing_digest(self):
+        image = "runner@sha256:" + "a" * 64
+        for code, output in ((0, '["other@sha256:' + 'b' * 64 + '"]'),
+                             (0, "not-json"), (1, "")):
+            fake = type("Result", (), {"returncode": code,
+                "stdout": output, "stderr": ""})()
+            with patch.object(runner, "execute", return_value=fake):
+                with self.assertRaises(RuntimeError):
+                    runner.preflight_docker_image(image)
+
     def test_docker_timeout_is_rejected(self):
         import subprocess
         with patch.object(runner, "execute",
