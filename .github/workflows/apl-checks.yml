@@ -24,5 +24,7 @@ jobs:
           python-version: '3.11'
       - name: Check syntax
         run: python -m compileall -q sonny_one/apl tests
+      - name: RSI evidence gate tests (stdlib unittest, no package installation)
+        run: python -m unittest discover -s tests -p 'test_rsi_evidence_gate.py' -v
       - name: APL policy tests (stdlib unittest, no package installation)
         run: python -m unittest discover -s tests -p 'test_apl_*.py' -v
