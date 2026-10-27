@@ -5,6 +5,7 @@ It does not prove benchmark correctness, sandbox integrity, or independence.
 No code is executed and no commit or promotion can be authorized.
 """
 from .custody import verify_evidence
+from .provenance import verify_report_lineage
 
 
 def review_custodied_apl_evidence(evaluation: dict, record: dict, envelope: dict,
@@ -77,3 +78,25 @@ def review_runner_report(evaluation: dict, envelope: dict, key: bytes,
         "status": "CUSTODY_CHECK_PASSED_REPLICATION_REQUIRED" if authentic
                   else "REJECTED_INVALID_CUSTODY",
     }
+
+
+def review_anchored_runner_report(evaluation: dict, ledger, anchor: dict,
+                                  anchor_key: bytes, envelope: dict,
+                                  custody_key: bytes, expected_custodian: str) -> dict:
+    """Require a matching local ledger and independently keyed anchor.
+
+    The caller must control the custody keys outside the experimental host.
+    This still does not establish independent replication or approve commits.
+    """
+    from .provenance import verify_authenticated_anchor
+    if not verify_report_lineage(evaluation, ledger):
+        raise ValueError("runner report does not match valid local lineage")
+    if not verify_authenticated_anchor(ledger, anchor, anchor_key):
+        raise ValueError("ledger anchor authentication failed")
+    result = review_runner_report(evaluation, envelope, custody_key,
+                                  expected_custodian)
+    result["ledger_anchor_valid"] = True
+    result["status"] = ("ANCHORED_CUSTODY_VALID_REPLICATION_REQUIRED"
+                        if result["custody_envelope_valid"]
+                        else "REJECTED_INVALID_CUSTODY")
+    return result
