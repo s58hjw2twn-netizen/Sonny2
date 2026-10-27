@@ -13,6 +13,23 @@ REV = "b" * 40
 @unittest.skipUnless(importlib.util.find_spec("cryptography") is not None,
                      "Ed25519 integration tests require optional cryptography dependency")
 class SignedHoldoutTests(unittest.TestCase):
+    def test_missing_crypto_dependency_fails_closed(self):
+        from unittest.mock import patch
+        import builtins
+        real_import = builtins.__import__
+        def block_crypto(name, *args, **kwargs):
+            if name.startswith("cryptography"):
+                raise ImportError("simulated missing dependency")
+            return real_import(name, *args, **kwargs)
+        with patch("builtins.__import__", side_effect=block_crypto):
+            with self.assertRaises(RuntimeError):
+                verify_signed_external_holdout(
+                    dict(schema_version=1, candidate_sha256=SHA, base_revision=REV,
+                         evaluator_id="isolated-lab", suite_sha256="c" * 64,
+                         result="PASS", signature="placeholder"),
+                    candidate_sha256=SHA, base_revision=REV,
+                    expected_evaluator="isolated-lab", trusted_public_key_pem="key")
+
     def setUp(self):
         from cryptography.hazmat.primitives import serialization
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
