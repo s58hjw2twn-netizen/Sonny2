@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from sonny_vision.restoration.review_gated_repair import run, digest
+from sonny_vision.restoration.review_authorization import sign_review
 
 class ReviewGateTests(unittest.TestCase):
     def setUp(self):
@@ -26,9 +27,11 @@ class ReviewGateTests(unittest.TestCase):
         self.proposal.write_text(json.dumps(self.manifest))
         self.decisions = getattr(self, "decisions", {"source_sha256":digest(self.src), "reviewer_confirmed":True, "decisions":[{"id":"A","decision":"approve"}]})
         self.decisions["proposal_sha256"] = digest(self.proposal)
+        self.decisions["reviewer_id"] = "trusted-reviewer"
+        self.decisions["authorization_hmac_sha256"] = sign_review(self.decisions, b"k"*32)
         self.votes.write_text(json.dumps(self.decisions))
     def run_gate(self):
-        return run(self.src,self.proposal,self.votes,self.out,protected_rectangles=[(0,0,10,10)])
+        return run(self.src,self.proposal,self.votes,self.out,protected_rectangles=[(0,0,10,10)],authorization_secret=b"k"*32,expected_reviewer_id="trusted-reviewer")
     def test_approved_changes_are_bounded(self):
         r=self.run_gate()
         self.assertGreater(r["changed_pixels"],0)
@@ -60,3 +63,14 @@ class ReviewGateTests(unittest.TestCase):
         self.manifest["proposals"].append(dict(self.manifest["proposals"][0]))
         self.write()
         with self.assertRaises(ValueError): self.run_gate()
+
+    def test_tampered_signed_approval_rejected(self):
+        self.decisions["decisions"][0]["decision"]="reject"
+        self.votes.write_text(json.dumps(self.decisions))
+        with self.assertRaises(ValueError): self.run_gate()
+    def test_missing_authorization_secret_rejected(self):
+        with self.assertRaises(TypeError):
+            run(self.src,self.proposal,self.votes,self.out,protected_rectangles=[(0,0,10,10)])
+    def test_wrong_signing_key_rejected(self):
+        with self.assertRaises(ValueError):
+            run(self.src,self.proposal,self.votes,self.out,protected_rectangles=[(0,0,10,10)],authorization_secret=b"x"*32)

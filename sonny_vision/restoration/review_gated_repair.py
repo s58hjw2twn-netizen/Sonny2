@@ -1,19 +1,20 @@
 """Review-gated scratch repair. Research-only; no automatic approval.
 
-Review records are externally supplied and SHA-bound, but reviewer identity is
-NOT authenticated here. An upstream trusted approval service is required.
+Review records require a trusted-backend HMAC signature. Possession of a signing
+key does not itself authenticate a human reviewer; backend auth is still required.
 """
 from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+from sonny_vision.restoration.review_authorization import verify_review
 
 
 def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def run(source, proposal_file, decisions_file, output, *, protected_rectangles):
+def run(source, proposal_file, decisions_file, output, *, protected_rectangles, authorization_secret, expected_reviewer_id=None):
     source, proposal_file, decisions_file, output = map(Path, (source, proposal_file, decisions_file, output))
     if output.suffix.lower() != ".png" or output.resolve() in (
         source.resolve(), proposal_file.resolve(), decisions_file.resolve()):
@@ -24,6 +25,7 @@ def run(source, proposal_file, decisions_file, output, *, protected_rectangles):
         raise ValueError("source digest mismatch")
     if decisions.get("proposal_sha256") != digest(proposal_file):
         raise ValueError("proposal digest mismatch")
+    verify_review(decisions, authorization_secret, expected_reviewer_id=expected_reviewer_id)
     if decisions.get("reviewer_confirmed") is not True:
         raise ValueError("explicit review confirmation required")
     candidates = proposal.get("proposals")
