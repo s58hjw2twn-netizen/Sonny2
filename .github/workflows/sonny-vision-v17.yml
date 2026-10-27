@@ -1,0 +1,33 @@
+name: Sonny Vision V17 archival checks
+
+on:
+  push:
+    branches:
+      - research/apl-001
+    paths:
+      - 'sonny_vision/**'
+      - 'tests/test_sonny_vision_archival_engine.py'
+      - '.github/workflows/sonny-vision-v17.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archival-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned image dependencies
+        run: |
+          python -m pip install --disable-pip-version-check 'numpy==1.26.4' 'opencv-python-headless==4.10.0.84'
+      - name: Run archival regression tests
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p 'test_sonny_vision_archival_engine.py' -v
