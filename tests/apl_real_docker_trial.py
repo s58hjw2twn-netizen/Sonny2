@@ -6,6 +6,8 @@ import json
 import os
 import subprocess
 import sys
+import statistics
+import time
 from pathlib import Path
 
 from sonny_one.apl.provenance import verify_report_lineage
@@ -76,7 +78,47 @@ if report["status"] != "ELIGIBLE_FOR_HUMAN_REVIEW" or report["promotion"] != "FO
 for name in ("baseline_deterministic", "baseline_heldout", "deterministic", "heldout"):
     if report[name]["exit_code"] != 0:
         raise RuntimeError("Docker test failure: " + name)
+# Controlled local benchmark, run only after both correctness suites succeed.
+# Alternating order reduces systematic first-run advantage; results are
+# descriptive only because shared CI hosts have uncontrolled noise.
+import importlib.util
+import tempfile
+with tempfile.TemporaryDirectory(prefix="apl-perf-") as scratch:
+    baseline_file = Path(scratch) / "baseline.py"
+    candidate_file = Path(scratch) / "candidate.py"
+    baseline_file.write_text(original)
+    candidate_file.write_text(original.replace("    return sorted(values)[0]", "    return min(values)"))
+    def load_function(path, name):
+        spec = importlib.util.spec_from_file_location(name, path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.smallest
+    funcs = {"baseline": load_function(baseline_file, "apl_base"),
+             "candidate": load_function(candidate_file, "apl_candidate")}
+    inputs = [list(range(12000, 0, -1)),
+              list(range(-6000, 6000))]
+    timings = {"baseline": [], "candidate": []}
+    for round_no in range(12):
+        for label in (("baseline", "candidate") if round_no % 2 == 0
+                      else ("candidate", "baseline")):
+            fn = funcs[label]
+            start = time.perf_counter_ns()
+            for values in inputs:
+                for _ in range(20):
+                    if fn(values) != min(values):
+                        raise RuntimeError("Benchmark correctness mismatch")
+            timings[label].append(time.perf_counter_ns() - start)
+    medians = {label: statistics.median(values) for label, values in timings.items()}
+    benchmark = {"method": "alternating_wall_clock_ns",
+                 "rounds": 12, "calls_per_round": len(inputs) * 20,
+                 "baseline_median_ns": medians["baseline"],
+                 "candidate_median_ns": medians["candidate"],
+                 "candidate_over_baseline_ratio": medians["candidate"] / medians["baseline"],
+                 "shared_runner_noise_uncontrolled": True,
+                 "independent_external_benchmark_verified": False,
+                 "promotion_allowed": False}
+    (out / "benchmark.json").write_text(json.dumps(benchmark, sort_keys=True, indent=2))
 manifest = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-            for p in (out / "report.json", ledger, patch)}
+            for p in (out / "report.json", ledger, patch, out / "benchmark.json")}
 (out / "manifest.json").write_text(json.dumps(manifest, sort_keys=True, indent=2))
 print("Real algorithm-change candidate passed four Docker suite executions; performance improvement not proven")
