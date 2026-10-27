@@ -97,19 +97,27 @@ with tempfile.TemporaryDirectory(prefix="apl-perf-") as scratch:
              "candidate": load_function(candidate_file, "apl_candidate")}
     inputs = [list(range(12000, 0, -1)),
               list(range(-6000, 6000))]
+    expected = [min(values) for values in inputs]
+    for fn in funcs.values():
+        for values, answer in zip(inputs, expected):
+            if fn(values) != answer:
+                raise RuntimeError("Benchmark precheck failed")
     timings = {"baseline": [], "candidate": []}
     for round_no in range(12):
         for label in (("baseline", "candidate") if round_no % 2 == 0
                       else ("candidate", "baseline")):
             fn = funcs[label]
             start = time.perf_counter_ns()
+            results = []
             for values in inputs:
                 for _ in range(20):
-                    if fn(values) != min(values):
-                        raise RuntimeError("Benchmark correctness mismatch")
-            timings[label].append(time.perf_counter_ns() - start)
+                    results.append(fn(values))
+            elapsed = time.perf_counter_ns() - start
+            if results != [expected[0]] * 20 + [expected[1]] * 20:
+                raise RuntimeError("Benchmark postcheck failed")
+            timings[label].append(elapsed)
     medians = {label: statistics.median(values) for label, values in timings.items()}
-    benchmark = {"method": "alternating_wall_clock_ns",
+    benchmark = {"method": "alternating_wall_clock_ns_prepostcheck",
                  "rounds": 12, "calls_per_round": len(inputs) * 20,
                  "baseline_median_ns": medians["baseline"],
                  "candidate_median_ns": medians["candidate"],
