@@ -29,8 +29,11 @@ _DENY_HEADERS = {
 def serve_approval_proof(*, proof_path: str, job_id: str, customer_id: str,
                          authenticated_customer_id: str, token: str,
                          expected_proof_sha256: str, secret: bytes, now: int,
-                         max_proof_bytes: int = 8_000_000) -> ProofResponse:
+                         max_proof_bytes: int = 8_000_000,
+                         proof_status: str = "awaiting_customer_approval") -> ProofResponse:
     denied = ProofResponse(403, b"Forbidden", dict(_DENY_HEADERS))
+    if proof_status != "awaiting_customer_approval":
+        return denied
     if (not customer_id or not authenticated_customer_id
             or customer_id != authenticated_customer_id):
         return denied
