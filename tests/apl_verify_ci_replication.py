@@ -48,6 +48,16 @@ for name in ("alpha", "beta"):
         raise RuntimeError("Invalid benchmark ratio")
     if benchmark.get("input_shapes") != ["descending", "ascending", "seeded_shuffled"] or benchmark.get("seed") != 1729:
         raise RuntimeError("Benchmark input protocol mismatch")
+    for shape in benchmark["input_shapes"]:
+        record = benchmark.get("shape_timings", {}).get(shape)
+        if not isinstance(record, dict):
+            raise RuntimeError("Missing shape-level timing: " + shape)
+        base = record.get("baseline_median_ns")
+        candidate = record.get("candidate_median_ns")
+        if not all(isinstance(x, (int, float)) and x > 0 for x in (base, candidate)):
+            raise RuntimeError("Invalid shape-level timing: " + shape)
+        if abs(candidate / base - record.get("candidate_over_baseline_ratio", -1)) > 1e-9:
+            raise RuntimeError("Incorrect shape-level ratio: " + shape)
     for metric in ("baseline_median_ns", "candidate_median_ns"):
         if not isinstance(benchmark[metric], (int, float)) or benchmark[metric] <= 0:
             raise RuntimeError("Invalid timing measurement: " + metric)
@@ -73,6 +83,7 @@ if reports[0]["lineage_hash"] == reports[1]["lineage_hash"]:
 print(json.dumps({"two_distinct_ci_jobs": True, "docker_suites_passed": True,
                   "candidate_over_baseline_ratios": [b["candidate_over_baseline_ratio"] for b in benchmarks],
                   "performance_result_descriptive_only": True,
+                  "per_shape_ratios": [{shape: b["shape_timings"][shape]["candidate_over_baseline_ratio"] for shape in b["input_shapes"]} for b in benchmarks],
                   "github_artifact_manifest_verified": True,
                   "independent_external_custodian_verified": False,
                   "scientific_improvement_proven": False,
