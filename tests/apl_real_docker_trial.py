@@ -8,6 +8,7 @@ import subprocess
 import sys
 import statistics
 import time
+import random
 from pathlib import Path
 
 from sonny_one.apl.provenance import verify_report_lineage
@@ -95,8 +96,11 @@ with tempfile.TemporaryDirectory(prefix="apl-perf-") as scratch:
         return module.smallest
     funcs = {"baseline": load_function(baseline_file, "apl_base"),
              "candidate": load_function(candidate_file, "apl_candidate")}
+    rng = random.Random(1729)
+    shuffled = list(range(12000))
+    rng.shuffle(shuffled)
     inputs = [list(range(12000, 0, -1)),
-              list(range(-6000, 6000))]
+              list(range(-6000, 6000)), shuffled]
     expected = [min(values) for values in inputs]
     for fn in funcs.values():
         for values, answer in zip(inputs, expected):
@@ -113,12 +117,14 @@ with tempfile.TemporaryDirectory(prefix="apl-perf-") as scratch:
                 for _ in range(20):
                     results.append(fn(values))
             elapsed = time.perf_counter_ns() - start
-            if results != [expected[0]] * 20 + [expected[1]] * 20:
+            if results != [answer for answer in expected for _ in range(20)]:
                 raise RuntimeError("Benchmark postcheck failed")
             timings[label].append(elapsed)
     medians = {label: statistics.median(values) for label, values in timings.items()}
     benchmark = {"method": "alternating_wall_clock_ns_prepostcheck",
                  "rounds": 12, "calls_per_round": len(inputs) * 20,
+                 "input_shapes": ["descending", "ascending", "seeded_shuffled"],
+                 "seed": 1729,
                  "baseline_median_ns": medians["baseline"],
                  "candidate_median_ns": medians["candidate"],
                  "candidate_over_baseline_ratio": medians["candidate"] / medians["baseline"],
