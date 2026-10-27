@@ -25,11 +25,17 @@ class ReviewedPipelineTests(unittest.TestCase):
                              hashlib.sha256(self.candidate.read_bytes()).hexdigest(),
                              "operator", "customer_release", True, self.secret)
 
-    def identity_decision(self):\n        return sign_decision(hashlib.sha256(self.source.read_bytes()).hexdigest(),\n                             hashlib.sha256(self.candidate.read_bytes()).hexdigest(),\n                             "operator", "candidate_review", True, self.secret)\n\n    def release(self, decision, mask=None, identity=False, signed_identity=True):
+    def identity_decision(self):
+        return sign_decision(hashlib.sha256(self.source.read_bytes()).hexdigest(),
+                             hashlib.sha256(self.candidate.read_bytes()).hexdigest(),
+                             "operator", "candidate_review", True, self.secret)
+
+    def release(self, decision, mask=None, identity=False, signed_identity=True):
         return release_with_quality_review(str(self.source), str(self.candidate),
                                            str(self.destination),
                                            self.mask if mask is None else mask,
-                                           decision, self.secret, identity_reviewed=identity,\n                                           identity_decision=self.identity_decision() if signed_identity else None)
+                                           decision, self.secret, identity_reviewed=identity,
+                                           identity_decision=self.identity_decision() if signed_identity else None)
 
     def test_unreviewed_identity_denied(self):
         result = self.release(self.decision())
@@ -51,7 +57,12 @@ class ReviewedPipelineTests(unittest.TestCase):
         result = self.release(self.decision(), identity=True)
         self.assertFalse(result["exported"])
 
-    def test_unsigned_identity_review_denied(self):\n        result = self.release(self.decision(), identity=True, signed_identity=False)\n        self.assertFalse(result["exported"])\n        self.assertFalse(self.destination.exists())\n\n    def test_reviewed_unmodified_candidate_exports(self):
+    def test_unsigned_identity_review_denied(self):
+        result = self.release(self.decision(), identity=True, signed_identity=False)
+        self.assertFalse(result["exported"])
+        self.assertFalse(self.destination.exists())
+
+    def test_reviewed_unmodified_candidate_exports(self):
         result = self.release(self.decision(), identity=True)
         self.assertTrue(result["exported"])
         self.assertEqual(self.destination.read_bytes(), self.candidate.read_bytes())
