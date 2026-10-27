@@ -2,6 +2,10 @@
 import unittest
 import json
 import tempfile
+import contextlib
+import io
+from unittest.mock import patch
+from sonny_one.apl.evidence import main
 from pathlib import Path
 from sonny_one.apl.policy import append_lineage, sha256_bytes
 from sonny_one.apl.evidence import attach_scores_verified
@@ -65,6 +69,24 @@ class TestExternalEvidence(unittest.TestCase):
         evidence = dict(identity(), grader="grader")
         with self.assertRaises(ValueError):
             attach_scores(identity(), evidence)
+
+
+    def test_cli_requires_ledger_and_rejects_unverified_report(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            evaluation = dict(identity(), status="REJECTED", lineage_hash="0" * 64)
+            evidence = dict(identity(), grader="external-grader",
+                            baseline_scores={"T1": 0}, candidate_scores={"T1": 1})
+            (root / "evaluation.json").write_text(json.dumps(evaluation))
+            (root / "evidence.json").write_text(json.dumps(evidence))
+            argv = ["apl-evidence", "--evaluation", str(root / "evaluation.json"),
+                    "--evidence", str(root / "evidence.json")]
+            with patch("sys.argv", argv), contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit):
+                    main()
+            with patch("sys.argv", argv + ["--ledger", str(root / "missing.jsonl")]):
+                with self.assertRaises(ValueError):
+                    main()
 
 
 if __name__ == "__main__":
