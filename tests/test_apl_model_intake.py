@@ -65,8 +65,7 @@ class ModelIntakeTests(unittest.TestCase):
         self.assertEqual(events[1][0], "queue")
 
     def test_invalid_batch_never_reaches_queue(self):
-        with patch("sonny_one.apl.loop.run_queue") as queue, \\
-             patch("sonny_one.apl.policy.append_lineage") as ledger:
+        with patch("sonny_one.apl.loop.run_queue") as queue, patch("sonny_one.apl.policy.append_lineage") as ledger:
             with self.assertRaises(ValueError):
                 evaluate_model_proposals([proposal(), proposal(model_id="bad id")],
                                          revision=REV, ledger="/tmp/apl-test-ledger.jsonl")
