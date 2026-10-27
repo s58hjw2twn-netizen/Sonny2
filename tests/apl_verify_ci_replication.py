@@ -80,9 +80,33 @@ if job_records[0]["replica_id"] == job_records[1]["replica_id"]:
     raise RuntimeError("Replicas have identical job labels")
 if reports[0]["lineage_hash"] == reports[1]["lineage_hash"]:
     raise RuntimeError("Replicas reused lineage")
+# Explicit, conservative research-only workload gate. No candidate can be
+# promoted automatically; missing target workload evidence means no approval.
+shape_names = ("descending", "ascending", "seeded_shuffled")
+shape_ratios = {
+    shape: [b["shape_timings"][shape]["candidate_over_baseline_ratio"]
+            for b in benchmarks]
+    for shape in shape_names
+}
+# Research target is the shuffled input; other shapes are reported as regressions.
+target_shape = "seeded_shuffled"
+target_pass = all(ratio <= 0.90 for ratio in shape_ratios[target_shape])
+regressed_shapes = [shape for shape in shape_names
+                    if any(ratio > 1.10 for ratio in shape_ratios[shape])]
+workload_review = {
+    "target_shape": target_shape,
+    "target_speedup_threshold_ratio": 0.90,
+    "target_passed_both_replicas": target_pass,
+    "regression_threshold_ratio": 1.10,
+    "regressed_shapes": regressed_shapes,
+    "general_purpose_approval": False,
+    "requires_documented_production_workload": True,
+    "human_review_only": True,
+}
 print(json.dumps({"two_distinct_ci_jobs": True, "docker_suites_passed": True,
                   "candidate_over_baseline_ratios": [b["candidate_over_baseline_ratio"] for b in benchmarks],
                   "performance_result_descriptive_only": True,
+                  "workload_review": workload_review,
                   "per_shape_ratios": [{shape: b["shape_timings"][shape]["candidate_over_baseline_ratio"] for shape in b["input_shapes"]} for b in benchmarks],
                   "github_artifact_manifest_verified": True,
                   "independent_external_custodian_verified": False,
