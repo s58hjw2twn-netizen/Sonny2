@@ -12,6 +12,28 @@ from sonny_one.apl.perf_runner import benchmark_in_docker
 IMAGE = "python@sha256:" + "a" * 64
 
 
+def valid_report():
+    return {
+        "promotion_allowed": False,
+        "method": "alternating_wall_clock_ns_prepostcheck",
+        "rounds": 12,
+        "calls_per_round": 60,
+        "shared_runner_noise_uncontrolled": True,
+        "independent_external_benchmark_verified": False,
+        "baseline_median_ns": 100,
+        "candidate_median_ns": 80,
+        "candidate_over_baseline_ratio": 0.8,
+        "input_shapes": ["descending"],
+        "shape_timings": {
+            "descending": {
+                "baseline_median_ns": 100,
+                "candidate_median_ns": 80,
+                "candidate_over_baseline_ratio": 0.8,
+            },
+        },
+    }
+
+
 class TestPerformanceIsolation(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -24,7 +46,7 @@ class TestPerformanceIsolation(unittest.TestCase):
         def fake_execute(argv, **kwargs):
             observed.append((argv, kwargs))
             return subprocess.CompletedProcess(argv, 0,
-                json.dumps({"promotion_allowed": False, "rounds": 12}), "")
+                json.dumps(valid_report()), "")
         with patch("sonny_one.apl.perf_runner.bounded_execute",
                    side_effect=fake_execute):
             result = benchmark_in_docker(IMAGE, "x = 1\n", "x = 2\n",
@@ -59,6 +81,25 @@ class TestPerformanceIsolation(unittest.TestCase):
         self.assertEqual(calls[1][:3], ["docker", "rm", "--force"])
         self.assertEqual(calls[1][3], calls[0][calls[0].index(
             next(a for a in calls[0] if a.startswith("--name=")))][7:])
+
+    def test_rejects_forged_or_inconsistent_benchmark_measurements(self):
+        mutations = [
+            {"candidate_over_baseline_ratio": 0.1},
+            {"baseline_median_ns": 0},
+            {"candidate_median_ns": float("nan")},
+            {"rounds": True},
+            {"independent_external_benchmark_verified": True},
+            {"shape_timings": {}},
+        ]
+        for change in mutations:
+            with self.subTest(change=change):
+                report = valid_report()
+                report.update(change)
+                with patch("sonny_one.apl.perf_runner.bounded_execute",
+                           return_value=subprocess.CompletedProcess(
+                               [], 0, json.dumps(report), "")):
+                    with self.assertRaises(RuntimeError):
+                        benchmark_in_docker(IMAGE, "", "", self.script)
 
     def test_invalid_benchmark_json_rejected(self):
         with patch("sonny_one.apl.perf_runner.bounded_execute",
