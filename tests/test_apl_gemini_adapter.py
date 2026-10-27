@@ -1,7 +1,9 @@
-"""Trusted Gemini APL adapter tests; all provider calls mocked."""
+"""Trusted Gemini adapter tests without network or optional HTTP dependencies."""
 import os
+import sys
+import types
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from sonny_one.apl.gemini_adapter import propose_with_gemini
 
@@ -19,40 +21,49 @@ class GeminiAdapterTests(unittest.TestCase):
         args.update(changes)
         return propose_with_gemini(**args)
 
-    @patch.dict(os.environ, {"GEMINI_API_KEY": "fake-unit-test-key"})
-    @patch("sonny.gemini_provider.generate_gemini", return_value=DIFF)
-    def test_validated_proposal_not_executed(self, generate):
-        result = self.call_adapter()
+    def provider(self, result=DIFF):
+        mocked = Mock(return_value=result)
+        module = types.ModuleType("sonny.gemini_provider")
+        module.generate_gemini = mocked
+        return module, mocked
+
+    def test_validated_proposal_not_executed(self):
+        module, generate = self.provider()
+        with (patch.dict(os.environ, {"GEMINI_API_KEY": "fake-unit-test-key"}),
+              patch.dict(sys.modules, {"sonny.gemini_provider": module})):
+            result = self.call_adapter()
         self.assertEqual(result["promotion"], "FORBIDDEN")
         self.assertFalse(result["tests_executed"])
         self.assertFalse(result["model_identity_authenticated"])
         self.assertEqual(result["target_paths"], [TARGET])
         self.assertTrue(result["provider_response_authenticated_by_transport"])
-        self.assertEqual(generate.call_count, 1)
+        generate.assert_called_once()
 
-    @patch.dict(os.environ, {"GEMINI_API_KEY": "fake-unit-test-key"})
-    @patch("sonny.gemini_provider.generate_gemini", return_value=DIFF.replace(
-        TARGET, "sonny/app.py"))
-    def test_rejects_unapproved_diff(self, generate):
-        with self.assertRaises(ValueError):
-            self.call_adapter()
+    def test_rejects_unapproved_diff(self):
+        module, _ = self.provider(DIFF.replace(TARGET, "sonny/app.py"))
+        with (patch.dict(os.environ, {"GEMINI_API_KEY": "fake-unit-test-key"}),
+              patch.dict(sys.modules, {"sonny.gemini_provider": module})):
+            with self.assertRaises(ValueError):
+                self.call_adapter()
 
-    @patch.dict(os.environ, {"GEMINI_API_KEY": "fake-unit-test-key"})
-    @patch("sonny.gemini_provider.generate_gemini")
-    def test_rejects_invalid_inputs_before_network(self, generate):
-        for kwargs in ({"base_revision": "main"},
-                       {"target_path": "sonny/app.py"},
-                       {"source_text": "x" * 16001},
-                       {"objective": ""}):
-            with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
-                self.call_adapter(**kwargs)
+    def test_rejects_invalid_inputs_before_network(self):
+        module, generate = self.provider()
+        with (patch.dict(os.environ, {"GEMINI_API_KEY": "fake-unit-test-key"}),
+              patch.dict(sys.modules, {"sonny.gemini_provider": module})):
+            for kwargs in ({"base_revision": "main"},
+                           {"target_path": "sonny/app.py"},
+                           {"source_text": "x" * 16001},
+                           {"objective": ""}):
+                with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                    self.call_adapter(**kwargs)
         generate.assert_not_called()
 
-    @patch.dict(os.environ, {"GEMINI_API_KEY": ""})
-    @patch("sonny.gemini_provider.generate_gemini")
-    def test_missing_key_fails_closed(self, generate):
-        with self.assertRaises(RuntimeError):
-            self.call_adapter()
+    def test_missing_key_fails_closed(self):
+        module, generate = self.provider()
+        with (patch.dict(os.environ, {"GEMINI_API_KEY": ""}),
+              patch.dict(sys.modules, {"sonny.gemini_provider": module})):
+            with self.assertRaises(RuntimeError):
+                self.call_adapter()
         generate.assert_not_called()
 
 
