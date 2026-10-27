@@ -35,3 +35,45 @@ def review_custodied_apl_evidence(evaluation: dict, record: dict, envelope: dict
         "status": "CUSTODY_CHECK_PASSED_REPLICATION_REQUIRED" if authentic
                   else "REJECTED_INVALID_CUSTODY",
     }
+
+
+def review_runner_report(evaluation: dict, envelope: dict, key: bytes,
+                         expected_custodian: str) -> dict:
+    """Bind the custody envelope to an actual APL report's execution fields.
+
+    The caller must obtain the report from a trusted runner and keep the key
+    outside the candidate environment. A valid MAC alone proves neither fact.
+    """
+    if not isinstance(evaluation, dict):
+        raise ValueError("evaluation must be a mapping")
+    fields = ("baseline_deterministic", "baseline_heldout", "deterministic", "heldout")
+    required = ("candidate_id", "base_revision", "trusted_suite_sha256",
+                "heldout_suite_sha256", "image")
+    if any(not isinstance(evaluation.get(k), str) or not evaluation[k] for k in required):
+        raise ValueError("evaluation identity incomplete")
+    if evaluation.get("promotion") != "FORBIDDEN":
+        raise ValueError("promotion boundary mismatch")
+    if evaluation.get("status") != "ELIGIBLE_FOR_HUMAN_REVIEW":
+        raise ValueError("runner did not qualify for human review")
+    if any(not isinstance(evaluation.get(k), dict)
+           or type(evaluation[k].get("exit_code")) is not int
+           or evaluation[k]["exit_code"] != 0 for k in fields):
+        raise ValueError("paired execution results incomplete or failed")
+    if not isinstance(evaluation.get("lineage_hash"), str) or len(evaluation["lineage_hash"]) != 64:
+        raise ValueError("lineage hash missing")
+    record = {k: evaluation[k] for k in required}
+    record.update(runner_status=evaluation["status"], promotion="FORBIDDEN",
+                  lineage_hash=evaluation["lineage_hash"],
+                  execution={k: evaluation[k] for k in fields})
+    authentic = verify_evidence(record, envelope, key,
+                                expected_custodian=expected_custodian)
+    return {
+        "candidate_id": evaluation["candidate_id"],
+        "custody_envelope_valid": authentic,
+        "execution_records_present": True,
+        "independently_verified": False,
+        "commit_allowed": False,
+        "promotion_allowed": False,
+        "status": "CUSTODY_CHECK_PASSED_REPLICATION_REQUIRED" if authentic
+                  else "REJECTED_INVALID_CUSTODY",
+    }
