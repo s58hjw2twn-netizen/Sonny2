@@ -1,7 +1,7 @@
 import unittest
 
 from sonny_one.apl.custody import seal_evidence
-from sonny_one.apl.custody_review import review_custodied_apl_evidence, review_runner_report
+from sonny_one.apl.custody_review import review_custodied_apl_evidence, review_runner_report, review_anchored_runner_report
 
 KEY = b"local-test-only-independent-custodian-key-32bytes"
 EVALUATION = {
@@ -101,3 +101,53 @@ def test_runner_missing_heldout_result_fails_closed():
     del report["heldout"]
     with unittest.TestCase().assertRaisesRegex(ValueError, "incomplete"):
         review_runner_report(report, {}, KEY, "independent-test")
+
+
+def anchored_fixture(tmp):
+    import json
+    from pathlib import Path
+    from sonny_one.apl.policy import append_lineage, sha256_bytes
+    from sonny_one.apl.provenance import create_authenticated_anchor
+    report = runner_report()
+    ledger = Path(tmp) / "ledger.jsonl"
+    payload = dict(report)
+    entry = {k: report[k] for k in (
+        "candidate_id", "base_revision", "image", "trusted_suite_sha256",
+        "heldout_suite_sha256", "status")}
+    entry["report_sha256"] = sha256_bytes(json.dumps(payload, sort_keys=True).encode())
+    report["lineage_hash"] = append_lineage(ledger, entry)
+    envelope = seal_evidence(runner_record(report), KEY, custodian_id="independent-test")
+    anchor = create_authenticated_anchor(ledger, KEY, key_id="offline-test")
+    return report, ledger, anchor, envelope
+
+
+def test_anchored_report_valid_but_never_approves_commit():
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        report, ledger, anchor, envelope = anchored_fixture(tmp)
+        result = review_anchored_runner_report(report, ledger, anchor, KEY,
+                                               envelope, KEY, "independent-test")
+        assert result["ledger_anchor_valid"] is True
+        assert result["custody_envelope_valid"] is True
+        assert result["commit_allowed"] is False
+        assert result["independently_verified"] is False
+
+
+def test_anchored_report_rejects_ledger_rewrite():
+    import tempfile
+    from sonny_one.apl.policy import append_lineage
+    with tempfile.TemporaryDirectory() as tmp:
+        report, ledger, anchor, envelope = anchored_fixture(tmp)
+        append_lineage(ledger, {"event": "tampered"})
+        with unittest.TestCase().assertRaisesRegex(ValueError, "anchor authentication"):
+            review_anchored_runner_report(report, ledger, anchor, KEY,
+                                          envelope, KEY, "independent-test")
+
+
+def test_anchored_report_rejects_wrong_anchor_key():
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        report, ledger, anchor, envelope = anchored_fixture(tmp)
+        with unittest.TestCase().assertRaisesRegex(ValueError, "anchor authentication"):
+            review_anchored_runner_report(report, ledger, anchor, b"x" * 32,
+                                          envelope, KEY, "independent-test")
