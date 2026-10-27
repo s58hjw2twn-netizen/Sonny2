@@ -7,6 +7,16 @@ on:
       - '.github/workflows/apl-real-docker-trial.yml'
       - 'tests/apl_real_docker_trial.py'
       - 'tests/apl_verify_ci_replication.py'
+      - 'tests/apl_benchmark_container.py'
+      - 'sonny_one/apl/perf_runner.py'
+  pull_request:
+    branches: [research/apl-001]
+    paths:
+      - '.github/workflows/apl-real-docker-trial.yml'
+      - 'tests/apl_real_docker_trial.py'
+      - 'tests/apl_verify_ci_replication.py'
+      - 'tests/apl_benchmark_container.py'
+      - 'sonny_one/apl/perf_runner.py'
   workflow_dispatch:
 
 permissions:
