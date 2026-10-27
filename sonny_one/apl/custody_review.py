@@ -120,6 +120,8 @@ def review_paired_replication(primary: dict, primary_ledger, primary_anchor: dic
         raise ValueError("replication identity or fixtures differ")
     if primary.get("lineage_hash") == replica.get("lineage_hash"):
         raise ValueError("replication must have a distinct lineage record")
+    if primary_ledger == replica_ledger:
+        raise ValueError("replication must use distinct ledger paths")
     first = review_anchored_runner_report(
         primary, primary_ledger, primary_anchor, anchor_key,
         primary_envelope, custody_key, expected_custodian)
