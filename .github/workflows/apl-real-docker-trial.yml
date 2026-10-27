@@ -32,7 +32,7 @@ jobs:
         run: docker pull python:3.11-slim
       - name: Run actual offline baseline and candidate Docker evaluations
         run: |
-          python tests/apl_real_docker_trial.py "$RUNNER_TEMP/apl-${{ matrix.replica }}"
+          PYTHONPATH=. python tests/apl_real_docker_trial.py "$RUNNER_TEMP/apl-${{ matrix.replica }}"
       - name: Upload job-specific evidence to GitHub artifact custody
         if: always()
         uses: actions/upload-artifact@v4
@@ -61,4 +61,4 @@ jobs:
           path: evidence
       - name: Verify GitHub-custodied artifacts and both independent job results
         run: |
-          python tests/apl_verify_ci_replication.py evidence
+          PYTHONPATH=. python tests/apl_verify_ci_replication.py evidence
