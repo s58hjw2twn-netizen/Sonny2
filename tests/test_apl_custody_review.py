@@ -1,7 +1,7 @@
 import unittest
 
 from sonny_one.apl.custody import seal_evidence
-from sonny_one.apl.custody_review import review_custodied_apl_evidence, review_runner_report, review_anchored_runner_report
+from sonny_one.apl.custody_review import review_custodied_apl_evidence, review_runner_report, review_anchored_runner_report, review_paired_replication
 
 KEY = b"local-test-only-independent-custodian-key-32bytes"
 EVALUATION = {
@@ -151,3 +151,27 @@ def test_anchored_report_rejects_wrong_anchor_key():
         with unittest.TestCase().assertRaisesRegex(ValueError, "anchor authentication"):
             review_anchored_runner_report(report, ledger, anchor, b"x" * 32,
                                           envelope, KEY, "independent-test")
+
+
+def test_paired_replication_rejects_different_candidate_identity():
+    first, second = runner_report(), runner_report()
+    second["candidate_id"] = "f" * 64
+    with unittest.TestCase().assertRaisesRegex(ValueError, "identity or fixtures"):
+        review_paired_replication(first, None, {}, {}, second, None, {}, {},
+                                  anchor_key=KEY, custody_key=KEY,
+                                  expected_custodian="independent-test")
+
+
+def test_paired_replication_rejects_reused_lineage():
+    first, second = runner_report(), runner_report()
+    with unittest.TestCase().assertRaisesRegex(ValueError, "distinct lineage"):
+        review_paired_replication(first, None, {}, {}, second, None, {}, {},
+                                  anchor_key=KEY, custody_key=KEY,
+                                  expected_custodian="independent-test")
+
+
+def test_paired_replication_rejects_missing_report():
+    with unittest.TestCase().assertRaisesRegex(ValueError, "both runner reports"):
+        review_paired_replication(None, None, {}, {}, {}, None, {}, {},
+                                  anchor_key=KEY, custody_key=KEY,
+                                  expected_custodian="independent-test")
