@@ -49,6 +49,22 @@ class ReleaseExportTests(unittest.TestCase):
             self.export(self.decision())
         self.assertEqual(self.destination.read_bytes(), b"existing")
 
+    def test_symlink_source_rejected(self):
+        target = Path(self.tmp.name) / "real-source.bin"
+        target.write_bytes(self.source.read_bytes())
+        self.source.unlink()
+        self.source.symlink_to(target)
+        with self.assertRaises(ValueError):
+            self.export(self.decision())
+        self.assertFalse(self.destination.exists())
+
+    def test_directory_candidate_rejected(self):
+        self.candidate.unlink()
+        self.candidate.mkdir()
+        with self.assertRaises((ValueError, IsADirectoryError)):
+            self.export(None)
+        self.assertFalse(self.destination.exists())
+
     def test_symlink_destination_rejected(self):
         target = Path(self.tmp.name) / "target.bin"
         target.write_bytes(b"safe")
