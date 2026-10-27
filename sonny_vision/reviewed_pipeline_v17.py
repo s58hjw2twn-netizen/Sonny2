@@ -25,8 +25,9 @@ def release_with_quality_review(source_path: str, candidate_path: str,
                                 destination_path: str, protected_mask: np.ndarray,
                                 decision: ReviewDecision | None, secret: bytes,
                                 identity_reviewed: bool = False,
-                                identity_decision: ReviewDecision | None = None) -> dict:
-    source = _decode(source_path)
+                                identity_decision: ReviewDecision | None = None,
+                                authorized_reviewers: frozenset[str] | None = None) -> dict:
+    if not authorized_reviewers:\n        return {"exported": False, "reason": "no authorized reviewers configured"}\n    if (decision is None or identity_decision is None\n            or decision.reviewer not in authorized_reviewers\n            or identity_decision.reviewer not in authorized_reviewers):\n        return {"exported": False, "reason": "reviewer not authorized"}\n    source = _decode(source_path)
     candidate = _decode(candidate_path)
     gate = quality_gate(source, candidate, protected_mask)
     if not gate["passed"]:
