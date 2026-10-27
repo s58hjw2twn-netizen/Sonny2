@@ -72,7 +72,9 @@ def execute(argv, timeout=90):
                           timeout=timeout, check=False)
 
 
-def docker_test(image, workspace, suite, timeout, *, candidate=False):
+def docker_test(image, workspace, suite, timeout, *, candidate=False, framework="pytest"):
+    if framework not in ("pytest", "unittest"):
+        raise ValueError("Unsupported test framework")
     name = "sonny-apl-" + uuid.uuid4().hex
     started = time.monotonic()
     command = [
@@ -88,7 +90,9 @@ def docker_test(image, workspace, suite, timeout, *, candidate=False):
         "--volume=" + str(workspace) + ":/src:ro",
         "--volume=" + str(suite) + ":/trusted:ro",
         "--workdir=/src", "--entrypoint=python", image,
-        "-m", "pytest", "-q", "-p", "no:cacheprovider", "/trusted",
+        *(["-m", "pytest", "-q", "-p", "no:cacheprovider", "/trusted"]
+          if framework == "pytest" else
+          ["-m", "unittest", "discover", "-s", "/trusted", "-p", "test*.py"]),
     ]
     try:
         result = execute(command, timeout=timeout)
@@ -153,7 +157,9 @@ def suite_fingerprint(directory):
 
 
 def evaluate(source, revision, patch_file, trusted, heldout, image,
-             ledger, timeout=90):
+             ledger, timeout=90, *, framework="pytest"):
+    if framework not in ("pytest", "unittest"):
+        raise ValueError("Unsupported test framework")
     if type(timeout) is not int or not 1 <= timeout <= 600:
         raise ValueError("Timeout must be an integer in [1, 600]")
     source = Path(source).resolve(strict=True)
@@ -178,7 +184,7 @@ def evaluate(source, revision, patch_file, trusted, heldout, image,
     patch = patch_file.read_text(encoding="utf-8")
     paths = validate_patch(patch)
     candidate_id = sha256_bytes(patch.encode("utf-8"))
-    report = {"candidate_id": candidate_id, "base_revision": revision,
+    report = {"test_framework": framework, "candidate_id": candidate_id, "base_revision": revision,
               "image": image, "trusted_suite_sha256": trusted_hash,
               "heldout_suite_sha256": heldout_hash,
               "paths": paths, "status": "REJECTED", "promotion": "FORBIDDEN"}
@@ -239,11 +245,11 @@ def evaluate(source, revision, patch_file, trusted, heldout, image,
             # Docker user 65534 must be able to traverse the disposable checkout.
             Path(tmp).chmod(0o755)
             workspace.chmod(0o755)
-            report["baseline_deterministic"] = docker_test(image, baseline, trusted_copy, timeout)
-            report["baseline_heldout"] = docker_test(image, baseline, heldout_copy, timeout)
-            report["deterministic"] = docker_test(image, workspace, trusted_copy, timeout, candidate=True)
+            report["baseline_deterministic"] = docker_test(image, baseline, trusted_copy, timeout, **({"framework": framework} if framework != "pytest" else {}))
+            report["baseline_heldout"] = docker_test(image, baseline, heldout_copy, timeout, **({"framework": framework} if framework != "pytest" else {}))
+            report["deterministic"] = docker_test(image, workspace, trusted_copy, timeout, candidate=True, **({"framework": framework} if framework != "pytest" else {}))
             if report["deterministic"]["exit_code"] == 0:
-                report["heldout"] = docker_test(image, workspace, heldout_copy, timeout, candidate=True)
+                report["heldout"] = docker_test(image, workspace, heldout_copy, timeout, candidate=True, **({"framework": framework} if framework != "pytest" else {}))
             if (suite_fingerprint(trusted) != trusted_hash or
                     suite_fingerprint(heldout) != heldout_hash or
                     suite_fingerprint(trusted_copy) != trusted_hash or
@@ -286,12 +292,13 @@ def main():
     for arg in ("source", "revision", "patch", "trusted", "heldout", "image", "ledger"):
         parser.add_argument("--" + arg, required=True)
     parser.add_argument("--timeout", type=int, default=90)
+    parser.add_argument("--framework", choices=("pytest", "unittest"), default="pytest")
     args = parser.parse_args()
     if not 1 <= args.timeout <= 600:
         parser.error("Timeout must be 1–600 seconds")
     print(json.dumps(evaluate(args.source, args.revision, args.patch,
                               args.trusted, args.heldout, args.image,
-                              args.ledger, args.timeout), indent=2))
+                              args.ledger, args.timeout, framework=args.framework), indent=2))
 
 
 if __name__ == "__main__":
