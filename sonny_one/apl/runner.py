@@ -171,6 +171,8 @@ def evaluate(source, revision, patch_file, trusted, heldout, image,
     for suite in (trusted, heldout):
         if suite == source or source in suite.parents or suite in source.parents:
             raise ValueError("Independent test suites cannot live in the source tree")
+    # Fail before copying or executing a candidate if the trusted image is absent.
+    preflight_docker_image(image)
     trusted_hash = suite_fingerprint(trusted)
     heldout_hash = suite_fingerprint(heldout)
     patch = patch_file.read_text(encoding="utf-8")
