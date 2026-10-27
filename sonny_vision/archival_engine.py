@@ -105,6 +105,10 @@ def process_file(source_path: str, output_path: str, audit_path: str) -> dict:
               "identity_verified": False, "release_allowed": False,
               "manual_review_required": True,
               "algorithm": "bounded luminance CLAHE; no generative synthesis"}
-    with audit.open("x", encoding="utf-8") as handle:
-        handle.write(json.dumps(report, indent=2))
+    try:
+        with audit.open("x", encoding="utf-8") as handle:
+            handle.write(json.dumps(report, indent=2))
+    except BaseException:
+        output.unlink(missing_ok=True)
+        raise
     return report
