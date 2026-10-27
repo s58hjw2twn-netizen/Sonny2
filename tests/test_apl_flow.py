@@ -42,7 +42,8 @@ class TestAPLEvaluationFlow(unittest.TestCase):
             def fake_docker(image, workspace, suite, timeout, *, candidate=False):
                 calls.append((Path(workspace).name, Path(suite).name))
                 return {"exit_code": 0, "stdout_tail": "", "stderr_tail": ""}
-            with patch("sonny_one.apl.runner.docker_test", side_effect=fake_docker):
+            with patch("sonny_one.apl.runner.preflight_docker_image"), \
+                 patch("sonny_one.apl.runner.docker_test", side_effect=fake_docker):
                 result = evaluate(source, revision, patch_file, trusted, heldout,
                                   "runner@sha256:" + "a" * 64, root / "ledger.jsonl")
             self.assertEqual(result["status"], "ELIGIBLE_FOR_HUMAN_REVIEW")
@@ -76,7 +77,8 @@ class TestAPLEvaluationFlow(unittest.TestCase):
             def fake_docker(image, workspace, suite, timeout, *, candidate=False):
                 code = 1 if Path(workspace).name == "baseline" else 0
                 return {"exit_code": code, "stdout_tail": "", "stderr_tail": ""}
-            with patch("sonny_one.apl.runner.docker_test", side_effect=fake_docker):
+            with patch("sonny_one.apl.runner.preflight_docker_image"), \
+                 patch("sonny_one.apl.runner.docker_test", side_effect=fake_docker):
                 result = evaluate(source, revision, patch_file, trusted, heldout,
                                   "runner@sha256:" + "a" * 64, root / "ledger.jsonl")
             self.assertEqual(result["status"], "REJECTED")
@@ -112,7 +114,8 @@ class TestAPLEvaluationFlow(unittest.TestCase):
                 code = 1 if Path(workspace).name == "workspace" else 0
                 return {"exit_code": code, "stdout_tail": "", "stderr_tail": ""}
             ledger = root / "ledger.jsonl"
-            with patch("sonny_one.apl.runner.docker_test", side_effect=fake_docker):
+            with patch("sonny_one.apl.runner.preflight_docker_image"), \
+                 patch("sonny_one.apl.runner.docker_test", side_effect=fake_docker):
                 result = evaluate(source, revision, patch_file, trusted, heldout,
                                   "runner@sha256:" + "a" * 64, ledger)
             self.assertEqual(result["status"], "REJECTED")
