@@ -3,11 +3,13 @@ No generated patch is committed, merged, or deployed.
 """
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 from sonny_one.apl.provenance import verify_report_lineage
+from sonny_one.apl.policy import append_lineage
 from sonny_one.apl.runner import evaluate
 
 root = Path.cwd()
@@ -49,6 +51,9 @@ image = subprocess.check_output(
     ["docker", "image", "inspect", "--format", "{{index .RepoDigests 0}}",
      "python:3.11-slim"], text=True).strip()
 ledger = out / "ledger.jsonl"
+append_lineage(ledger, {"replica_id": os.environ["APL_REPLICA_ID"],
+                        "github_run_id": os.environ["GITHUB_RUN_ID"],
+                        "github_job": os.environ["GITHUB_JOB"]})
 report = evaluate(source, revision, patch, trusted, heldout, image, ledger,
                   timeout=75, framework="unittest")
 (out / "report.json").write_text(json.dumps(report, indent=2, sort_keys=True))
