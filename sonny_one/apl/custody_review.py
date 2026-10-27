@@ -121,8 +121,10 @@ def review_paired_replication(primary: dict, primary_ledger, primary_anchor: dic
     if primary.get("lineage_hash") == replica.get("lineage_hash"):
         raise ValueError("replication must have a distinct lineage record")
     from pathlib import Path
+    import os
     try:
-        if Path(primary_ledger).resolve() == Path(replica_ledger).resolve():
+        if (Path(primary_ledger).resolve() == Path(replica_ledger).resolve()
+                or os.path.samefile(primary_ledger, replica_ledger)):
             raise ValueError("replication must use distinct ledger paths")
     except (TypeError, OSError, ValueError) as exc:
         if isinstance(exc, ValueError) and str(exc) == "replication must use distinct ledger paths":
