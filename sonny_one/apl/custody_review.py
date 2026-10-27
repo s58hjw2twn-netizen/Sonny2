@@ -100,3 +100,41 @@ def review_anchored_runner_report(evaluation: dict, ledger, anchor: dict,
                         if result["custody_envelope_valid"]
                         else "REJECTED_INVALID_CUSTODY")
     return result
+
+
+def review_paired_replication(primary: dict, primary_ledger, primary_anchor: dict,
+                              primary_envelope: dict, replica: dict, replica_ledger,
+                              replica_anchor: dict, replica_envelope: dict,
+                              *, anchor_key: bytes, custody_key: bytes,
+                              expected_custodian: str) -> dict:
+    """Compare two separately supplied, anchored runner reports without promotion.
+
+    The caller must independently establish that runs and custodians are separate.
+    Identical self-reported data cannot establish independent replication.
+    """
+    keys = ("candidate_id", "base_revision", "image",
+            "trusted_suite_sha256", "heldout_suite_sha256")
+    if not isinstance(primary, dict) or not isinstance(replica, dict):
+        raise ValueError("both runner reports required")
+    if any(primary.get(k) != replica.get(k) for k in keys):
+        raise ValueError("replication identity or fixtures differ")
+    if primary.get("lineage_hash") == replica.get("lineage_hash"):
+        raise ValueError("replication must have a distinct lineage record")
+    first = review_anchored_runner_report(
+        primary, primary_ledger, primary_anchor, anchor_key,
+        primary_envelope, custody_key, expected_custodian)
+    second = review_anchored_runner_report(
+        replica, replica_ledger, replica_anchor, anchor_key,
+        replica_envelope, custody_key, expected_custodian)
+    authenticated = (first["custody_envelope_valid"] is True
+                     and second["custody_envelope_valid"] is True)
+    return {
+        "candidate_id": primary["candidate_id"],
+        "paired_custody_valid": authenticated,
+        "separate_execution_independently_established": False,
+        "independently_verified": False,
+        "commit_allowed": False,
+        "promotion_allowed": False,
+        "status": ("PAIRED_CUSTODY_VALID_INDEPENDENCE_UNVERIFIED"
+                   if authenticated else "REJECTED_INVALID_PAIRED_CUSTODY"),
+    }
