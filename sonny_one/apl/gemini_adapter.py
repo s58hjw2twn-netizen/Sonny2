@@ -23,8 +23,6 @@ def propose_with_gemini(*, source_text, target_path, objective, base_revision,
     Caller must supply a pinned base revision and nonsecret source snapshot.
     This function cannot execute, evaluate, commit, or promote patches.
     """
-    from sonny.gemini_provider import generate_gemini
-
     if not isinstance(source_text, str) or not source_text or len(source_text.encode()) > 16000:
         raise ValueError("Source snapshot missing or exceeds 16KB")
     if not isinstance(target_path, str) or not re.fullmatch(
@@ -44,6 +42,7 @@ def propose_with_gemini(*, source_text, target_path, objective, base_revision,
         raise ValueError("Invalid model identifier")
     prompt = ("Objective: " + objective + "\nTarget: " + target_path +
               "\nBase revision: " + base_revision + "\nSource snapshot:\n" + source_text)
+    from sonny.gemini_provider import generate_gemini
     response = generate_gemini(_SYSTEM, [], prompt, client=client)
     if not isinstance(response, str) or len(response.encode()) > 128 * 1024:
         raise ValueError("Provider response exceeds patch budget")
