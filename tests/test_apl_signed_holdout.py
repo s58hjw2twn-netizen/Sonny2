@@ -2,6 +2,7 @@
 import base64
 import json
 import unittest
+import importlib.util
 
 from sonny_one.apl.signed_holdout import verify_signed_external_holdout
 
@@ -9,6 +10,8 @@ SHA = "a" * 64
 REV = "b" * 40
 
 
+@unittest.skipUnless(importlib.util.find_spec("cryptography") is not None,
+                     "Ed25519 integration tests require optional cryptography dependency")
 class SignedHoldoutTests(unittest.TestCase):
     def setUp(self):
         from cryptography.hazmat.primitives import serialization
