@@ -187,7 +187,10 @@ def evaluate(source, revision, patch_file, trusted, heldout, image,
     report = {"test_framework": framework, "candidate_id": candidate_id, "base_revision": revision,
               "image": image, "trusted_suite_sha256": trusted_hash,
               "heldout_suite_sha256": heldout_hash,
-              "paths": paths, "status": "REJECTED", "promotion": "FORBIDDEN"}
+              "paths": paths, "status": "REJECTED", "promotion": "FORBIDDEN",
+              "heldout_confidential_from_candidate": False,
+              "heldout_isolation": "read_only_mount_candidate_readable",
+              "independent_holdout_custody_verified": False}
     try:
         with tempfile.TemporaryDirectory(prefix="sonny-apl-") as tmp:
             # Apply precisely the validated bytes, not a mutable inbox path.
