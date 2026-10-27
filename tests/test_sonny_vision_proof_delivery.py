@@ -35,6 +35,12 @@ class ProofDeliveryTests(unittest.TestCase):
         self.assertEqual(response.body, self.proof.read_bytes())
         self.assertEqual(response.headers["Cache-Control"], "no-store, private")
 
+    def test_approved_proof_no_longer_accessible(self):
+        self.assertEqual(self.serve(proof_status="approved_pending_release_checks").status, 403)
+
+    def test_revision_requested_proof_no_longer_accessible(self):
+        self.assertEqual(self.serve(proof_status="revision_requested").status, 403)
+
     def test_other_customer_denied(self):
         self.assertEqual(self.serve(authenticated_customer_id="intruder").status, 403)
 
