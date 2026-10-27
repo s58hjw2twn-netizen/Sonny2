@@ -50,6 +50,12 @@ class TestExtremes(unittest.TestCase):
     def test_extremes(self):
         self.assertEqual(smallest([4, 1, 3]), 1)
         self.assertEqual(largest([4, 1, 3]), 4)
+    def test_minimum_duplicate_and_negative(self):
+        self.assertEqual(smallest([3, -2, -2, 5]), -2)
+    def test_minimum_singleton(self):
+        self.assertEqual(smallest([42]), 42)
+    def test_minimum_large_reversed(self):
+        self.assertEqual(smallest(list(range(10000, -1, -1))), 0)
 """)
 image = subprocess.check_output(
     ["docker", "image", "inspect", "--format", "{{index .RepoDigests 0}}",
