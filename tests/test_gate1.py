@@ -105,7 +105,7 @@ def test_G1_09_state_reconstructs_after_store_restart():
     u=mkuser(); p=mkproject(u)
     m=c.post(f'/projects/{p}/memories',headers=H(u),json={'value':'Use FastAPI'}).json()['memory_id']
     c.post(f'/projects/{p}/memories/{m}/confirm',headers=H(u))
-    fresh=Store(path)
+    fresh=Store(appmod.store.path)
     assert fresh.project(u,p)['goal']=='Ship MVP' and fresh.memories(u,p)[0]['value']=='Use FastAPI'
 
 def test_G1_10_cross_user_isolation():
@@ -235,7 +235,7 @@ def test_G1_13_conversation_persists_after_store_restart():
         u,p,'assistant','BLUE-913 remembered'
     )
 
-    fresh=Store(path)
+    fresh=Store(appmod.store.path)
     history=fresh.messages(u,p,limit=20)
 
     assert len(history)==2
