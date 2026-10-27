@@ -19,10 +19,14 @@ source = root
 revision = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
 target = root / "sonny_one/apl_targets/offline_strategy.py"
 original = target.read_text()
-# Patch is a harmless experimental-only comment. The real test is Docker execution,
-# not a claim that the patch improved the model.
+# Candidate replaces a full sort with a minimum scan in an experimental-only function.
+# Correctness tests alone do not establish a measured performance improvement.
 try:
-    target.write_text(original + "\n# isolated Docker trial candidate\n")
+    before = "    return sorted(values)[0]"
+    after = "    return min(values)"
+    if original.count(before) != 1:
+        raise RuntimeError("Expected baseline function not found")
+    target.write_text(original.replace(before, after))
     diff = subprocess.check_output(["git", "diff", "--", str(target.relative_to(root))], text=True)
 finally:
     target.write_text(original)
@@ -69,4 +73,4 @@ for name in ("baseline_deterministic", "baseline_heldout", "deterministic", "hel
 manifest = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
             for p in (out / "report.json", ledger, patch)}
 (out / "manifest.json").write_text(json.dumps(manifest, sort_keys=True, indent=2))
-print("Docker trial completed with four passing container test executions; no improvement proven")
+print("Real algorithm-change candidate passed four Docker suite executions; performance improvement not proven")
