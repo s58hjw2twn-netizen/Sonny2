@@ -22,6 +22,8 @@ jobs:
         run: python -m pip install 'mcp>=1.28,<2' 'pytest>=8,<9'
       - name: Verify local-only source contract
         run: python -m pytest -q tests/test_mcp_local_spike_contract.py
+      - name: Verify real loopback MCP handshake
+        run: python tests/run_mcp_loopback_handshake.py
       - name: Verify SDK import and registered tool
         run: |
           python - <<'PY'
