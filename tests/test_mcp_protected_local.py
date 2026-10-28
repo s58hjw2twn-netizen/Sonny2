@@ -132,3 +132,45 @@ def test_discovery_rejects_mismatched_resource_audience():
     config = ResourceAuthConfig("https://issuer.example", "https://sonny.example/mcp", pub)
     with pytest.raises(ValueError, match="audience"):
         build_app(config, resource_url="https://other.example/mcp")
+
+
+def test_protected_app_uses_explicit_verifier_for_read_only_tool():
+    config = ResourceAuthConfig(
+        "https://issuer.example", "https://sonny.example/mcp", "unused-pinned-key"
+    )
+    server = create_mcp_server()
+    seen = []
+
+    def verifier(token, supplied_config):
+        seen.append(token)
+        if token != "approved-test-token":
+            raise ValueError("rejected")
+
+    app = build_app(config, server=server, token_verifier=verifier)
+
+    async def run():
+        async with server.session_manager.run():
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app),
+                base_url="http://127.0.0.1:8766",
+            ) as client:
+                headers = {
+                    "Authorization": "Bearer approved-test-token",
+                    "Accept": "application/json, text/event-stream",
+                    "Content-Type": "application/json",
+                }
+                response = await client.post(
+                    "/mcp", headers=headers,
+                    json={"jsonrpc": "2.0", "id": 1, "method": "initialize",
+                          "params": {"protocolVersion": "2025-03-26",
+                                     "capabilities": {}, "clientInfo": {"name": "test", "version": "1"}}},
+                )
+                assert response.status_code == 200, response.text
+                denied = await client.post(
+                    "/mcp", headers={**headers, "Authorization": "Bearer rejected-token"},
+                    json={"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
+                )
+                assert denied.status_code == 401
+                assert seen == ["approved-test-token", "rejected-token"]
+
+    asyncio.run(run())
