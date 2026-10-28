@@ -117,6 +117,7 @@ def test_opt_in_discovery_preserves_mcp_authorization():
                     json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}},
                 )
                 assert denied.status_code == 401
+                assert 'resource_metadata="https://sonny.example/.well-known/oauth-protected-resource/mcp"' in denied.headers["www-authenticate"]
                 assert (await client.get("/")).status_code == 401
 
     asyncio.run(run())
