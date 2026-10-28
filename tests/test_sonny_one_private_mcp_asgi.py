@@ -77,6 +77,23 @@ class PrivateMcpAsgiTests(unittest.TestCase):
         }, receive, send, expected_token=TOKEN))
         self.assertEqual(sent[0]["status"], 415)
 
+    def test_browser_origin_rejected_even_with_valid_token(self):
+        import asyncio
+        sent = []
+        async def receive():
+            return {"type": "http.request", "body": b"{}", "more_body": False}
+        async def send(event):
+            sent.append(event)
+        asyncio.run(private_mcp_app({
+            "type": "http", "method": "POST", "path": "/private/mcp",
+            "headers": [
+                (b"authorization", b"Bearer " + TOKEN.encode()),
+                (b"content-type", b"application/json"),
+                (b"origin", b"https://untrusted.example"),
+            ],
+        }, receive, send, expected_token=TOKEN))
+        self.assertEqual(sent[0]["status"], 403)
+
     def test_unavailable_routes_denied(self):
         self.assertEqual(request(TOKEN, method="GET")[0], 404)
         self.assertEqual(request(TOKEN, path="/private/memory")[0], 404)
