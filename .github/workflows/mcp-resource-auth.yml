@@ -43,3 +43,22 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build isolated MCP container without deployment
         run: docker build -f Dockerfile.mcp -t sonny-mcp-ci .
+      - name: Verify image imports staging module
+        run: docker run --rm --entrypoint python sonny-mcp-ci -c "import sonny.mcp_staging_entrypoint"
+      - name: Verify image refuses to serve by default
+        shell: bash
+        run: |
+          set +e
+          output=$(docker run --rm sonny-mcp-ci 2>&1)
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo "ERROR: gated container unexpectedly exited successfully"
+            exit 1
+          fi
+          if [[ "$output" != *"MCP staging deployment is gated"* ]]; then
+            echo "ERROR: container failed for an unexpected reason"
+            exit 1
+          fi
+          echo "Verified: image does not start an MCP listener by default"
+
