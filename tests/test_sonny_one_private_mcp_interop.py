@@ -64,7 +64,7 @@ class PrivateMcpInteropTests(unittest.TestCase):
 
     def test_write_tool_is_rejected(self):
         status, payload = asyncio.run(invoke({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {
-            "name": "github_commit", "arguments": {}}))
+            "name": "github_commit", "arguments": {}}}))
         self.assertEqual(status, 200)
         self.assertIn("error", payload)
         self.assertNotIn("result", payload)
