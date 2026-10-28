@@ -114,3 +114,23 @@ Auth0-specific preflight when the provider is selected:
 
 **Gate result:** identity provider not provisioned; account entitlement and
 real ChatGPT authorization flow not yet verified. No public deployment.
+
+## Eligibility clarification — official documentation checked 2026-10-28
+
+The ChatGPT Help Center's custom MCP article states that **full MCP** is
+available on Business and Enterprise/Edu (subject to workspace permissions),
+and Pro users may connect custom MCP servers with **read/fetch** permissions.
+It does not list Plus for creating custom MCP connections. The current
+account's actual available controls must be checked on ChatGPT web; a green
+GitHub Actions run does not establish account eligibility.
+
+The earlier instruction in this document to use Plugins > plus is **conditional
+on having an eligible account and creation permission**. Do not tell a user
+on an ineligible account that the control will appear, recommend a purchase as
+a prerequisite without their choice, or attempt to bypass workspace policies.
+
+Operational fallback: continue authenticated Sonny development through the
+already-connected GitHub integration, and run independent CI. This is not the
+same as a custom Sonny MCP connection and should not be represented as one.
+
+Official reference: https://help.openai.com/en/articles/12584461-connecting-custom-mcp-servers-in-chatgpt
