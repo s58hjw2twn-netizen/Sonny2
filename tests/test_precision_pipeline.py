@@ -6,6 +6,7 @@ import numpy as np
 from PIL import Image
 from sonny_vision.precision_pipeline import prepare_case, approve_case
 from sonny_vision.precision_release_gate import ReleaseDenied
+from sonny_vision.assurance import FailureLedger
 
 class PipelineTests(unittest.TestCase):
     def setUp(self):
@@ -64,6 +65,25 @@ class PipelineTests(unittest.TestCase):
         self.prepare()
         with self.assertRaises(ReleaseDenied):
             self.prepare()
+
+    def test_repeated_failed_method_blocked_before_case_creation(self):
+        ledger = FailureLedger(self.root / "failures.jsonl")
+        for index in range(2):
+            ledger.record(task_type="precision_image_edit",
+                          method="pixel_locked_composite",
+                          failure_code="invalid_output",
+                          evidence_ref=f"case-{index}")
+        with self.assertRaisesRegex(ReleaseDenied, "repeated_failure"):
+            self.prepare(failure_ledger=ledger)
+        self.assertFalse((self.root / "cases" / "case1").exists())
+
+    def test_single_failure_does_not_trigger_threshold(self):
+        ledger = FailureLedger(self.root / "failures.jsonl")
+        ledger.record(task_type="precision_image_edit",
+                      method="pixel_locked_composite",
+                      failure_code="invalid_output", evidence_ref="case-0")
+        result = self.prepare(failure_ledger=ledger)
+        self.assertEqual(result["verification"]["outside_mask_changes"], 0)
 
     def test_outside_mask_candidate_is_restricted(self):
         candidate = np.asarray(Image.open(self.replacement)).copy()
