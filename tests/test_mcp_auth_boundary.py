@@ -48,3 +48,40 @@ def test_boundary_denies_unauthorized_and_allows_valid_token():
         assert calls == ["/other"]
 
     asyncio.run(checks())
+
+
+def test_boundary_supports_explicit_injected_verifier():
+    config = ResourceAuthConfig(
+        "https://issuer.example", "https://sonny.example/mcp", "unused-pinned-key"
+    )
+    seen = []
+
+    def verifier(token, supplied_config):
+        seen.append((token, supplied_config))
+        if token != "test-token":
+            raise ValueError("rejected")
+
+    async def protected(scope, receive, send):
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"ok"})
+
+    app = BearerAuthBoundary(protected, config, token_verifier=verifier)
+
+    async def request(token):
+        events = []
+        async def receive():
+            return {"type": "http.request", "body": b"", "more_body": False}
+        async def send(event):
+            events.append(event)
+        await app({"type": "http", "path": "/mcp",
+                   "headers": [(b"authorization", f"Bearer {token}".encode())]},
+                  receive, send)
+        return events[0]["status"]
+
+    async def checks():
+        assert await request("test-token") == 200
+        assert await request("bad-token") == 401
+        assert [item[0] for item in seen] == ["test-token", "bad-token"]
+        assert all(item[1] is config for item in seen)
+
+    asyncio.run(checks())
