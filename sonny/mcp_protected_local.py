@@ -14,33 +14,39 @@ from sonny.mcp_resource_auth import ResourceAuthConfig
 HOST = "127.0.0.1"
 PORT = 8766
 
-mcp = FastMCP(
-    "Sonny ONE Protected Local MCP",
-    host=HOST,
-    port=PORT,
-    json_response=True,
-    stateless_http=True,
-)
+def create_mcp_server() -> FastMCP:
+    """Create a fresh, single-use MCP session manager per application instance."""
+    server = FastMCP(
+        "Sonny ONE Protected Local MCP",
+        host=HOST,
+        port=PORT,
+        json_response=True,
+        stateless_http=True,
+    )
 
-@mcp.tool()
-def protocol_status() -> dict[str, str]:
-    """Read-only, non-sensitive MCP readiness status."""
-    return {"service": "Sonny ONE", "mode": "protected-local",
-            "production_ready": "false"}
+    @server.tool()
+    def protocol_status() -> dict[str, str]:
+        """Read-only, non-sensitive MCP readiness status."""
+        return {"service": "Sonny ONE", "mode": "protected-local",
+                "production_ready": "false"}
+
+    return server
 
 
-def build_app(config: ResourceAuthConfig, *, resource_url: str | None = None):
-    """Wrap MCP with bearer auth; optionally publish read-only OAuth discovery.
+def build_app(config: ResourceAuthConfig, *, resource_url: str | None = None,
+              server: FastMCP | None = None):
+    """Wrap a fresh MCP server with bearer auth and optional public discovery."""
+    if resource_url is not None:
+        metadata = protected_resource_metadata(resource_url, config.issuer)
+        if resource_url != config.audience:
+            raise ValueError("OAuth resource URL must match the JWT audience")
+    else:
+        metadata = None
 
-    The resource URL is an operator-supplied HTTPS identifier, not a listener
-    configuration. Discovery does not make the loopback server remotely usable.
-    """
-    protected = BearerAuthBoundary(mcp.streamable_http_app(), config)
-    if resource_url is None:
+    server = server if server is not None else create_mcp_server()
+    protected = BearerAuthBoundary(server.streamable_http_app(), config)
+    if metadata is None:
         return protected
-    metadata = protected_resource_metadata(resource_url, config.issuer)
-    if resource_url != config.audience:
-        raise ValueError("OAuth resource URL must match the JWT audience")
     return ProtectedResourceDiscovery(protected, metadata)
 
 
