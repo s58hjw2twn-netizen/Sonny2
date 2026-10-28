@@ -22,6 +22,14 @@ async def private_mcp_app(scope, receive, send, *, expected_token=None):
     if scope.get("method") != "POST" or scope.get("path") != "/private/mcp":
         await _respond(send, 404, {"error": "not_found"})
         return
+    # Reject ambiguous or unexpected content types before parsing JSON.
+    content_types = [
+        value for key, value in scope.get("headers", [])
+        if isinstance(key, bytes) and key.lower() == b"content-type"
+    ]
+    if len(content_types) != 1 or content_types[0].split(b";", 1)[0].strip().lower() != b"application/json":
+        await _respond(send, 415, {"error": "unsupported_media_type"})
+        return
     body = bytearray()
     while True:
         event = await receive()
