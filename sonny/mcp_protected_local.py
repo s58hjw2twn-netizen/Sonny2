@@ -34,7 +34,7 @@ def create_mcp_server() -> FastMCP:
 
 
 def build_app(config: ResourceAuthConfig, *, resource_url: str | None = None,
-              server: FastMCP | None = None):
+              server: FastMCP | None = None, token_verifier=None):
     """Wrap a fresh MCP server with bearer auth and optional public discovery."""
     if resource_url is not None:
         metadata = protected_resource_metadata(resource_url, config.issuer)
@@ -47,7 +47,8 @@ def build_app(config: ResourceAuthConfig, *, resource_url: str | None = None,
     discovery_url = (resource_url.removesuffix('/mcp') +
                      '/.well-known/oauth-protected-resource/mcp') if metadata else None
     protected = BearerAuthBoundary(server.streamable_http_app(), config,
-                                   resource_metadata_url=discovery_url)
+                                   resource_metadata_url=discovery_url,
+                                   token_verifier=token_verifier)
     if metadata is None:
         return protected
     return ProtectedResourceDiscovery(protected, metadata)
