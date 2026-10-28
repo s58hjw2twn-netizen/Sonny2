@@ -32,7 +32,7 @@ def prepare_case(*, source, replacement, mask, workspace, case_id,
     ledger = failure_ledger if failure_ledger is not None else FailureLedger(root / "failure_ledger.jsonl")
     if not isinstance(ledger, FailureLedger):
         raise ReleaseDenied("Trusted FailureLedger required")
-        policy = TaskPolicy(task_type="precision_image_edit",
+    policy = TaskPolicy(task_type="precision_image_edit",
                         allowed_methods=("pixel_locked_composite",))
     tool = ToolCapability(name="pixel_locked_composite",
                           exact_region_edit=True, preserves_outside_mask=True,
