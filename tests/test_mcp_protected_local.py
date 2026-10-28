@@ -89,3 +89,43 @@ def test_protected_mcp_http_access():
                     assert denied.status_code == 401
 
     asyncio.run(run())
+
+
+def test_opt_in_discovery_preserves_mcp_authorization():
+    private = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    pub = private.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    ).decode()
+    config = ResourceAuthConfig("https://issuer.example", "https://sonny.example/mcp", pub)
+    app = build_app(config, resource_url=config.audience)
+
+    async def run():
+        async with mcp.session_manager.run():
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app),
+                base_url="http://127.0.0.1:8766",
+            ) as client:
+                discovery = await client.get("/.well-known/oauth-protected-resource/mcp")
+                assert discovery.status_code == 200
+                assert discovery.json()["resource"] == config.audience
+                assert discovery.json()["authorization_servers"] == [config.issuer]
+                denied = await client.post(
+                    "/mcp",
+                    headers={"Accept": "application/json, text/event-stream"},
+                    json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}},
+                )
+                assert denied.status_code == 401
+                assert (await client.get("/")).status_code == 401
+
+    asyncio.run(run())
+
+
+def test_discovery_rejects_mismatched_resource_audience():
+    import pytest
+    private = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    pub = private.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    ).decode()
+    config = ResourceAuthConfig("https://issuer.example", "https://sonny.example/mcp", pub)
+    with pytest.raises(ValueError, match="audience"):
+        build_app(config, resource_url="https://other.example/mcp")
