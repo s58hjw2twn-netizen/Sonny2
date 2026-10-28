@@ -30,7 +30,7 @@ def test_protected_mcp_http_access():
     async def run():
         async with mcp.session_manager.run():
             transport = httpx.ASGITransport(app=protected_app)
-            async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            async with httpx.AsyncClient(transport=transport, base_url="http://127.0.0.1:8766") as client:
                 for headers in ({}, {"Authorization": "Bearer invalid"},
                                 {"Authorization": "Bearer " + bad}):
                     response = await client.post(
