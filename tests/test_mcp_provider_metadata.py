@@ -29,3 +29,8 @@ def test_accepts_code_pkce_provider():
 def test_rejects_invalid_provider(change):
     with pytest.raises(ValueError):
         validate_provider({**VALID, **change}, ISSUER)
+
+
+def test_rejects_non_object_metadata():
+    with pytest.raises(ValueError):
+        validate_provider(None, ISSUER)
