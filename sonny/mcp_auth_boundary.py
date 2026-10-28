@@ -32,7 +32,7 @@ class BearerAuthBoundary:
                 if scheme.lower() == "bearer" and token and token.strip() == token:
                     self.token_verifier(token, self.config)
                     authorized = True
-            except (UnicodeDecodeError, ValueError, TokenRejected):
+            except Exception:  # fail closed for verifier and parsing failures
                 pass
         if not authorized:
             body = b'{"error":"unauthorized"}'
