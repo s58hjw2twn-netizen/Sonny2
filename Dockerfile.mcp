@@ -1,7 +1,7 @@
 FROM python:3.11-slim
 WORKDIR /app
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
-COPY requirements.txt requirements-mcp.txt ./
+COPY requirements-mcp.txt ./
 RUN pip install --no-cache-dir -r requirements-mcp.txt
 COPY sonny/ ./sonny/
 USER 65532:65532
