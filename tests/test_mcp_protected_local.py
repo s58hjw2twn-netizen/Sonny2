@@ -102,7 +102,7 @@ def test_opt_in_discovery_preserves_mcp_authorization():
     app = build_app(config, resource_url=config.audience, server=server)
 
     async def run():
-        async with mcp.session_manager.run():
+        async with server.session_manager.run():
             async with httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=app),
                 base_url="http://127.0.0.1:8766",
