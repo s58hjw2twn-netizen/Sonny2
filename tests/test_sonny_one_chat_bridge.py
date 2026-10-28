@@ -44,6 +44,22 @@ class ChatBridgeTests(unittest.TestCase):
         for path in ("/v1/status", "/v1/capabilities"):
             self.assertEqual(self.client.post(path, headers=self.auth).status_code, 405)
 
+    def test_operator_rotation_revokes_old_credential(self):
+        replacement = "replacement-secret-0123456789-abcdef"
+        self.client.app.state.rotate_credential(current_token=SECRET, replacement_token=replacement)
+        self.assertEqual(self.client.get("/v1/status", headers=self.auth).status_code, 401)
+        self.assertEqual(self.client.get("/v1/status", headers={"Authorization": "Bearer " + replacement}).status_code, 200)
+
+    def test_rotation_rejects_wrong_current_token_and_short_replacement(self):
+        with self.assertRaises(PermissionError):
+            self.client.app.state.rotate_credential(current_token="wrong", replacement_token="replacement-secret-0123456789-abcdef")
+        with self.assertRaises(ValueError):
+            self.client.app.state.rotate_credential(current_token=SECRET, replacement_token="short")
+        self.assertEqual(self.client.get("/v1/status", headers=self.auth).status_code, 200)
+
+    def test_rotation_has_no_http_endpoint(self):
+        self.assertEqual(self.client.post("/v1/rotate", headers=self.auth).status_code, 404)
+
     def test_supplied_revision_is_not_misrepresented(self):
         client = TestClient(create_app(token=SECRET, verified_sha="a" * 40))
         data = client.get("/v1/status", headers=self.auth).json()
