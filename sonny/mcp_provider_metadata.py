@@ -7,7 +7,7 @@ def validate_provider(metadata, expected_issuer):
         raise ValueError("metadata must be an object")
     if metadata.get("issuer") != expected_issuer:
         raise ValueError("issuer mismatch")
-    for value in (expected_issuer, metadata.get("authorization_endpoint"), metadata.get("token_endpoint")):
+    for value in (expected_issuer, metadata.get("authorization_endpoint"), metadata.get("token_endpoint"), metadata.get("jwks_uri")):
         if not isinstance(value, str):
             raise ValueError("HTTPS provider URLs required")
         parsed = urlsplit(value)
@@ -17,4 +17,4 @@ def validate_provider(metadata, expected_issuer):
         raise ValueError("authorization code required")
     if "S256" not in metadata.get("code_challenge_methods_supported", []):
         raise ValueError("PKCE S256 required")
-    return True
+    return {\n        "issuer": expected_issuer,\n        "authorization_endpoint": metadata["authorization_endpoint"],\n        "token_endpoint": metadata["token_endpoint"],\n        "jwks_uri": metadata["jwks_uri"],\n    }
