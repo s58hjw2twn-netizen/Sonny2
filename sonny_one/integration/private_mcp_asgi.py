@@ -16,6 +16,14 @@ MAX_BODY_BYTES = 65536
 async def private_mcp_app(scope, receive, send, *, expected_token=None):
     if scope.get("type") != "http":
         return
+    # Refuse cross-origin browser requests; remote hosting needs an explicit
+    # trusted-origin policy and CSRF/DNS-rebinding review before activation.
+    if any(
+        isinstance(key, bytes) and key.lower() == b"origin"
+        for key, _ in scope.get("headers", [])
+    ):
+        await _respond(send, 403, {"error": "origin_not_allowed"})
+        return
     if not authorize_bearer(scope.get("headers", []), expected_token):
         await _respond(send, 401, {"error": "unauthorized"})
         return
