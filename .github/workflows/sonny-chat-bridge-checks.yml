@@ -5,9 +5,11 @@ on:
     branches: [research/sonny-chat-bridge-phase1]
     paths:
       - 'sonny_one/chat_bridge.py'
+      - 'sonny_one/chat_bridge_mcp.py'
+      - 'tests/test_sonny_one_chat_bridge_mcp.py'
       - 'sonny_one/capability_inventory.py'
       - 'tests/test_sonny_one_chat_bridge.py'
-      - 'tests/test_sonny_one_chat_bridge_manifest.py'
+      - 'tests/test_sonny_one_chat_bridge_manifest.py tests/test_sonny_one_chat_bridge_mcp.py'
       - 'sonny_one/chat_bridge_manifest.json'
       - '.github/workflows/sonny-chat-bridge-checks.yml'
   workflow_dispatch:
