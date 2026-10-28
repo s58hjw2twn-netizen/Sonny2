@@ -20,7 +20,11 @@ def _https_origin(value: str, name: str) -> str:
 
 def protected_resource_metadata(resource_url: str, authorization_server: str) -> dict:
     """Build RFC 9728-style metadata; validate trusted operator-supplied URLs."""
-    origin = _https_origin(resource_url.split("/mcp", 1)[0], "resource origin")
+    if not isinstance(resource_url, str):
+        raise ValueError("resource URL must be a string")
+    parsed_resource = urlsplit(resource_url)
+    origin_candidate = f"{parsed_resource.scheme}://{parsed_resource.netloc}"
+    origin = _https_origin(origin_candidate, "resource origin")
     if resource_url != origin + "/mcp":
         raise ValueError("resource URL must be the exact HTTPS /mcp endpoint")
     issuer = _https_origin(authorization_server, "authorization server")
