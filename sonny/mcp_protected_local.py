@@ -10,6 +10,7 @@ from sonny.mcp_auth_boundary import BearerAuthBoundary
 from sonny.mcp_oauth_discovery import ProtectedResourceDiscovery
 from sonny.mcp_oauth_metadata import protected_resource_metadata
 from sonny.mcp_resource_auth import ResourceAuthConfig
+from sonny.mcp_jwks_auth import JwksAuthConfig, verify_jwks_resource_token
 
 HOST = "127.0.0.1"
 PORT = 8766
@@ -54,19 +55,33 @@ def build_app(config: ResourceAuthConfig, *, resource_url: str | None = None,
     return ProtectedResourceDiscovery(protected, metadata)
 
 
-def config_from_environment() -> ResourceAuthConfig:
-    return ResourceAuthConfig(
-        issuer=os.environ["SONNY_MCP_OAUTH_ISSUER"],
-        audience=os.environ["SONNY_MCP_OAUTH_AUDIENCE"],
-        public_key_pem=os.environ["SONNY_MCP_OAUTH_PUBLIC_KEY_PEM"],
-    )
+def config_from_environment():
+    """Load an explicitly selected verifier mode from administrator settings."""
+    mode = os.environ.get("SONNY_MCP_AUTH_MODE", "pinned_key")
+    if mode == "jwks":
+        config = JwksAuthConfig(
+            issuer=os.environ["SONNY_MCP_OAUTH_ISSUER"],
+            audience=os.environ["SONNY_MCP_OAUTH_AUDIENCE"],
+            jwks_uri=os.environ["SONNY_MCP_OAUTH_JWKS_URI"],
+        )
+        return config, verify_jwks_resource_token
+    if mode == "pinned_key":
+        config = ResourceAuthConfig(
+            issuer=os.environ["SONNY_MCP_OAUTH_ISSUER"],
+            audience=os.environ["SONNY_MCP_OAUTH_AUDIENCE"],
+            public_key_pem=os.environ["SONNY_MCP_OAUTH_PUBLIC_KEY_PEM"],
+        )
+        return config, None
+    raise ValueError("SONNY_MCP_AUTH_MODE must be 'pinned_key' or 'jwks'")
 
 
 if __name__ == "__main__":
     import uvicorn
     # Fail before binding if any authentication setting is absent or invalid.
+    auth_config, token_verifier = config_from_environment()
     app = build_app(
-        config_from_environment(),
+        auth_config,
         resource_url=os.environ.get("SONNY_MCP_PUBLIC_RESOURCE_URL"),
+        token_verifier=token_verifier,
     )
     uvicorn.run(app, host=HOST, port=PORT)
