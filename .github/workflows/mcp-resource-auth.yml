@@ -13,6 +13,7 @@ on:
       - 'tests/test_mcp_protected_local.py'
       - 'tests/test_mcp_oauth_metadata.py'
       - 'tests/test_mcp_oauth_discovery.py'
+      - 'tests/test_mcp_asgi_lifespan.py'
       - '.github/workflows/mcp-resource-auth.yml'
   workflow_dispatch:
 permissions:
@@ -29,4 +30,4 @@ jobs:
       - name: Install test dependencies
         run: python -m pip install 'PyJWT[crypto]==2.10.1' 'pytest==8.3.4' 'mcp>=1.28,<2'
       - name: Run resource-token tests
-        run: python -m pytest -q tests/test_mcp_resource_auth.py tests/test_mcp_auth_boundary.py tests/test_mcp_protected_local.py tests/test_mcp_oauth_metadata.py tests/test_mcp_oauth_discovery.py
+        run: python -m pytest -q tests/test_mcp_resource_auth.py tests/test_mcp_auth_boundary.py tests/test_mcp_protected_local.py tests/test_mcp_oauth_metadata.py tests/test_mcp_oauth_discovery.py tests/test_mcp_asgi_lifespan.py
