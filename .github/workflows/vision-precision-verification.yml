@@ -8,6 +8,7 @@ on:
       - 'tests/test_precision_pipeline.py'
       - 'tests/test_precision_release_gate.py'
       - 'tests/test_review_preview.py'
+      - 'tests/test_constraint_contract.py'
       - '.github/workflows/vision-precision-verification.yml'
   workflow_dispatch:
 
@@ -33,5 +34,7 @@ jobs:
         run: PYTHONPATH=. python -m unittest discover -s tests -p 'test_precision_pipeline.py' -v
       - name: Run precision release gate tests
         run: PYTHONPATH=. python -m unittest discover -s tests -p 'test_precision_release_gate.py' -v
+      - name: Run precision contract tests
+        run: PYTHONPATH=. python -m unittest discover -s tests -p 'test_constraint_contract.py' -v
       - name: Run review preview tests
         run: PYTHONPATH=. python -m unittest discover -s tests -p 'test_review_preview.py' -v
