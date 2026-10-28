@@ -32,16 +32,15 @@ def prepare_case(*, source, replacement, mask, workspace, case_id,
     ledger = failure_ledger if failure_ledger is not None else FailureLedger(root / "failure_ledger.jsonl")
     if not isinstance(ledger, FailureLedger):
         raise ReleaseDenied("Trusted FailureLedger required")
-    if True:
         policy = TaskPolicy(task_type="precision_image_edit",
-                            allowed_methods=("pixel_locked_composite",))
-        tool = ToolCapability(name="pixel_locked_composite",
-                              exact_region_edit=True, preserves_outside_mask=True,
-                              independent_postcheck=True)
-        decision = authorize_tool(policy, tool, ledger,
-                                  reference_id=reference_id)
-        if decision["status"] != "authorized":
-            raise ReleaseDenied("Method blocked: " + decision["reason"])
+                        allowed_methods=("pixel_locked_composite",))
+    tool = ToolCapability(name="pixel_locked_composite",
+                          exact_region_edit=True, preserves_outside_mask=True,
+                          independent_postcheck=True)
+    decision = authorize_tool(policy, tool, ledger,
+                              reference_id=reference_id)
+    if decision["status"] != "authorized":
+        raise ReleaseDenied("Method blocked: " + decision["reason"])
     root.mkdir(parents=True, exist_ok=True)
     # Avoid overwriting existing case evidence.
     case = root / case_id
