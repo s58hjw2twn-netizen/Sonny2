@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101820"><title>Sonny ONE · Local demo</title><link rel="manifest" href="/assets/manifest.webmanifest"><link rel="icon" href="/assets/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/styles.css"><script src="/assets/app.js" defer></script></head>
+<body>
+<div class="shell">
+<aside>
+<a class="brand" href="/" aria-label="Sonny ONE home"><span class="mark">S</span><span>Sonny <b>ONE</b></span></a>
+<p class="eyebrow">YOUR WORKSPACE</p>
+<label for="goal">What are we working toward?</label><textarea id="goal" maxlength="500" rows="3">Build a useful personal assistant</textarea>
+<button id="new-chat" class="secondary">New conversation</button>
+<section class="memory"><h2>Approved memory <span id="memory-count">0</span></h2><p>Only facts you explicitly save appear here. Nothing is saved automatically.</p>
+<form id="memory-form"><label for="memory-input">A fact Sonny can use</label><input id="memory-input" maxlength="500" placeholder="Example: I prefer short answers" required><button type="submit" class="secondary">Save approved fact</button></form><ul id="memories"></ul></section>
+<label class="check"><input id="persist" type="checkbox"> Keep this workspace on this browser</label><p class="fine">Optional local storage. Anyone using this browser profile can access it. Use sample data.</p><button id="erase" class="quiet">Erase workspace</button>
+</aside>
+<main>
+<header><div><span class="eyebrow">A LITTLE CLARITY. A USEFUL NEXT STEP.</span><h1>Your space to move forward.</h1></div><span class="badge">Local demo · $0 API</span></header>
+<div class="notice">Demo responses · No AI model connected · No external actions</div>
+<div id="chat" role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions"><section id="welcome"><div class="sun">S</div><h2>Let's make room for what matters.</h2><p>Start with a goal, make a simple plan, and decide what Sonny should remember.</p><div class="suggestions"><button data-prompt="Help me plan my next step">Help me plan</button><button data-prompt="What do you remember?">Review my memory</button></div></section></div>
+<p id="reply-status" role="status"></p><p id="error" role="alert"></p>
+<form id="composer"><label class="sr-only" for="message">Message Sonny</label><textarea id="message" rows="2" maxlength="4000" placeholder="Message Sonny…" required></textarea><button id="send" type="submit">Send <span aria-hidden="true">↗</span></button></form>
+<footer>Sonny ONE prototype · You control what stays. <span id="connection" role="status">Checking local server…</span><span id="install-status"></span></footer>
+</main></div>
+</body></html>

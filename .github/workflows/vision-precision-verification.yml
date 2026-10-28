@@ -1,0 +1,52 @@
+name: Sonny Vision Precision Verification
+on:
+  push:
+    branches:
+      - research/reliability-gates-v2
+    paths:
+      - 'sonny_vision/**'
+      - 'tests/test_precision_pipeline.py'
+      - 'tests/test_precision_release_gate.py'
+      - 'tests/test_review_preview.py'
+      - 'tests/test_constraint_contract.py'
+      - '.github/workflows/vision-precision-verification.yml'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  precision-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install isolated test dependencies
+        run: python -m pip install --disable-pip-version-check numpy pillow
+      - name: Compile modules
+        run: python -m compileall -q sonny_vision
+      - name: Run precision regression suite and preserve evidence
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p test-evidence
+          python -m unittest discover -s tests -p 'test_precision_pipeline.py' -v 2>&1 | tee test-evidence/pipeline.log
+          python -m unittest discover -s tests -p 'test_precision_release_gate.py' -v 2>&1 | tee test-evidence/release_gate.log
+          python -m unittest discover -s tests -p 'test_constraint_contract.py' -v 2>&1 | tee test-evidence/contract.log
+          python -m unittest discover -s tests -p 'test_review_preview.py' -v 2>&1 | tee test-evidence/preview.log
+      - name: Upload test evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: precision-regression-evidence
+          path: test-evidence/
+          if-no-files-found: warn
+          retention-days: 14

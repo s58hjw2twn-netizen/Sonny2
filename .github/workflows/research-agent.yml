@@ -1,0 +1,100 @@
+name: Sonny research agent tests
+
+on:
+  push:
+    branches:
+      - research/apl-001
+    paths:
+      - "sonny/research_agent.py"
+      - "sonny/candidate_stager.py"
+      - "sonny/model_patch_gate.py"
+      - "sonny/coding_model_provider.py"
+      - "sonny/gemini_provider.py"
+      - "sonny/candidate_evaluator.py"
+      - "sonny/isolated_test_command.py"
+      - "sonny/paired_execution_review.py"
+      - "sonny/isolated_syntax_executor.py"
+      - "sonny/paired_syntax_runner.py"
+      - "tests/test_research_agent.py"
+      - "tests/test_candidate_stager.py"
+      - "tests/test_model_patch_gate.py"
+      - "tests/test_coding_model_provider.py"
+      - "tests/run_isolated_coding_trial.py"
+      - "tests/test_gemini_provider.py"
+      - "tests/test_candidate_evaluator.py"
+      - "tests/test_isolated_test_command.py"
+      - "tests/test_paired_execution_review.py"
+      - "tests/test_isolated_syntax_executor.py"
+      - "tests/test_paired_syntax_runner.py"
+      - ".github/workflows/research-agent.yml"
+  pull_request:
+    paths:
+      - "sonny/research_agent.py"
+      - "sonny/isolated_test_command.py"
+      - "sonny/paired_execution_review.py"
+      - "sonny/isolated_syntax_executor.py"
+      - "sonny/paired_syntax_runner.py"
+      - "tests/test_isolated_test_command.py"
+      - "tests/test_paired_execution_review.py"
+      - "tests/test_isolated_syntax_executor.py"
+      - "tests/test_paired_syntax_runner.py"
+      - "sonny/candidate_stager.py"
+      - "sonny/model_patch_gate.py"
+      - "sonny/coding_model_provider.py"
+      - "sonny/gemini_provider.py"
+      - "tests/test_coding_model_provider.py"
+      - "tests/test_gemini_provider.py"
+      - "tests/run_isolated_coding_trial.py"
+      - "sonny/candidate_evaluator.py"
+      - "tests/test_research_agent.py"
+      - "tests/test_candidate_stager.py"
+      - "tests/test_model_patch_gate.py"
+      - "tests/test_candidate_evaluator.py"
+      - ".github/workflows/research-agent.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  bounded-planner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test runner
+        run: python -m pip install pytest==8.3.4 httpx==0.28.1
+      - name: Run deterministic agent boundary tests
+        run: |
+          python -m pytest -q tests/test_research_agent.py tests/test_candidate_stager.py tests/test_candidate_evaluator.py tests/test_isolated_test_command.py tests/test_paired_execution_review.py tests/test_isolated_syntax_executor.py tests/test_paired_syntax_runner.py tests/test_model_patch_gate.py tests/test_coding_model_provider.py tests/test_gemini_provider.py --junitxml=agent-test-results.xml
+      - name: Archive independent test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonny-agent-test-evidence
+          path: agent-test-results.xml
+          if-no-files-found: warn
+          retention-days: 7
+
+  isolated-functional-trial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test transport dependencies
+        run: python -m pip install httpx==0.28.1
+      - name: Prepare isolated Python image
+        run: docker pull python:3.11-slim
+      - name: Verify paired functional repair in isolated containers
+        run: PYTHONPATH=. python tests/run_isolated_coding_trial.py

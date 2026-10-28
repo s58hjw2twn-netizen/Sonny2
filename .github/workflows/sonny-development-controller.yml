@@ -1,0 +1,64 @@
+name: Sonny ONE development controller
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/apl-001
+    paths:
+      - 'sonny_one/development_controller/**'
+      - 'tests/test_sonny_one_development_controller.py'
+      - 'tests/test_sonny_one_runner_preflight_fail_closed.py'
+      - '.github/workflows/sonny-development-controller.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sonny-development-controller
+  cancel-in-progress: true
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/apl-001
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate controller and approval boundaries
+        run: python -m unittest discover -s tests -p 'test_sonny_one_development_controller.py' -v
+      - name: Validate coding-agent handoff safety
+        run: python -m unittest discover -s tests -p 'test_sonny_one_agent_handoff.py' -v
+      - name: Validate runner execution review gate
+        run: python -m unittest discover -s tests -p 'test_sonny_one_runner_gate.py' -v
+      - name: Validate runner preflight
+        run: python -m unittest discover -s tests -p 'test_sonny_one_runner_preflight.py' -v
+      - name: Ensure fail-closed preflight remains enforced
+        run: python -m unittest discover -s tests -p 'test_sonny_one_runner_preflight_fail_closed.py' -v
+      - name: Test restricted validation executor
+        run: python -m unittest discover -s tests -p 'test_sonny_one_validation_runner.py' -v
+      - name: Execute allowlisted validation
+        run: python -m sonny_one.development_controller.validation_runner --validation controller > validation-report.json
+      - name: Generate task plan without code execution
+        run: |
+          python -m sonny_one.development_controller.controller --output development-plan.json
+          cat development-plan.json
+          python -m sonny_one.development_controller.controller --handoff --output coding-agent-handoff.json
+          cat coding-agent-handoff.json
+          python -m sonny_one.development_controller.runner_preflight > runner-preflight.json
+          cat runner-preflight.json
+      - name: Preserve inspectable plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonny-development-plan
+          path: |
+            development-plan.json
+            coding-agent-handoff.json
+            runner-preflight.json
+            validation-report.json
+          retention-days: 7

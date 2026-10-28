@@ -1,0 +1,68 @@
+name: APL real isolated Docker replication trial
+
+on:
+  push:
+    branches: [research/apl-001, research/apl-001-benchmark-isolation-20261027]
+    paths:
+      - '.github/workflows/apl-real-docker-trial.yml'
+      - 'tests/apl_real_docker_trial.py'
+      - 'tests/apl_verify_ci_replication.py'
+      - 'tests/apl_benchmark_container.py'
+      - 'sonny_one/apl/perf_runner.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  replica:
+    name: Docker replica ${{ matrix.replica }}
+    strategy:
+      fail-fast: false
+      matrix:
+        replica: [alpha, beta]
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      APL_REPLICA_ID: ${{ matrix.replica }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Provision public Python image outside experimental container
+        run: docker pull python:3.11-slim
+      - name: Run actual offline baseline and candidate Docker evaluations
+        run: |
+          PYTHONPATH=. python tests/apl_real_docker_trial.py "$RUNNER_TEMP/apl-${{ matrix.replica }}"
+      - name: Upload job-specific evidence to GitHub artifact custody
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apl-real-${{ matrix.replica }}
+          path: ${{ runner.temp }}/apl-${{ matrix.replica }}/
+          retention-days: 14
+          if-no-files-found: warn
+
+  verify:
+    name: Cross-run evidence review (no promotion)
+    needs: replica
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: apl-real-*
+          path: evidence
+      - name: Verify GitHub-custodied artifacts and both independent job results
+        run: |
+          PYTHONPATH=. python tests/apl_verify_ci_replication.py evidence

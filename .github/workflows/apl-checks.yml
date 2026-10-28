@@ -1,0 +1,30 @@
+name: APL experimental policy checks
+
+on:
+  push:
+    branches:
+      - research/apl-001
+  pull_request:
+    paths:
+      - 'sonny_one/apl/**'
+      - 'tests/test_apl_*.py'
+      - '.github/workflows/apl-checks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check syntax
+        run: python -m compileall -q sonny_one/apl tests
+      - name: RSI evidence gate tests (stdlib unittest, no package installation)
+        run: python -m unittest discover -s tests -p 'test_rsi_evidence_gate.py' -v
+      - name: APL policy tests (stdlib unittest, no package installation)
+        run: python -m unittest discover -s tests -p 'test_apl_*.py' -v

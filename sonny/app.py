@@ -1,6 +1,7 @@
 import os
 import time
 import uuid
+import jwt
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import HTMLResponse
@@ -12,6 +13,18 @@ from .core import respond, CORE_VERSION
 
 app = FastAPI(title="Sonny Assistant", version="0.1.0")
 store = Store(os.getenv("SONNY_DB", "sonny.db"))
+
+@app.middleware("http")
+async def secure_response_headers(request, call_next):
+    response = await call_next(request)
+    # The application serves private conversations and bearer sessions.
+    # Do not allow shared or browser HTTP caches to retain API responses.
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["X-Frame-Options"] = "DENY"
+    return response
+
 
 
 class UserIn(BaseModel):
@@ -46,10 +59,28 @@ class FeedbackIn(BaseModel):
     status: str
 
 
-def user(x_user_id: str | None):
-    if not x_user_id:
-        raise HTTPException(401, "X-User-ID required")
-    return x_user_id
+def user(x_user_id: str | None, authorization: str | None = None):
+    # The legacy header is an identifier, never proof of authentication.
+    secret = os.getenv("SONNY_AUTH_SECRET")
+    if not secret or len(secret.encode("utf-8")) < 32:
+        raise HTTPException(503, "Authentication signing key is not configured securely")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(401, "Bearer token required")
+    try:
+        claims = jwt.decode(
+            authorization[7:], secret, algorithms=["HS256"],
+            options={"require": ["sub", "exp", "iat"]},
+        )
+    except jwt.PyJWTError:
+        raise HTTPException(401, "Invalid or expired session")
+    identity = claims.get("sub")
+    if not isinstance(identity, str) or not identity:
+        raise HTTPException(401, "Invalid session identity")
+    if not store.db.execute("SELECT 1 FROM users WHERE id=?", (identity,)).fetchone():
+        raise HTTPException(401, "Session account no longer exists")
+    if x_user_id and x_user_id != identity:
+        raise HTTPException(403, "Session identity mismatch")
+    return identity
 
 
 def require_project(u, pid):
@@ -680,6 +711,7 @@ function renderMarkdown(text) {
 }
 const state = {
     userId: null,
+    sessionToken: null,
     projectId: null,
     projectName: null,
     projectGoal: null
@@ -694,6 +726,9 @@ function apiHeaders() {
 
     if (state.userId) {
         h["X-User-ID"] = state.userId;
+    }
+    if (state.sessionToken) {
+        h["Authorization"] = "Bearer " + state.sessionToken;
     }
 
     return h;
@@ -762,6 +797,7 @@ function loadState() {
         if (
             saved &&
             saved.userId &&
+            saved.sessionToken &&
             saved.projectId
         ) {
 
@@ -770,7 +806,22 @@ function loadState() {
                 saved
             );
 
-            showWorkspace();
+            // Renew a still-valid session before loading private project data.
+            api("/session/renew", {method: "POST"})
+                .then(function(session) {
+                    state.sessionToken = session.session_token;
+                    saveState();
+                    return showWorkspace();
+                })
+                .catch(function(error) {
+                    console.warn("Sonny session renewal failed:", error.message);
+                    document.getElementById("setupCard").classList.remove("hidden");
+                    document.getElementById("workspace").classList.add("hidden");
+                    document.getElementById("setupError").textContent =
+                        "Your Sonny session needs to be re-established. " +
+                        "Do not delete your existing browser data.";
+                    document.getElementById("setupError").classList.remove("hidden");
+                });
 
             return true;
         }
@@ -919,6 +970,7 @@ async function startWorkspace() {
 
         state.userId =
             createdUser.user_id;
+        state.sessionToken = createdUser.session_token;
 
         const createdProject =
             await api(
@@ -1227,9 +1279,35 @@ def health():
 
 @app.post("/users")
 def users(b: UserIn):
-    return {
-        "user_id": store.create_user(b.name)
-    }
+    secret = os.getenv("SONNY_AUTH_SECRET")
+    if not secret or len(secret.encode("utf-8")) < 32:
+        raise HTTPException(503, "Authentication signing key is not configured securely")
+    identity = store.create_user(b.name)
+    now = int(time.time())
+    token = jwt.encode(
+        {"sub": identity, "iat": now, "exp": now + 86400},
+        secret, algorithm="HS256",
+    )
+    return {"user_id": identity, "session_token": token}
+
+
+# ---------------------------------------------------------
+# SESSION RENEWAL (requires an unexpired authenticated session)
+# ---------------------------------------------------------
+
+@app.post("/session/renew")
+def renew_session(
+    x_user_id: str | None = Header(None),
+    authorization: str | None = Header(None),
+):
+    identity = user(x_user_id, authorization)
+    secret = os.environ["SONNY_AUTH_SECRET"]
+    now = int(time.time())
+    token = jwt.encode(
+        {"sub": identity, "iat": now, "exp": now + 86400},
+        secret, algorithm="HS256",
+    )
+    return {"user_id": identity, "session_token": token, "expires_in": 86400}
 
 
 # ---------------------------------------------------------
@@ -1239,12 +1317,13 @@ def users(b: UserIn):
 @app.post("/projects")
 def projects(
     b: ProjectIn,
-    x_user_id: str | None = Header(None)
+    x_user_id: str | None = Header(None),
+    authorization: str | None = Header(None)
 ):
     return {
         "project_id":
             store.create_project(
-                user(x_user_id),
+                user(x_user_id, authorization),
                 b.name,
                 b.goal
             )
@@ -1254,9 +1333,10 @@ def projects(
 @app.get("/projects/{pid}")
 def get_project(
     pid: str,
-    x_user_id: str | None = Header(None)
+    x_user_id: str | None = Header(None),
+    authorization: str | None = Header(None)
 ):
-    u = user(x_user_id)
+    u = user(x_user_id, authorization)
 
     p = require_project(u, pid)
 
@@ -1279,9 +1359,10 @@ def get_project(
 def chat(
     pid: str,
     b: ChatIn,
-    x_user_id: str | None = Header(None)
+    x_user_id: str | None = Header(None),
+    authorization: str | None = Header(None)
 ):
-    u = user(x_user_id)
+    u = user(x_user_id, authorization)
 
     p = require_project(u, pid)
 
@@ -1358,10 +1439,11 @@ def chat(
 def propose_memory(
     pid: str,
     b: MemoryIn,
-    x_user_id: str | None = Header(None)
+    x_user_id: str | None = Header(None),
+    authorization: str | None = Header(None)
 ):
 
-    u = user(x_user_id)
+    u = user(x_user_id, authorization)
 
     require_project(u, pid)
 
@@ -1384,10 +1466,11 @@ def propose_memory(
 def confirm(
     pid: str,
     mid: str,
-    x_user_id: str | None = Header(None)
+    x_user_id: str | None = Header(None),
+    authorization: str | None = Header(None)
 ):
 
-    u = user(x_user_id)
+    u = user(x_user_id, authorization)
 
     require_project(u, pid)
 
@@ -1410,10 +1493,11 @@ def correct(
     pid: str,
     mid: str,
     b: CorrectionIn,
-    x_user_id: str | None = Header(None)
+    x_user_id: str | None = Header(None),
+    authorization: str | None = Header(None)
 ):
 
-    u = user(x_user_id)
+    u = user(x_user_id, authorization)
 
     require_project(u, pid)
 
@@ -1439,10 +1523,11 @@ def correct(
 def delete(
     pid: str,
     mid: str,
-    x_user_id: str | None = Header(None)
+    x_user_id: str | None = Header(None),
+    authorization: str | None = Header(None)
 ):
 
-    u = user(x_user_id)
+    u = user(x_user_id, authorization)
 
     require_project(u, pid)
 
@@ -1466,10 +1551,11 @@ def delete(
 def action(
     pid: str,
     b: ActionIn,
-    x_user_id: str | None = Header(None)
+    x_user_id: str | None = Header(None),
+    authorization: str | None = Header(None)
 ):
 
-    u = user(x_user_id)
+    u = user(x_user_id, authorization)
 
     require_project(u, pid)
 
@@ -1494,10 +1580,11 @@ def feedback(
     pid: str,
     aid: str,
     b: FeedbackIn,
-    x_user_id: str | None = Header(None)
+    x_user_id: str | None = Header(None),
+    authorization: str | None = Header(None)
 ):
 
-    u = user(x_user_id)
+    u = user(x_user_id, authorization)
 
     require_project(u, pid)
 

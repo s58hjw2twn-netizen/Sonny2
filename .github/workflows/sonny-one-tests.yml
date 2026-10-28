@@ -1,0 +1,47 @@
+name: Sonny ONE Tests
+on:
+  push:
+    branches:
+      - feature/sonny-one-foundation
+      - research/apl-001
+    paths:
+      - 'sonny_one/**'
+      - 'sonny/**'
+      - 'requirements.txt'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'Start-Sonny-ONE.cmd'
+      - '.github/workflows/sonny-one-tests.yml'
+  pull_request:
+    paths:
+      - 'sonny_one/**'
+      - 'sonny/**'
+      - 'requirements.txt'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'Start-Sonny-ONE.cmd'
+      - '.github/workflows/sonny-one-tests.yml'
+permissions:
+  contents: read
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Install pinned Sonny Vision test dependencies
+        run: python -m pip install --disable-pip-version-check 'numpy==1.26.4' 'opencv-python-headless==4.10.0.84' 'Pillow==11.3.0'
+      - name: Run complete deterministic suite
+        run: python -m pytest -q
+      - name: Check browser JavaScript syntax
+        run: |
+          node --check sonny_one/web/app.js
+          node --check sonny_one/web/sw.js
+          node --check sonny_one/web/pilot.js
+          node --check tests/browser_sonny_one.cjs
+          node --check tests/browser_sonny_one_pilot.cjs

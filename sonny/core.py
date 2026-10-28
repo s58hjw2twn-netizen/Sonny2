@@ -9,6 +9,7 @@ CORE_VERSION = "1.2-conversation-history"
 
 OPENAI_API_URL = "https://api.openai.com/v1/responses"
 DEFAULT_MODEL = os.getenv("SONNY_MODEL", "gpt-5.4-mini")
+SONNY_PROVIDER = os.getenv("SONNY_PROVIDER", "openai").lower()
 
 logger = logging.getLogger("sonny.core")
 
@@ -206,12 +207,20 @@ def respond(
     history=None
 ):
     try:
-        text = _call_openai(
-            project=project,
-            memories=memories,
-            history=history or [],
-            message=message,
-        )
+        if SONNY_PROVIDER == "gemini":
+            from .gemini_provider import generate_gemini
+            text = generate_gemini(
+                _instructions(project, memories), history or [], message
+            )
+        elif SONNY_PROVIDER == "openai":
+            text = _call_openai(
+                project=project,
+                memories=memories,
+                history=history or [],
+                message=message,
+            )
+        else:
+            raise RuntimeError("Unsupported SONNY_PROVIDER")
 
         return {
             "text": text,

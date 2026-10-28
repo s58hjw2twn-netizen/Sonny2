@@ -1,0 +1,51 @@
+"""V17 orchestration: compute quality checks instead of trusting caller-supplied flags.
+
+A reviewed protection mask is mandatory. Identity review remains an explicit
+human assertion, not a computer-vision claim. This module does not grant roles.
+"""
+from __future__ import annotations
+from pathlib import Path
+import cv2
+import numpy as np
+from .archival_engine import quality_gate
+from .review_gate_v17 import ReviewDecision, verify_decision
+import hashlib
+from .release_export import export_reviewed
+
+
+def _decode(path: str) -> np.ndarray:
+    raw = np.frombuffer(Path(path).read_bytes(), dtype=np.uint8)
+    image = cv2.imdecode(raw, cv2.IMREAD_COLOR)
+    if image is None:
+        raise ValueError("Not a supported image")
+    return image
+
+
+def release_with_quality_review(source_path: str, candidate_path: str,
+                                destination_path: str, protected_mask: np.ndarray,
+                                decision: ReviewDecision | None, secret: bytes,
+                                identity_reviewed: bool = False,
+                                identity_decision: ReviewDecision | None = None,
+                                authorized_reviewers: frozenset[str] | None = None) -> dict:
+    if not authorized_reviewers:
+        return {"exported": False, "reason": "no authorized reviewers configured"}
+    if (decision is None or identity_decision is None
+            or decision.reviewer not in authorized_reviewers
+            or identity_decision.reviewer not in authorized_reviewers):
+        return {"exported": False, "reason": "reviewer not authorized"}
+    source = _decode(source_path)
+    candidate = _decode(candidate_path)
+    gate = quality_gate(source, candidate, protected_mask)
+    if not gate["passed"]:
+        return {"exported": False, "quality": gate, "reason": "quality gate failed"}
+    source_digest = hashlib.sha256(Path(source_path).read_bytes()).hexdigest()
+    candidate_digest = hashlib.sha256(Path(candidate_path).read_bytes()).hexdigest()
+    signed_identity = identity_decision is not None and verify_decision(
+        identity_decision, source_digest, candidate_digest, "candidate_review", secret)
+    if not identity_reviewed or not signed_identity:
+        return {"exported": False, "quality": gate, "reason": "signed human identity review required"}
+    exported = export_reviewed(source_path, candidate_path, destination_path,
+                               decision, secret, quality_passed=True,
+                               identity_reviewed=True)
+    return {"exported": exported, "quality": gate,
+            "reason": "signed review accepted" if exported else "signed release review missing or invalid"}

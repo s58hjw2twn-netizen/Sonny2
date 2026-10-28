@@ -1,5 +1,8 @@
 import os,tempfile,sqlite3
 from unittest.mock import patch
+# Test-only signing key; production must provide its own secret.
+os.environ['SONNY_AUTH_SECRET'] = 'sonny-gate1-test-only-secret-2026-do-not-use-in-production'
+_sessions = {}
 fd,path=tempfile.mkstemp(); os.close(fd); os.unlink(path); os.environ['SONNY_DB']=path
 from fastapi.testclient import TestClient
 import sonny.app as appmod
@@ -8,13 +11,17 @@ from sonny.store import Store
 c=TestClient(appmod.app)
 
 def mkuser(n='U'):
-    return c.post('/users',json={'name':n}).json()['user_id']
+    response = c.post('/users', json={'name': n})
+    response.raise_for_status()
+    account = response.json()
+    _sessions[account['user_id']] = account['session_token']
+    return account['user_id']
 
 def mkproject(u,n='Test',g='Ship MVP'):
-    return c.post('/projects',headers={'X-User-ID':u},json={'name':n,'goal':g}).json()['project_id']
+    return c.post('/projects',headers=H(u),json={'name':n,'goal':g}).json()['project_id']
 
 def H(u):
-    return {'X-User-ID':u}
+    return {'X-User-ID': u, 'Authorization': 'Bearer ' + _sessions[u]}
 
 def test_G1_01_create_isolated_account():
     u=mkuser()
@@ -98,7 +105,7 @@ def test_G1_09_state_reconstructs_after_store_restart():
     u=mkuser(); p=mkproject(u)
     m=c.post(f'/projects/{p}/memories',headers=H(u),json={'value':'Use FastAPI'}).json()['memory_id']
     c.post(f'/projects/{p}/memories/{m}/confirm',headers=H(u))
-    fresh=Store(path)
+    fresh=Store(appmod.store.path)
     assert fresh.project(u,p)['goal']=='Ship MVP' and fresh.memories(u,p)[0]['value']=='Use FastAPI'
 
 def test_G1_10_cross_user_isolation():
@@ -228,7 +235,7 @@ def test_G1_13_conversation_persists_after_store_restart():
         u,p,'assistant','BLUE-913 remembered'
     )
 
-    fresh=Store(path)
+    fresh=Store(appmod.store.path)
     history=fresh.messages(u,p,limit=20)
 
     assert len(history)==2

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101820"><title>Sonny ONE · Local pilot</title><link rel="icon" href="/assets/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/styles.css"><script src="/assets/pilot.js" defer></script></head>
+<body>
+<section id="login-panel" class="login-panel">
+  <span class="mark">S</span><h1>Welcome to Sonny ONE.</h1>
+  <p>Sign in to your local test workspace. Demo replies use no model API.</p>
+  <form id="login-form">
+    <label for="username">Test username</label><input id="username" autocomplete="username" maxlength="64" required>
+    <label for="password">Password</label><input id="password" type="password" autocomplete="current-password" maxlength="128" required>
+    <button id="login-button" type="submit">Sign in</button>
+  </form><p id="login-error" role="alert"></p>
+  <p class="fine">Accounts are created by the local operator. Use invented sample data.</p>
+</section>
+<div id="pilot-shell" class="shell hidden">
+<aside>
+<a class="brand" href="/" aria-label="Sonny ONE home"><span class="mark">S</span><span>Sonny <b>ONE</b></span></a>
+<p class="eyebrow">YOUR WORKSPACE</p>
+<label for="goal">What are we working toward?</label><textarea id="goal" maxlength="500" rows="3">Build a useful personal assistant</textarea>
+<button id="save-goal" class="secondary">Save goal</button><button id="new-chat" class="secondary">New conversation</button>
+<section class="memory"><h2>Approved memory <span id="memory-count">0</span></h2><p>Only facts you explicitly save appear here. Nothing is saved automatically.</p>
+<form id="memory-form"><label for="memory-input">A fact Sonny can use</label><input id="memory-input" maxlength="500" placeholder="Example: I prefer short answers" required><button id="save-fact" type="submit" class="secondary">Save approved fact</button><button id="cancel-edit" type="button" class="quiet hidden">Cancel correction</button></form><ul id="memories"></ul></section>
+<p class="fine">Your goal, chat and explicitly approved facts are stored in this account on the local server. Forgetting stops future recall; earlier chat quotations remain until you clear chat. Use sample data.</p>
+<button id="erase" class="quiet">Erase workspace</button><button id="logout" class="secondary">Sign out</button>
+</aside>
+<main>
+<header><div><span class="eyebrow">A LITTLE CLARITY. A USEFUL NEXT STEP.</span><h1>Your space to move forward.</h1></div><span class="badge">Local pilot · $0 API</span></header>
+<div class="notice">Signed-in workspace · Demo replies · No model API connected</div>
+<div id="chat" role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions"><section id="welcome"><div class="sun">S</div><h2>Let's make room for what matters.</h2><p>Start with a goal, make a simple plan, and decide what Sonny should remember.</p><div class="suggestions"><button data-prompt="Help me plan my next step">Help me plan</button><button data-prompt="What do you remember?">Review my memory</button></div></section></div>
+<p id="reply-status" role="status"></p><p id="error" role="alert"></p>
+<form id="composer"><label class="sr-only" for="message">Message Sonny</label><textarea id="message" rows="2" maxlength="4000" placeholder="Message Sonny…" required></textarea><button id="send" type="submit">Send <span aria-hidden="true">↗</span></button></form>
+<footer>Sonny ONE prototype · Local test-account pilot. <span id="connection" role="status">Checking local server…</span></footer>
+</main></div>
+</body></html>
