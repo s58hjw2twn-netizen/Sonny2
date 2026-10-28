@@ -4,6 +4,7 @@ on:
     branches:
       - feature/sonny-one-foundation
       - research/apl-001
+      - research/unified-chatgpt-bridge
     paths:
       - 'sonny_one/**'
       - 'sonny/**'
