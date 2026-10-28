@@ -9,7 +9,16 @@ TOKEN = "disposable-test-token-0123456789-abcdef"
 
 class MCPTests(unittest.TestCase):
     def setUp(self):
-        self.client = TestClient(create_mcp_app(token=TOKEN), client=("127.0.0.1", 50000))
+        self.client = TestClient(create_mcp_app(token=TOKEN))
+        # Older Starlette TestClient uses "testclient" as its ASGI peer.
+        # Test-only ASGI wrapper sets a loopback peer without modifying
+        # production middleware or network restrictions.
+        original_app = self.client.app
+        async def loopback_scope(scope, receive, send):
+            scope = dict(scope)
+            scope["client"] = ("127.0.0.1", 50000)
+            await original_app(scope, receive, send)
+        self.client.app = loopback_scope
         self.headers = {"Authorization": "Bearer " + TOKEN}
         self.headers["Content-Type"] = "application/json"
 
