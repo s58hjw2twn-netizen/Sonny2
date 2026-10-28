@@ -43,3 +43,21 @@ def authorize_capability(name: str, *, runtime_evidence: object = None) -> None:
     if not isinstance(name, str) or name not in _CAPABILITIES:
         raise PermissionError("unknown bridge capability")
     raise PermissionError("Sonny ONE bridge runtime is not authenticated or activated")
+
+
+def read_public_bridge_status() -> dict:
+    """Static, non-sensitive status suitable for an unauthenticated health check.
+
+    This is not a live connection assertion and contains no personal memory,
+    credentials, private project records, or permission to execute tasks.
+    """
+    manifest = capability_manifest()
+    return {
+        "schema_version": manifest["schema_version"],
+        "repository": manifest["repository"],
+        "research_branch": manifest["research_branch"],
+        "runtime_connected": False,
+        "unattended_development_enabled": False,
+        "enabled_capabilities": [],
+        "status": "integration_contract_only",
+    }
