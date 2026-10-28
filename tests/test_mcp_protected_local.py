@@ -7,7 +7,7 @@ import jwt
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 
-from sonny.mcp_protected_local import build_app, mcp
+from sonny.mcp_protected_local import build_app, create_mcp_server
 from sonny.mcp_resource_auth import ResourceAuthConfig
 
 
@@ -25,10 +25,11 @@ def test_protected_mcp_http_access():
 
     # Building the Streamable HTTP ASGI app initializes the SDK session manager.
     # This must happen before entering its lifespan context.
-    protected_app = build_app(config)
+    server = create_mcp_server()
+    protected_app = build_app(config, server=server)
 
     async def run():
-        async with mcp.session_manager.run():
+        async with server.session_manager.run():
             transport = httpx.ASGITransport(app=protected_app)
             async with httpx.AsyncClient(transport=transport, base_url="http://127.0.0.1:8766") as client:
                 for headers in ({}, {"Authorization": "Bearer invalid"},
@@ -97,7 +98,8 @@ def test_opt_in_discovery_preserves_mcp_authorization():
         serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
     ).decode()
     config = ResourceAuthConfig("https://issuer.example", "https://sonny.example/mcp", pub)
-    app = build_app(config, resource_url=config.audience)
+    server = create_mcp_server()
+    app = build_app(config, resource_url=config.audience, server=server)
 
     async def run():
         async with mcp.session_manager.run():
