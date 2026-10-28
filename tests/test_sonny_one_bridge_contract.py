@@ -1,7 +1,7 @@
 import unittest
 
 from sonny_one.integration.bridge_contract import (
-    RESEARCH_BRANCH, authorize_capability, capability_manifest,
+    RESEARCH_BRANCH, authorize_capability, capability_manifest, read_public_bridge_status,
 )
 
 
@@ -26,6 +26,15 @@ class BridgeContractTests(unittest.TestCase):
                         "authenticated": True, "sandbox_verified": True,
                         "signed": True, "owner_approved": True,
                     })
+
+    def test_public_status_never_exposes_private_data_or_activation(self):
+        status = read_public_bridge_status()
+        self.assertEqual(status["status"], "integration_contract_only")
+        self.assertFalse(status["runtime_connected"])
+        self.assertFalse(status["unattended_development_enabled"])
+        self.assertEqual(status["enabled_capabilities"], [])
+        self.assertNotIn("memory", status)
+        self.assertNotIn("credentials", status)
 
     def test_unknown_capability_fails_closed(self):
         with self.assertRaises(PermissionError):
