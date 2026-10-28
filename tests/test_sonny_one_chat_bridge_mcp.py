@@ -9,7 +9,7 @@ TOKEN = "disposable-test-token-0123456789-abcdef"
 
 class MCPTests(unittest.TestCase):
     def setUp(self):
-        self.client = TestClient(create_mcp_app(token=TOKEN))
+        self.client = TestClient(create_mcp_app(token=TOKEN), client=("127.0.0.1", 50000))
         self.headers = {"Authorization": "Bearer " + TOKEN}
         self.headers["Content-Type"] = "application/json"
 
