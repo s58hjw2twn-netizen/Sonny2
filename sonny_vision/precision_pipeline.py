@@ -11,10 +11,12 @@ from .locked_compositor import composite_locked
 from .precision_release_gate import verify_precision_edit, authorize_release, ReleaseDenied
 from .review_preview import make_review_preview
 from .constraint_contract import PrecisionRequest, authorize_image_method, verify_outside_mask, assert_completion
+from .tool_authorization import ToolCapability, TaskPolicy, authorize_tool
+from .assurance import AssuranceError
 
 def prepare_case(*, source, replacement, mask, workspace, case_id,
                  reference_id, reference_verified, mask_approved,
-                 independent_review):
+                 independent_review, failure_ledger=None):
     if not case_id or not case_id.strip():
         raise ReleaseDenied("Case ID required")
     if not reference_verified or not mask_approved or not independent_review:
@@ -25,6 +27,16 @@ def prepare_case(*, source, replacement, mask, workspace, case_id,
         reference_id=reference_id,
         reference_verified=reference_verified,
     ), "pixel_locked_composite")
+    if failure_ledger is not None:
+        policy = TaskPolicy(task_type="precision_image_edit",
+                            allowed_methods=("pixel_locked_composite",))
+        tool = ToolCapability(name="pixel_locked_composite",
+                              exact_region_edit=True, preserves_outside_mask=True,
+                              independent_postcheck=True)
+        decision = authorize_tool(policy, tool, failure_ledger,
+                                  reference_id=reference_id)
+        if decision["status"] != "authorized":
+            raise ReleaseDenied("Method blocked: " + decision["reason"])
     root = Path(workspace)
     root.mkdir(parents=True, exist_ok=True)
     # Avoid overwriting existing case evidence.
