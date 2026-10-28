@@ -58,6 +58,8 @@ def test_boundary_supports_explicit_injected_verifier():
 
     def verifier(token, supplied_config):
         seen.append((token, supplied_config))
+        if token == "crash-token":
+            raise RuntimeError("internal verifier failure")
         if token != "test-token":
             raise ValueError("rejected")
 
@@ -81,7 +83,8 @@ def test_boundary_supports_explicit_injected_verifier():
     async def checks():
         assert await request("test-token") == 200
         assert await request("bad-token") == 401
-        assert [item[0] for item in seen] == ["test-token", "bad-token"]
+        assert await request("crash-token") == 401
+        assert [item[0] for item in seen] == ["test-token", "bad-token", "crash-token"]
         assert all(item[1] is config for item in seen)
 
     asyncio.run(checks())
