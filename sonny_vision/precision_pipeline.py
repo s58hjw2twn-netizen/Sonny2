@@ -10,6 +10,7 @@ import json
 from .locked_compositor import composite_locked
 from .precision_release_gate import verify_precision_edit, authorize_release, ReleaseDenied
 from .review_preview import make_review_preview
+from .constraint_contract import PrecisionRequest, authorize_image_method, verify_outside_mask, assert_completion
 
 def prepare_case(*, source, replacement, mask, workspace, case_id,
                  reference_id, reference_verified, mask_approved,
@@ -18,6 +19,12 @@ def prepare_case(*, source, replacement, mask, workspace, case_id,
         raise ReleaseDenied("Case ID required")
     if not reference_verified or not mask_approved or not independent_review:
         raise ReleaseDenied("Verified reference, approved mask and independent review required")
+    authorize_image_method(PrecisionRequest(
+        preserve_outside_mask=True,
+        period_specific_accuracy=True,
+        reference_id=reference_id,
+        reference_verified=reference_verified,
+    ), "pixel_locked_composite")
     root = Path(workspace)
     root.mkdir(parents=True, exist_ok=True)
     # Avoid overwriting existing case evidence.
@@ -28,11 +35,16 @@ def prepare_case(*, source, replacement, mask, workspace, case_id,
     candidate = case / "candidate.png"
     try:
         composite_locked(source, replacement, mask, candidate, case / "compositor.json", reference_id)
+        boundary = verify_outside_mask(source, candidate, mask)
         verification = verify_precision_edit(
             source, candidate, mask, method="pixel_locked_composite",
             reference_id=reference_id, reference_verified=reference_verified,
             mask_approved=mask_approved, independent_review=independent_review,
             customer_approved=False, audit_file=case / "verification.json")
+        assert_completion(pixel_verified=boundary["status"] == "verified_pixel_boundary",
+                          historical_claim=True,
+                          period_reference_verified=reference_verified,
+                          independent_review=bool(independent_review))
         preview = make_review_preview(candidate, case / "review_preview.png",
                                       case / "preview_audit.json", case_id=case_id)
         return {"case_dir": str(case), "verification": verification, "preview": preview}
