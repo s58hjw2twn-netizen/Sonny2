@@ -10,6 +10,9 @@ on:
       - 'tests/test_review_preview.py'
       - 'tests/test_constraint_contract.py'
       - '.github/workflows/vision-precision-verification.yml'
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
