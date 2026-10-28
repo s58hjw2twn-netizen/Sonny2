@@ -5,6 +5,7 @@ Runtime evidence must be supplied by a trusted operator, never by a caller.
 """
 import hmac
 import os
+import threading
 import re
 from fastapi import Depends, FastAPI, Header, HTTPException
 from sonny_one.capability_inventory import capability_inventory
@@ -19,13 +20,17 @@ def create_app(*, token=None, verified_sha=None):
     revision = verified_sha if verified_sha is not None else os.getenv("SONNY_CHAT_BRIDGE_VERIFIED_SHA", "")
     if revision and not SHA.fullmatch(revision):
         raise RuntimeError("Verified SHA must be a full lowercase commit hash")
+    credentials = {"active": secret}
+    credential_lock = threading.Lock()
     app = FastAPI(title="Sonny ONE read-only Chat Bridge", docs_url=None, redoc_url=None, openapi_url=None)
 
     def require_token(authorization: str | None = Header(default=None)):
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Authentication required")
         supplied = authorization[7:]
-        if not hmac.compare_digest(supplied, secret):
+        with credential_lock:
+            active = credentials["active"]
+        if not hmac.compare_digest(supplied, active):
             raise HTTPException(status_code=401, detail="Authentication required")
 
     @app.middleware("http")
@@ -34,6 +39,21 @@ def create_app(*, token=None, verified_sha=None):
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
         return response
+
+    def rotate_credential(*, current_token: str, replacement_token: str) -> None:
+        """Operator-only local control, never exposed as an HTTP endpoint.
+
+        Rotation immediately invalidates the prior token for future requests.
+        Callers must use a trusted operator channel; this does not persist across restart.
+        """
+        if not isinstance(replacement_token, str) or len(replacement_token) < 32:
+            raise ValueError("Replacement token must contain at least 32 characters")
+        with credential_lock:
+            if not hmac.compare_digest(current_token, credentials["active"]):
+                raise PermissionError("Invalid current credential")
+            credentials["active"] = replacement_token
+
+    app.state.rotate_credential = rotate_credential
 
     @app.get("/v1/status", dependencies=[Depends(require_token)])
     def status():
