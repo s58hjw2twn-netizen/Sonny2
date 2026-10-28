@@ -12,7 +12,7 @@ from .precision_release_gate import verify_precision_edit, authorize_release, Re
 from .review_preview import make_review_preview
 from .constraint_contract import PrecisionRequest, authorize_image_method, verify_outside_mask, assert_completion
 from .tool_authorization import ToolCapability, TaskPolicy, authorize_tool
-from .assurance import AssuranceError
+from .assurance import FailureLedger
 
 def prepare_case(*, source, replacement, mask, workspace, case_id,
                  reference_id, reference_verified, mask_approved,
@@ -27,17 +27,21 @@ def prepare_case(*, source, replacement, mask, workspace, case_id,
         reference_id=reference_id,
         reference_verified=reference_verified,
     ), "pixel_locked_composite")
-    if failure_ledger is not None:
+    root = Path(workspace)
+    # Always enforce a durable failure ledger; callers cannot disable it.
+    ledger = failure_ledger if failure_ledger is not None else FailureLedger(root / "failure_ledger.jsonl")
+    if not isinstance(ledger, FailureLedger):
+        raise ReleaseDenied("Trusted FailureLedger required")
+    if True:
         policy = TaskPolicy(task_type="precision_image_edit",
                             allowed_methods=("pixel_locked_composite",))
         tool = ToolCapability(name="pixel_locked_composite",
                               exact_region_edit=True, preserves_outside_mask=True,
                               independent_postcheck=True)
-        decision = authorize_tool(policy, tool, failure_ledger,
+        decision = authorize_tool(policy, tool, ledger,
                                   reference_id=reference_id)
         if decision["status"] != "authorized":
             raise ReleaseDenied("Method blocked: " + decision["reason"])
-    root = Path(workspace)
     root.mkdir(parents=True, exist_ok=True)
     # Avoid overwriting existing case evidence.
     case = root / case_id
@@ -60,9 +64,11 @@ def prepare_case(*, source, replacement, mask, workspace, case_id,
         preview = make_review_preview(candidate, case / "review_preview.png",
                                       case / "preview_audit.json", case_id=case_id)
         return {"case_dir": str(case), "verification": verification, "preview": preview}
-    except Exception:
-        # Keep evidence for troubleshooting; do not publish candidate.
+    except Exception as error:
+        # Record the failure before exposing it to callers. A broken ledger fails closed.
         (case / "FAILED").write_text("Case failed; do not release", encoding="utf-8")
+        ledger.record(task_type="precision_image_edit", method="pixel_locked_composite",
+                      failure_code=type(error).__name__, evidence_ref=case_id)
         raise
 
 def approve_case(case_dir, *, expected_candidate_sha256, customer_approval_token):
