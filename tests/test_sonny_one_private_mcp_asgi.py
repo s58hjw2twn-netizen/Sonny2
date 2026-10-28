@@ -60,7 +60,7 @@ class PrivateMcpAsgiTests(unittest.TestCase):
             sent.append(event)
         asyncio.run(private_mcp_app({
             "type": "http", "method": "POST", "path": "/private/mcp",
-            "headers": [(b"authorization", b"Bearer " + TOKEN.encode())],
+            "headers": [(b"authorization", b"Bearer " + TOKEN.encode()), (b"content-type", b"application/json")],
         }, receive, send, expected_token=TOKEN))
         self.assertEqual(sent[0]["status"], 413)
 
