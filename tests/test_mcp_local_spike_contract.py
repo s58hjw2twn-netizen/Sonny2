@@ -41,4 +41,4 @@ def test_local_spike_has_only_read_only_status_tool():
     assert len(function.body) == 2  # docstring and static return
     assert isinstance(function.body[-1], ast.Return)
     assert isinstance(function.body[-1].value, ast.Dict)
-    assert all(isinstance(v, ast.Constant) for v in function.body[-1].value.values())
+    assert all(isinstance(v, ast.Constant) for v in function.body[-1].value.values)
