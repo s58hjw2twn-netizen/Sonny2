@@ -113,3 +113,33 @@ def test_verifier_rejects_wrong_signing_key(monkeypatch):
     monkeypatch.setattr("jwt.PyJWKClient", FakeJwksClient)
     with pytest.raises(TokenRejected, match="Invalid bearer token"):
         verify_jwks_resource_token(token, JwksAuthConfig(ISSUER, AUDIENCE, JWKS))
+
+
+@pytest.mark.parametrize("header", [
+    {"alg": "HS256", "kid": "key-a"},
+    {"alg": "RS256"},
+    {"alg": "RS256", "kid": ""},
+    {"alg": "RS256", "kid": "x" * 129},
+])
+def test_rejects_bad_jwt_header_without_network_lookup(monkeypatch, header):
+    private = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    now = datetime.now(timezone.utc)
+    claims = {
+        "iss": ISSUER, "aud": AUDIENCE, "sub": "pilot",
+        "iat": now, "exp": now + timedelta(minutes=5),
+        "scope": "sonny.status.read",
+    }
+    if header["alg"] == "HS256":
+        token = jwt.encode(claims, "test-secret-only", algorithm="HS256",
+                           headers={"kid": header["kid"]})
+    else:
+        token = jwt.encode(claims, private, algorithm="RS256",
+                           headers={k: v for k, v in header.items() if k != "alg"})
+
+    class FailIfCalled:
+        def __init__(self, *args, **kwargs):
+            raise AssertionError("JWKS network client must not be constructed")
+
+    monkeypatch.setattr("jwt.PyJWKClient", FailIfCalled)
+    with pytest.raises(TokenRejected, match="Invalid bearer token"):
+        verify_jwks_resource_token(token, JwksAuthConfig(ISSUER, AUDIENCE, JWKS))
