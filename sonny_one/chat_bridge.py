@@ -68,7 +68,7 @@ def create_app(*, token=None, verified_sha=None):
             "autonomous_commits_enabled": False,
         }
 
-    @app.get("/v1/capabilities", dependencies=[__import__("fastapi").Depends(require_token)])
+    @app.get("/v1/capabilities", dependencies=[Depends(require_token)])
     def capabilities():
         return {"source": "static_inventory_not_live_proof", "capabilities": capability_inventory()}
 
