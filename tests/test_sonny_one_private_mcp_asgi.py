@@ -36,6 +36,32 @@ class PrivateMcpAsgiTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(result["error"]["code"], -32602)
 
+    def test_invalid_json_denied_without_protocol_execution(self):
+        import asyncio
+        sent = []
+        async def receive():
+            return {"type": "http.request", "body": b"{broken", "more_body": False}
+        async def send(event):
+            sent.append(event)
+        asyncio.run(private_mcp_app({
+            "type": "http", "method": "POST", "path": "/private/mcp",
+            "headers": [(b"authorization", b"Bearer " + TOKEN.encode())],
+        }, receive, send, expected_token=TOKEN))
+        self.assertEqual(sent[0]["status"], 400)
+
+    def test_oversized_request_rejected(self):
+        import asyncio
+        sent = []
+        async def receive():
+            return {"type": "http.request", "body": b"x" * 65537, "more_body": False}
+        async def send(event):
+            sent.append(event)
+        asyncio.run(private_mcp_app({
+            "type": "http", "method": "POST", "path": "/private/mcp",
+            "headers": [(b"authorization", b"Bearer " + TOKEN.encode())],
+        }, receive, send, expected_token=TOKEN))
+        self.assertEqual(sent[0]["status"], 413)
+
     def test_unavailable_routes_denied(self):
         self.assertEqual(request(TOKEN, method="GET")[0], 404)
         self.assertEqual(request(TOKEN, path="/private/memory")[0], 404)
