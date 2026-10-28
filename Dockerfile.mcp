@@ -1,0 +1,10 @@
+FROM python:3.11-slim
+WORKDIR /app
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+COPY requirements.txt requirements-mcp.txt ./
+RUN pip install --no-cache-dir -r requirements-mcp.txt
+COPY sonny/ ./sonny/
+USER 65532:65532
+# Intentionally no public listener or deployment CMD: the OAuth and
+# production security gates must pass before exposing this service.
+CMD ["python", "-c", "raise SystemExit('MCP staging deployment is gated; no listener started')"]
