@@ -79,3 +79,31 @@ def test_main_rejects_invalid_port_before_loading_oauth_config(monkeypatch):
     monkeypatch.setenv("SONNY_MCP_STAGING_APPROVED", "true")
     with pytest.raises(ValueError, match="PORT"):
         main()
+
+
+def test_staging_builds_jwks_mode_without_pinned_key(monkeypatch):
+    import asyncio
+    import httpx
+
+    monkeypatch.setenv("SONNY_MCP_STAGING_APPROVED", "true")
+    monkeypatch.setenv("SONNY_MCP_AUTH_MODE", "jwks")
+    monkeypatch.setenv("SONNY_MCP_PUBLIC_RESOURCE_URL", "https://sonny.example/mcp")
+    monkeypatch.setenv("SONNY_MCP_OAUTH_ISSUER", "https://issuer.example")
+    monkeypatch.setenv("SONNY_MCP_OAUTH_AUDIENCE", "https://sonny.example/mcp")
+    monkeypatch.setenv("SONNY_MCP_OAUTH_JWKS_URI", "https://issuer.example/keys")
+    monkeypatch.delenv("SONNY_MCP_OAUTH_PUBLIC_KEY_PEM", raising=False)
+
+    app = create_staging_app()
+
+    async def run():
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://127.0.0.1",
+        ) as client:
+            discovery = await client.get("/.well-known/oauth-protected-resource/mcp")
+            assert discovery.status_code == 200
+            assert discovery.json()["authorization_servers"] == ["https://issuer.example"]
+            unauthorized = await client.get("/mcp")
+            assert unauthorized.status_code == 401
+
+    asyncio.run(run())
