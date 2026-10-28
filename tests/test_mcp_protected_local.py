@@ -174,3 +174,35 @@ def test_protected_app_uses_explicit_verifier_for_read_only_tool():
                 assert seen == ["approved-test-token", "rejected-token"]
 
     asyncio.run(run())
+
+
+def test_environment_selects_jwks_verifier_only_when_explicit(monkeypatch):
+    from sonny.mcp_protected_local import config_from_environment
+    monkeypatch.setenv("SONNY_MCP_AUTH_MODE", "jwks")
+    monkeypatch.setenv("SONNY_MCP_OAUTH_ISSUER", "https://issuer.example")
+    monkeypatch.setenv("SONNY_MCP_OAUTH_AUDIENCE", "https://sonny.example/mcp")
+    monkeypatch.setenv("SONNY_MCP_OAUTH_JWKS_URI", "https://issuer.example/keys")
+    monkeypatch.delenv("SONNY_MCP_OAUTH_PUBLIC_KEY_PEM", raising=False)
+    config, verifier = config_from_environment()
+    assert config.jwks_uri == "https://issuer.example/keys"
+    assert verifier.__name__ == "verify_jwks_resource_token"
+
+
+def test_environment_defaults_to_pinned_key_verifier(monkeypatch):
+    from sonny.mcp_protected_local import config_from_environment
+    monkeypatch.delenv("SONNY_MCP_AUTH_MODE", raising=False)
+    monkeypatch.setenv("SONNY_MCP_OAUTH_ISSUER", "https://issuer.example")
+    monkeypatch.setenv("SONNY_MCP_OAUTH_AUDIENCE", "https://sonny.example/mcp")
+    monkeypatch.setenv("SONNY_MCP_OAUTH_PUBLIC_KEY_PEM", "configured-test-key")
+    monkeypatch.delenv("SONNY_MCP_OAUTH_JWKS_URI", raising=False)
+    config, verifier = config_from_environment()
+    assert config.public_key_pem == "configured-test-key"
+    assert verifier is None
+
+
+def test_environment_rejects_unknown_auth_mode(monkeypatch):
+    import pytest
+    from sonny.mcp_protected_local import config_from_environment
+    monkeypatch.setenv("SONNY_MCP_AUTH_MODE", "automatic")
+    with pytest.raises(ValueError, match="SONNY_MCP_AUTH_MODE"):
+        config_from_environment()
