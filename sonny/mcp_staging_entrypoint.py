@@ -14,8 +14,8 @@ def create_staging_app():
     resource_url = os.environ["SONNY_MCP_PUBLIC_RESOURCE_URL"]
     if not resource_url.endswith("/mcp"):
         raise ValueError("Staging resource URL must end with /mcp")
-    config = config_from_environment()
-    return build_app(config, resource_url=resource_url)
+    config, verifier = config_from_environment()
+    return build_app(config, resource_url=resource_url, token_verifier=verifier)
 
 
 def main():
