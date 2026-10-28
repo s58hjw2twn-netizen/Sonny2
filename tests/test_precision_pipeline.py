@@ -77,6 +77,14 @@ class PipelineTests(unittest.TestCase):
             self.prepare(case_id="third", failure_ledger=ledger)
         self.assertFalse((self.root / "cases" / "third").exists())
 
+    def test_corrupted_failure_ledger_blocks_edit(self):
+        ledger = FailureLedger(self.root / "corrupted.jsonl")
+        ledger.path.write_text('{"previous_hash":"bad","hash":"bad"}\\n',
+                               encoding="utf-8")
+        with self.assertRaises(Exception):
+            self.prepare(case_id="tamper", failure_ledger=ledger)
+        self.assertFalse((self.root / "cases" / "tamper").exists())
+
     def test_default_ledger_created_on_failure(self):
         with self.assertRaises(FileNotFoundError):
             self.prepare(replacement=self.root / "missing.png")
