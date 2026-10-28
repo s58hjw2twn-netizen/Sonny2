@@ -44,7 +44,7 @@ def prepare_case(*, source, replacement, mask, workspace, case_id,
     root.mkdir(parents=True, exist_ok=True)
     # Avoid overwriting existing case evidence.
     case = root / case_id
-    if not case_id.replace("-", "").replace("_", "").isalnum() or case.exists():
+    if not case_id.isascii() or not case_id.replace("-", "").replace("_", "").isalnum() or case.exists():
         raise ReleaseDenied("Invalid or already existing case ID")
     case.mkdir()
     candidate = case / "candidate.png"
