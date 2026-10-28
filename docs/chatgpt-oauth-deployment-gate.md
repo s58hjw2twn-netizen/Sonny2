@@ -40,3 +40,44 @@ security checklist, not permission to expose the local MCP prototype.
 
 No purchases, public deployment, production secrets, or main-branch changes
 are authorized by this document.
+
+## ChatGPT custom MCP connection — current product requirements (2026-10-28)
+
+Reference: https://developers.openai.com/api/docs/guides/custom-mcp-server
+Reference: https://developers.openai.com/plugins/build/auth
+
+- Create a custom MCP server **in ChatGPT on the web**, not in the iPhone app:
+  Plugins > plus > Add custom MCP server. The account/workspace must permit it.
+- Prefer a known HTTPS Streamable HTTP MCP endpoint; use a supported Secure
+  MCP Tunnel only after an independent security review. The web UI does not
+  itself deploy the Sonny service.
+- ChatGPT OAuth requires authorization code + PKCE S256, matching issuer
+  discovery, protected-resource metadata, and resource/audience propagation.
+- Select and verify a supported client identification strategy (CIMD, DCR,
+  or explicitly pre-registered credentials). Check its advertised token
+  endpoint client authentication method and supported scopes.
+- For stable issuer-identified callbacks, confirm the authorization server
+  advertises issuer identification and returns the matching iss on every
+  authorization response. Verify exact issuer matching.
+- Verify how refresh tokens are issued and renewed; otherwise the user
+  may have to sign in again after access-token expiration.
+- The current Sonny read-only status tool is only an in-process proof.
+  Provider login, consent, token exchange, signing-key download, revocation,
+  and a real ChatGPT session have NOT been verified.
+
+### Next operational acceptance sequence
+
+1. Identify one supported trusted OAuth provider and tenant, without
+   disclosing credentials or live access tokens in GitHub.
+2. Independently obtain its issuer metadata and JWKS URL over trusted HTTPS;
+   validate PKCE, issuer, resource identifier, signing algorithm and client
+   registration requirements.
+3. Independently validate access tokens and user-level authorization with
+   distinct allowed/denied pilot identities, including expiry and renewal.
+4. Approve an isolated staging deployment with HTTPS and an account allowlist.
+5. In ChatGPT web Plugins, create a custom MCP connection, complete OAuth
+   login, and call only the read-only protocol_status tool.
+6. Observe real logs (redacted), confirm issuer/audience/scope enforcement
+   and expiry/reconnect behavior; require independent review before writes.
+
+This checklist is not approval to deploy or grant GitHub access.
