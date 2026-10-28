@@ -49,6 +49,8 @@ class AssuranceTests(unittest.TestCase):
     def test_no_methods_escalates(self):
         self.ledger.record(task_type="collar", method="generator",
                            failure_code="bad_orientation", evidence_ref="audit:1")
+        self.ledger.record(task_type="collar", method="generator",
+                           failure_code="bad_orientation", evidence_ref="audit:2")
         with self.assertRaises(AssuranceError):
             choose_method("collar", ["generator"], self.ledger)
 
