@@ -7,9 +7,10 @@ from sonny.mcp_resource_auth import TokenRejected, verify_resource_token
 
 
 class BearerAuthBoundary:
-    def __init__(self, app, config):
+    def __init__(self, app, config, resource_metadata_url=None):
         self.app = app
         self.config = config
+        self.resource_metadata_url = resource_metadata_url
 
     async def __call__(self, scope, receive, send):
         if scope["type"] not in ("http", "websocket"):
@@ -32,13 +33,16 @@ class BearerAuthBoundary:
                 pass
         if not authorized:
             body = b'{"error":"unauthorized"}'
+            challenge = 'Bearer error="invalid_token"'
+            if self.resource_metadata_url is not None:
+                challenge += f', resource_metadata="{self.resource_metadata_url}"'
             await send({
                 "type": "http.response.start",
                 "status": 401,
                 "headers": [
                     (b"content-type", b"application/json"),
                     (b"cache-control", b"no-store"),
-                    (b"www-authenticate", b'Bearer error="invalid_token"'),
+                    (b"www-authenticate", challenge.encode("ascii")),
                 ],
             })
             await send({"type": "http.response.body", "body": body})
