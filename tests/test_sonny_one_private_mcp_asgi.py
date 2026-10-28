@@ -15,7 +15,9 @@ def request(token=None, method="POST", path="/private/mcp", body=None, expected=
         return {"type": "http.request", "body": payload, "more_body": False}
     async def send(event):
         sent.append(event)
-    headers = [(b"content-type", b"application/json")]\n    if token is not None:\n        headers.append((b"authorization", b"Bearer " + token.encode()))
+    headers = [(b"content-type", b"application/json")]
+    if token is not None:
+        headers.append((b"authorization", b"Bearer " + token.encode()))
     asyncio.run(private_mcp_app({"type": "http", "method": method, "path": path, "headers": headers}, receive, send, expected_token=expected))
     return sent[0]["status"], json.loads(sent[1]["body"])
 
