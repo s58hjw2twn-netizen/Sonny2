@@ -61,6 +61,16 @@ class PipelineTests(unittest.TestCase):
             self.prepare(reference_verified=False)
         self.assertFalse((self.root / "cases" / "case1").exists())
 
+    def test_unicode_case_identifier_denied(self):
+        with self.assertRaises(ReleaseDenied):
+            self.prepare(case_id="case١")
+        self.assertFalse((self.root / "cases" / "case١").exists())
+
+    def test_path_traversal_case_identifier_denied(self):
+        with self.assertRaises(ReleaseDenied):
+            self.prepare(case_id="../escape")
+        self.assertFalse((self.root / "escape").exists())
+
     def test_duplicate_case_denied(self):
         self.prepare()
         with self.assertRaises(ReleaseDenied):
