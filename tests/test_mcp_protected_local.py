@@ -23,9 +23,13 @@ def test_protected_mcp_http_access():
     good = jwt.encode(claims, private, algorithm="RS256")
     bad = jwt.encode({**claims, "scope": "other"}, private, algorithm="RS256")
 
+    # Building the Streamable HTTP ASGI app initializes the SDK session manager.
+    # This must happen before entering its lifespan context.
+    protected_app = build_app(config)
+
     async def run():
         async with mcp.session_manager.run():
-            transport = httpx.ASGITransport(app=build_app(config))
+            transport = httpx.ASGITransport(app=protected_app)
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
                 for headers in ({}, {"Authorization": "Bearer invalid"},
                                 {"Authorization": "Bearer " + bad}):
