@@ -34,6 +34,13 @@ def verify_jwks_resource_token(token: str, config: JwksAuthConfig) -> dict:
     if not isinstance(token, str) or not token or len(token) > 8192:
         raise TokenRejected("Invalid bearer token")
     try:
+        # Reject malformed or unsupported headers before any JWKS network lookup.
+        header = jwt.get_unverified_header(token)
+        if header.get("alg") != "RS256":
+            raise TokenRejected("Invalid bearer token")
+        kid = header.get("kid")
+        if not isinstance(kid, str) or not kid or len(kid) > 128:
+            raise TokenRejected("Invalid bearer token")
         # Imported here to keep provider/network access isolated until invoked.
         from jwt import PyJWKClient
         client = PyJWKClient(config.jwks_uri, timeout=5, cache_keys=True)
