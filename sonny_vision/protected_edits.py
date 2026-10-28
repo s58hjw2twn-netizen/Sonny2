@@ -32,8 +32,8 @@ def validate_local_edit(original_path, candidate_path, allowed_regions):
         before = source.convert("RGBA")
         after = proposed.convert("RGBA")
         diff = ImageChops.difference(before, after)
-        bounds = diff.getbbox()
-        if bounds is None:
+        bounds = tuple(channel.getbbox() for channel in diff.split())
+        if all(bound is None for bound in bounds):
             return {"changed_pixels": 0, "status": "no_change"}
         changed = 0
         pixels = diff.load()
