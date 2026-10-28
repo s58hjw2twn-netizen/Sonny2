@@ -77,6 +77,24 @@ class PrivateMcpAsgiTests(unittest.TestCase):
         }, receive, send, expected_token=TOKEN))
         self.assertEqual(sent[0]["status"], 415)
 
+    def test_duplicate_content_length_rejected(self):
+        import asyncio
+        sent = []
+        async def receive():
+            return {"type": "http.request", "body": b"{}", "more_body": False}
+        async def send(event):
+            sent.append(event)
+        asyncio.run(private_mcp_app({
+            "type": "http", "method": "POST", "path": "/private/mcp",
+            "headers": [
+                (b"authorization", b"Bearer " + TOKEN.encode()),
+                (b"content-type", b"application/json"),
+                (b"content-length", b"2"),
+                (b"content-length", b"2"),
+            ],
+        }, receive, send, expected_token=TOKEN))
+        self.assertEqual(sent[0]["status"], 400)
+
     def test_browser_origin_rejected_even_with_valid_token(self):
         import asyncio
         sent = []
