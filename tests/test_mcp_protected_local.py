@@ -206,3 +206,76 @@ def test_environment_rejects_unknown_auth_mode(monkeypatch):
     monkeypatch.setenv("SONNY_MCP_AUTH_MODE", "automatic")
     with pytest.raises(ValueError, match="SONNY_MCP_AUTH_MODE"):
         config_from_environment()
+
+
+def test_jwks_mode_signed_tokens_rotate_and_call_read_only_tool(monkeypatch):
+    """In-process JWKS test: no provider calls or public listener."""
+    from sonny.mcp_protected_local import config_from_environment
+    from sonny.mcp_jwks_auth import JwksAuthConfig
+
+    private_a = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    private_b = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    keys = {"key-a": private_a.public_key(), "key-b": private_b.public_key()}
+    now = datetime.now(timezone.utc)
+    monkeypatch.setenv("SONNY_MCP_AUTH_MODE", "jwks")
+    monkeypatch.setenv("SONNY_MCP_OAUTH_ISSUER", "https://issuer.example")
+    monkeypatch.setenv("SONNY_MCP_OAUTH_AUDIENCE", "https://sonny.example/mcp")
+    monkeypatch.setenv("SONNY_MCP_OAUTH_JWKS_URI", "https://issuer.example/keys")
+    config, verifier = config_from_environment()
+    assert isinstance(config, JwksAuthConfig)
+
+    class FakeSigningKey:
+        def __init__(self, key):
+            self.key = key
+
+    class FakeJwksClient:
+        def __init__(self, uri, timeout, cache_keys):
+            assert uri == config.jwks_uri
+
+        def get_signing_key_from_jwt(self, token):
+            kid = jwt.get_unverified_header(token).get("kid")
+            if kid not in keys:
+                raise ValueError("unrecognized kid")
+            return FakeSigningKey(keys[kid])
+
+    monkeypatch.setattr("jwt.PyJWKClient", FakeJwksClient)
+
+    def signed(private, kid, scope="sonny.status.read"):
+        return jwt.encode({
+            "iss": config.issuer, "aud": config.audience, "sub": "pilot",
+            "iat": now, "exp": now + timedelta(minutes=5), "scope": scope,
+        }, private, algorithm="RS256", headers={"kid": kid})
+
+    server = create_mcp_server()
+    app = build_app(config, resource_url=config.audience, server=server,
+                    token_verifier=verifier)
+
+    async def run():
+        async with server.session_manager.run():
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app),
+                base_url="http://127.0.0.1:8766",
+            ) as client:
+                headers = {"Accept": "application/json, text/event-stream",
+                           "Content-Type": "application/json",
+                           "MCP-Protocol-Version": "2025-03-26"}
+                for private, kid in ((private_a, "key-a"), (private_b, "key-b")):
+                    authorized = {**headers, "Authorization": "Bearer " + signed(private, kid)}
+                    result = await client.post(
+                        "/mcp", headers=authorized,
+                        json={"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                              "params": {"name": "protocol_status", "arguments": {}}},
+                    )
+                    assert result.status_code == 200, result.text
+                    assert "Sonny ONE" in result.text
+                for bad_token in (
+                    signed(private_a, "unrecognized"),
+                    signed(private_b, "key-b", "sonny.admin"),
+                ):
+                    denied = await client.post(
+                        "/mcp", headers={**headers, "Authorization": "Bearer " + bad_token},
+                        json={"jsonrpc": "2.0", "id": 2, "method": "tools/list",
+                              "params": {}},
+                    )
+                    assert denied.status_code == 401
+    asyncio.run(run())
