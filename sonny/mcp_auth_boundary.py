@@ -7,10 +7,13 @@ from sonny.mcp_resource_auth import TokenRejected, verify_resource_token
 
 
 class BearerAuthBoundary:
-    def __init__(self, app, config, resource_metadata_url=None):
+    def __init__(self, app, config, resource_metadata_url=None, *, token_verifier=None):
         self.app = app
         self.config = config
         self.resource_metadata_url = resource_metadata_url
+        # Injection seam permits controlled verifier substitution in tests or
+        # explicitly configured deployments; default remains pinned-key auth.
+        self.token_verifier = token_verifier or verify_resource_token
 
     async def __call__(self, scope, receive, send):
         if scope["type"] not in ("http", "websocket"):
@@ -27,7 +30,7 @@ class BearerAuthBoundary:
             try:
                 scheme, token = auth_values[0].decode("ascii").split(" ", 1)
                 if scheme.lower() == "bearer" and token and token.strip() == token:
-                    verify_resource_token(token, self.config)
+                    self.token_verifier(token, self.config)
                     authorized = True
             except (UnicodeDecodeError, ValueError, TokenRejected):
                 pass
