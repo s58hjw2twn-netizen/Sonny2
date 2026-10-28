@@ -32,7 +32,7 @@ class PrecisionModeTests(unittest.TestCase):
         self.assertFalse(audit["historical_accuracy_verified"])
         with Image.open(self.source) as before, Image.open(self.output) as after:
             self.assertEqual(before.getpixel((2, 2)), (0, 0, 0))
-            self.assertEqual(after.getpixel((2, 2)), (255, 0, 0))
+            self.assertEqual(after.getpixel((2, 2)), (255, 0, 0, 255))
             self.assertEqual(after.getpixel((5, 5)), (0, 0, 0, 255))
 
     def test_reject_mask_outside_region(self):
