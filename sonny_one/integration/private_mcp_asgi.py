@@ -38,6 +38,19 @@ async def private_mcp_app(scope, receive, send, *, expected_token=None):
     if len(content_types) != 1 or content_types[0].split(b";", 1)[0].strip().lower() != b"application/json":
         await _respond(send, 415, {"error": "unsupported_media_type"})
         return
+    # A single bounded request is required; reject ambiguous transfer lengths.
+    lengths = [
+        value for key, value in scope.get("headers", [])
+        if isinstance(key, bytes) and key.lower() == b"content-length"
+    ]
+    if len(lengths) > 1 or (
+        lengths and (
+            not lengths[0].isdigit()
+            or int(lengths[0]) > MAX_BODY_BYTES
+        )
+    ):
+        await _respond(send, 400, {"error": "invalid_content_length"})
+        return
     body = bytearray()
     while True:
         event = await receive()
