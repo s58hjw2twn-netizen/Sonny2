@@ -10,7 +10,7 @@ def rpc(method, params=None, request_id=1):
 
 class McpProtocolTests(unittest.TestCase):
     def test_initialize_and_tool_listing(self):
-        initialized = rpc("initialize", {"protocolVersion": PROTOCOL_VERSION})
+        initialized = rpc("initialize", {"protocolVersion": PROTOCOL_VERSION, "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}})
         self.assertEqual(initialized["result"]["protocolVersion"], PROTOCOL_VERSION)
         tools = rpc("tools/list")["result"]["tools"]
         self.assertEqual([t["name"] for t in tools], ["sonny_public_status"])
@@ -33,7 +33,7 @@ class McpProtocolTests(unittest.TestCase):
         self.assertIsNone(handle_message({"jsonrpc": "2.0", "method": "tools/call", "params": {"name": "sonny_public_status", "arguments": {}}}))
 
     def test_invalid_protocol_and_method_rejected(self):
-        self.assertEqual(rpc("initialize", {"protocolVersion": "2024-11-05"})["error"]["code"], -32602)
+        self.assertEqual(rpc("initialize", {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}})["error"]["code"], -32602)
         self.assertEqual(rpc("development.commit")["error"]["code"], -32601)
         self.assertEqual(rpc("tools/list", {"admin": True})["error"]["code"], -32602)
 
