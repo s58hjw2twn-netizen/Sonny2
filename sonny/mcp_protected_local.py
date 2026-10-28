@@ -44,7 +44,10 @@ def build_app(config: ResourceAuthConfig, *, resource_url: str | None = None,
         metadata = None
 
     server = server if server is not None else create_mcp_server()
-    protected = BearerAuthBoundary(server.streamable_http_app(), config)
+    discovery_url = (resource_url.removesuffix('/mcp') +
+                     '/.well-known/oauth-protected-resource/mcp') if metadata else None
+    protected = BearerAuthBoundary(server.streamable_http_app(), config,
+                                   resource_metadata_url=discovery_url)
     if metadata is None:
         return protected
     return ProtectedResourceDiscovery(protected, metadata)
