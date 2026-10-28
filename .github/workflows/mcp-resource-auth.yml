@@ -45,6 +45,22 @@ jobs:
         run: docker build -f Dockerfile.mcp -t sonny-mcp-ci .
       - name: Verify image imports staging module
         run: docker run --rm --entrypoint python sonny-mcp-ci -c "import sonny.mcp_staging_entrypoint"
+      - name: Verify explicit staging entrypoint refuses missing approval
+        shell: bash
+        run: |
+          set +e
+          output=$(docker run --rm --entrypoint python sonny-mcp-ci -m sonny.mcp_staging_entrypoint 2>&1)
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo "ERROR: staging entrypoint started without approval"
+            exit 1
+          fi
+          if [[ "$output" != *"MCP staging requires explicit approval"* ]]; then
+            echo "ERROR: staging entrypoint failed for an unexpected reason"
+            exit 1
+          fi
+          echo "Verified: staging entrypoint refuses to bind without approval"
       - name: Verify image refuses to serve by default
         shell: bash
         run: |
