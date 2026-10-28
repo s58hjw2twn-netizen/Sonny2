@@ -26,6 +26,10 @@ def handle_message(message: object) -> dict | None:
     if not isinstance(params, dict):
         return _error(request_id, -32602, "Invalid params")
     if method == "initialize":
+        if set(params) != {"protocolVersion", "capabilities", "clientInfo"}:
+            return _error(request_id, -32602, "Invalid initialize params")
+        if not isinstance(params.get("capabilities"), dict) or not isinstance(params.get("clientInfo"), dict):
+            return _error(request_id, -32602, "Invalid initialize params")
         if params.get("protocolVersion") != PROTOCOL_VERSION:
             return _error(request_id, -32602, "Unsupported protocol version")
         result = {
