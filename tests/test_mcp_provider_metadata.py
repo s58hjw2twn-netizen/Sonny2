@@ -2,7 +2,7 @@ import pytest
 from sonny.mcp_provider_metadata import validate_provider
 
 ISSUER = "https://auth.example"
-VALID = {"issuer": ISSUER, "authorization_endpoint": ISSUER + "/authorize", "token_endpoint": ISSUER + "/token", "response_types_supported": ["code"], "code_challenge_methods_supported": ["S256"]}
+VALID = {"issuer": ISSUER, "authorization_endpoint": ISSUER + "/authorize", "token_endpoint": ISSUER + "/token", "jwks_uri": ISSUER + "/keys", "response_types_supported": ["code"], "code_challenge_methods_supported": ["S256"]}
 
 
 def test_accepts_code_pkce_provider():
@@ -12,7 +12,7 @@ def test_accepts_code_pkce_provider():
 @pytest.mark.parametrize("change", [
     {"issuer": "https://other.example"},
     {"authorization_endpoint": "http://auth.example/authorize"},
-    {"token_endpoint": "https://user:pass@auth.example/token"},
+    {"token_endpoint": "https://user:pass@auth.example/token"},\n    {"jwks_uri": "http://auth.example/keys"},
     {"response_types_supported": ["token"]},
     {"code_challenge_methods_supported": ["plain"]},
 ])
