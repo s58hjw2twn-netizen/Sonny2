@@ -8,7 +8,7 @@ from sonny_one.integration.mcp_stdio import serve_stream
 class McpStdioTests(unittest.TestCase):
     def test_round_trip_and_no_write_tool(self):
         requests = [
-            {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-03-26"}},
+            {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-03-26", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}}},
             {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
             {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "sonny_public_status", "arguments": {}}},
             {"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "development.commit", "arguments": {}}},
