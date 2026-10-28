@@ -6,7 +6,7 @@ Runtime evidence must be supplied by a trusted operator, never by a caller.
 import hmac
 import os
 import re
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from sonny_one.capability_inventory import capability_inventory
 
 SHA = re.compile(r"^[0-9a-f]{40}$")
@@ -35,7 +35,7 @@ def create_app(*, token=None, verified_sha=None):
         response.headers["X-Content-Type-Options"] = "nosniff"
         return response
 
-    @app.get("/v1/status", dependencies=[__import__("fastapi").Depends(require_token)])
+    @app.get("/v1/status", dependencies=[Depends(require_token)])
     def status():
         return {
             "service": "sonny-one-chat-bridge",
