@@ -68,7 +68,7 @@ def apply_precision_edit(request: EditRequest):
                     raise ProtectedEditError("Mask extends beyond authorized region")
         before_hash = _digest(src)
         result = Image.composite(patch.convert("RGBA"), original.convert("RGBA"), mask)
-        if not ImageChops.difference(result, original.convert("RGBA")).getbbox():
+        if not any(channel.getbbox() for channel in ImageChops.difference(result, original.convert("RGBA")).split()):
             raise ProtectedEditError("Patch made no visible changes")
         # Lossless PNG only: lossy encoders modify pixels outside the mask.
         if dest.suffix.lower() != ".png":
