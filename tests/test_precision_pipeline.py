@@ -79,7 +79,7 @@ class PipelineTests(unittest.TestCase):
 
     def test_corrupted_failure_ledger_blocks_edit(self):
         ledger = FailureLedger(self.root / "corrupted.jsonl")
-        ledger.path.write_text('{"previous_hash":"bad","hash":"bad"}\\n',
+        ledger.path.write_text('{"previous_hash":"bad","hash":"bad"}\n',
                                encoding="utf-8")
         with self.assertRaises(Exception):
             self.prepare(case_id="tamper", failure_ledger=ledger)
