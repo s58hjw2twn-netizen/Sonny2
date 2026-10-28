@@ -69,7 +69,7 @@ class PipelineTests(unittest.TestCase):
     def test_failure_is_recorded_and_blocks_third_attempt(self):
         ledger = FailureLedger(self.root / "failures.jsonl")
         for index in range(2):
-            with self.assertRaises(ValueError):
+            with self.assertRaises(FileNotFoundError):
                 self.prepare(case_id=f"failed{index}", failure_ledger=ledger,
                              replacement=self.root / "missing.png")
             self.assertEqual(len(ledger.read()), index + 1)
@@ -78,7 +78,7 @@ class PipelineTests(unittest.TestCase):
         self.assertFalse((self.root / "cases" / "third").exists())
 
     def test_default_ledger_created_on_failure(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(FileNotFoundError):
             self.prepare(replacement=self.root / "missing.png")
         ledger = FailureLedger(self.root / "cases" / "failure_ledger.jsonl")
         self.assertEqual(len(ledger.read()), 1)
