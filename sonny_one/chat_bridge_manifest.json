@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "service": "sonny-one-chat-bridge",
+  "stage": "local-prototype-not-connected",
+  "transport": {
+    "remote_use_allowed": false,
+    "requires_https_before_remote_use": true,
+    "authentication": "bearer-token",
+    "credential_storage": "server-environment-only"
+  },
+  "tools": [
+    {
+      "name": "sonny_status",
+      "method": "GET",
+      "path": "/v1/status",
+      "read_only": true,
+      "contains_personal_data": false,
+      "description": "Returns the bridge mode, optional operator-supplied revision and explicit non-attestations."
+    },
+    {
+      "name": "sonny_capabilities",
+      "method": "GET",
+      "path": "/v1/capabilities",
+      "read_only": true,
+      "contains_personal_data": false,
+      "description": "Returns the static capability inventory, not live evidence that capabilities execute."
+    }
+  ],
+  "forbidden": [
+    "github_write",
+    "merge",
+    "deploy",
+    "memory_read",
+    "memory_write",
+    "user_impersonation",
+    "model_execution",
+    "autonomous_commit"
+  ],
+  "connection_status": "not_registered",
+  "approval_required_before": [
+    "remote_deployment",
+    "plugin_registration",
+    "secrets_provisioning",
+    "external_action_permissions"
+  ]
+}
