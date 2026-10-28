@@ -8,7 +8,7 @@ on:
       - 'sonny/mcp_protected_local.py'
       - 'tests/test_mcp_resource_auth.py'
       - 'tests/test_mcp_auth_boundary.py'
-      - 'tests/test_mcp_protected_local.py'
+      - 'tests/test_mcp_protected_local.py tests/test_mcp_oauth_metadata.py'
       - '.github/workflows/mcp-resource-auth.yml'
   workflow_dispatch:
 permissions:
