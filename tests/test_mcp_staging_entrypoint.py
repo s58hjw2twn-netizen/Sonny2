@@ -63,3 +63,19 @@ def test_staging_rejects_mismatched_audience(monkeypatch):
     monkeypatch.setenv("SONNY_MCP_OAUTH_PUBLIC_KEY_PEM", public)
     with pytest.raises(ValueError, match="audience"):
         create_staging_app()
+
+
+def test_staging_rejects_non_mcp_resource_path(monkeypatch):
+    monkeypatch.setenv("SONNY_MCP_STAGING_APPROVED", "true")
+    monkeypatch.setenv("SONNY_MCP_PUBLIC_RESOURCE_URL", "https://sonny.example/other")
+    with pytest.raises(ValueError, match="end with /mcp"):
+        create_staging_app()
+
+
+def test_main_rejects_invalid_port_before_loading_oauth_config(monkeypatch):
+    from sonny.mcp_staging_entrypoint import main
+
+    monkeypatch.setenv("PORT", "0")
+    monkeypatch.setenv("SONNY_MCP_STAGING_APPROVED", "true")
+    with pytest.raises(ValueError, match="PORT"):
+        main()
