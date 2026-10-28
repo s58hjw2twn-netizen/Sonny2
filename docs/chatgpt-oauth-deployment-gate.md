@@ -81,3 +81,36 @@ Reference: https://developers.openai.com/plugins/build/auth
    and expiry/reconnect behavior; require independent review before writes.
 
 This checklist is not approval to deploy or grant GitHub access.
+
+## Account entitlement and provider compatibility gate — October 28, 2026
+
+Official ChatGPT Help Center: https://help.openai.com/en/articles/12584461-connecting-custom-mcp-servers-in-chatgpt
+
+**Do not infer account eligibility from a successful CI run.** The Help Center
+currently documents custom MCP server connections for Business and
+Enterprise/Edu workspaces on ChatGPT web, subject to admin/developer permissions.
+The developer guide separately describes the web Plugins > Add custom MCP
+server workflow. Check actual workspace entitlement and UI availability before
+any deployment or plan change. Mobile is not a supported custom connection
+setup surface.
+
+Auth0 integration references:
+- https://auth0.com/blog/add-remote-mcp-server-chatgpt/
+- https://support.auth0.com/center/s/article/mcp-audience-error-with-auth0
+
+Auth0-specific preflight when the provider is selected:
+- Verify an actual tenant and API resource identifier equal to the Sonny HTTPS
+  /mcp audience. Never substitute the OIDC userinfo audience.
+- Confirm whether the Resource Parameter Compatibility Profile must be
+  enabled so RFC 8707 `resource` in ChatGPT's authorization request selects
+  the configured API audience (Auth0 support article, May 2026).
+- Verify the provider's specific client registration capability and callback
+  allowlist instead of assuming CIMD or DCR is enabled.
+- Verify refresh token policy and offline access without storing secrets or
+  tokens in the repository.
+- Reconcile eligibility, OAuth provider and private endpoint before any
+  staging deployment; never replace the green local tests with unsupported
+  claims of a live connection.
+
+**Gate result:** identity provider not provisioned; account entitlement and
+real ChatGPT authorization flow not yet verified. No public deployment.
