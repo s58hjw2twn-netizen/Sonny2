@@ -52,4 +52,40 @@ def test_protected_mcp_http_access():
                 assert response.status_code == 200, response.text
                 assert "result" in response.text
 
+                # Verify the authorized tool surface, not merely initialization.
+                authorized_headers = {
+                    "Authorization": "Bearer " + good,
+                    "Accept": "application/json, text/event-stream",
+                    "Content-Type": "application/json",
+                    "MCP-Protocol-Version": "2025-03-26",
+                }
+                listed = await client.post(
+                    "/mcp", headers=authorized_headers,
+                    json={"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
+                )
+                assert listed.status_code == 200, listed.text
+                assert '"protocol_status"' in listed.text
+                assert '"tools"' in listed.text
+
+                called = await client.post(
+                    "/mcp", headers=authorized_headers,
+                    json={"jsonrpc": "2.0", "id": 3, "method": "tools/call",
+                          "params": {"name": "protocol_status", "arguments": {}}},
+                )
+                assert called.status_code == 200, called.text
+                assert '"Sonny ONE"' in called.text
+                assert '"protected-local"' in called.text
+
+                # A valid signature with insufficient scope must not list or call tools.
+                for method, params in (
+                    ("tools/list", {}),
+                    ("tools/call", {"name": "protocol_status", "arguments": {}}),
+                ):
+                    denied = await client.post(
+                        "/mcp",
+                        headers={**authorized_headers, "Authorization": "Bearer " + bad},
+                        json={"jsonrpc": "2.0", "id": 4, "method": method, "params": params},
+                    )
+                    assert denied.status_code == 401
+
     asyncio.run(run())
