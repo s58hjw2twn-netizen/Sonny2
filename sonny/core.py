@@ -4,6 +4,8 @@ import os
 
 import httpx
 
+from .policy_registry import mandatory_instructions
+
 
 CORE_VERSION = "1.2-conversation-history"
 
@@ -67,7 +69,7 @@ OPERATING RULES
 - When a concrete next action is appropriate, make it clear.
 - Never claim consciousness, sentience, autonomous self-modification,
   or independent agency.
-""".strip()
+""".strip() + "\n\n" + mandatory_instructions()
 
 
 def _conversation_input(history, message):
