@@ -8,6 +8,7 @@ on:
       - 'ios/**'
       - 'scripts/sonny_voice_windows_preflight.ps1'
       - 'scripts/sonny_voice_isolation_probe.py'
+      - 'scripts/sonny_voice_container_trial.sh'
       - 'docs/SONNY_ONE_VOICE_WINDOWS11_SETUP.md'
       - 'sonny_one/voice_*.py'
       - 'tests/test_sonny_one_voice_*.py'
@@ -46,6 +47,8 @@ jobs:
             exit 1
           }
           Write-Host "Windows preflight PowerShell syntax valid"
+      - name: Validate restricted-container trial shell syntax (no execution)
+        run: bash -n scripts/sonny_voice_container_trial.sh
       - name: Report Swift toolchain
         run: swift --version
       - name: Test portable Swift voice core
