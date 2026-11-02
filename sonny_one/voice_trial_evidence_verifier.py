@@ -3,7 +3,7 @@ import hashlib
 import json
 from pathlib import Path
 
-EXPECTED = ("probe.json", "assessment.json")
+EXPECTED = ("probe.json", "assessment.json", "image-id.txt", "image-reference.txt")
 
 def verify_trial_evidence(folder: Path) -> tuple[bool, tuple[str, ...]]:
     failures = []
@@ -31,6 +31,11 @@ def verify_trial_evidence(folder: Path) -> tuple[bool, tuple[str, ...]]:
             observed = hashlib.sha256(candidate.read_bytes()).hexdigest()
             if observed != hashes[name]:
                 raise ValueError("evidence digest mismatch")
+        image_id = (folder / "image-id.txt").read_text().strip()
+        image_ref = (folder / "image-reference.txt").read_text().strip()
+        import re
+        if not re.fullmatch(r"sha256:[a-f0-9]{64}", image_id):\n            failures.append("invalid inspected image identity")
+        if not re.fullmatch(r"[^\\s]+@sha256:[a-f0-9]{64}", image_ref):\n            failures.append("invalid digest-pinned image reference")
         assessment = json.loads((folder / "assessment.json").read_text())
         if not isinstance(assessment, dict):
             raise ValueError("assessment must be a mapping")
