@@ -1,0 +1,73 @@
+import Foundation
+
+public enum VoiceSessionError: Error, Equatable {
+    case notListening
+    case staleOutput
+}
+
+/// Coordinates a locally approved PCM engine with the microphone/output turn gate.
+/// This is a control-plane boundary, not a model implementation or authenticated transport.
+/// All methods and callbacks must run on one serialized executor (the iOS main actor).
+public final class VoiceSessionController {
+    private let model: VoiceModelGate
+    private let turns = VoiceTurnGate()
+    private let output: (Data, UInt64) throws -> Void
+    private let cancelPlayback: () -> Void
+
+    public var state: VoiceTurnState { turns.state }
+
+    public init(model: VoiceModelGate,
+                output: @escaping (Data, UInt64) throws -> Void,
+                cancelPlayback: @escaping () -> Void) {
+        self.model = model
+        self.output = output
+        self.cancelPlayback = cancelPlayback
+    }
+
+    public func start(authenticated: Bool) throws {
+        try turns.start(authenticated: authenticated)
+        do {
+            try model.start()
+        } catch {
+            turns.stop()
+            throw error
+        }
+    }
+
+    /// Never forward microphone audio while a prior model turn is speaking.
+    /// Frames must be exactly 80 ms of 24 kHz mono signed PCM16.
+    public func acceptMicrophoneFrame(_ pcm16: Data) throws {
+        guard turns.state == .listening else { throw VoiceSessionError.notListening }
+        try model.acceptMoshiFrame(pcm16)
+    }
+
+    public func beginModelOutput() throws -> UInt64 {
+        try turns.beginOutput()
+    }
+
+    /// Reject late asynchronous model output after interruption, restart or stop.
+    public func deliverModelOutput(_ pcm16: Data, epoch: UInt64) throws {
+        guard turns.acceptsOutput(epoch: epoch) else { throw VoiceSessionError.staleOutput }
+        try VoiceWire.validateFrame(pcm16)
+        try output(pcm16, epoch)
+    }
+
+    /// Invalidate the old epoch before cancelling playback and model output.
+    public func interrupt() throws {
+        try turns.interrupt()
+        cancelPlayback()
+        model.cancelOutput()
+    }
+
+    public func resumeListening() throws {
+        try turns.resumeListening()
+        cancelPlayback()
+        model.cancelOutput()
+    }
+
+    public func stop() {
+        turns.stop()
+        cancelPlayback()
+        model.stop()
+    }
+}
