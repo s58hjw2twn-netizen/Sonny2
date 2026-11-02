@@ -46,3 +46,33 @@ def test_unlisted_module_fails_before_import(tmp_path):
     ],True))
     with pytest.raises(PermissionError):
         run_trial(**values)
+
+
+def test_allowlisted_fixture_executes_and_returns_audit_record(tmp_path, monkeypatch):
+    import sys
+    from types import ModuleType
+    from hashlib import sha256
+
+    module = ModuleType("sonny_approved_fixture")
+    class STT:
+        def transcribe(self, pcm):
+            return "fixture transcript"
+    class TTS:
+        def synthesize(self, text):
+            return bytes(2)
+    module.create_stt = STT
+    module.create_tts = TTS
+    monkeypatch.setitem(sys.modules, "sonny_approved_fixture", module)
+    values = args(tmp_path)
+    values["approved_adapter_modules"] = ("sonny_approved_fixture",)
+    values.update(dict.fromkeys([
+        "license_reviewed", "installation_verified",
+        "network_disabled", "owner_approved"
+    ], True))
+    result = run_trial(**values)
+    assert result["provider_id"] == "fixture"
+    assert result["transcript"] == "fixture transcript"
+    assert result["input_sha256"] == sha256(bytes(2)).hexdigest()
+    assert result["output_sha256"] == sha256(bytes(2)).hexdigest()
+    assert result["output_bytes"] == 2
+    assert result["elapsed_ms"] >= 0
