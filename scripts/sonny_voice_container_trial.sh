@@ -30,7 +30,7 @@ destination.write_text(json.dumps({
 }, sort_keys=True, indent=2) + "\n")
 print("Observed checks:", "PASS" if passed else "FAIL", "; isolation is NOT certified.")
 PY
-sha256sum "$out/probe.json" "$out/assessment.json" > "$out/SHA256SUMS"
+(cd "$out" && sha256sum probe.json assessment.json > SHA256SUMS)
 python - "$out/assessment.json" <<'PY'
 import json
 import sys
