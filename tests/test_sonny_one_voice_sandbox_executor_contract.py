@@ -51,3 +51,13 @@ def test_probe_invokes_fixed_docker_arguments_with_fake_cli(tmp_path):
     assert "--pull" in args and args[args.index("--pull") + 1] == "never"
     mounts = [args[i + 1] for i, value in enumerate(args[:-1]) if value == "--mount"]
     assert len(mounts) == 1 and mounts[0].endswith(",dst=/probe.py,readonly")
+
+def test_speech_mode_explicitly_denied_with_valid_image_syntax():
+    import os
+    env = os.environ.copy()
+    env["SONNY_VOICE_TRIAL_IMAGE"] = "example.invalid/approved@sha256:" + "a" * 64
+    for arguments in (["--speech"], ["--probe", "--speech"], ["--run", "/bin/sh"]):
+        result = subprocess.run(["bash", str(SCRIPT), *arguments],
+                                env=env, capture_output=True, text=True)
+        assert result.returncode == 77
+        assert "Speech execution disabled" in result.stderr
