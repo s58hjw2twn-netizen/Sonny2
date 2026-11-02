@@ -49,6 +49,11 @@ jobs:
               ln -sfn -- "$target" "$libdir/$(basename "$link")"
             done < <(find "$root" -type l \( -name 'libwhisper.so*' -o -name 'libggml*.so*' \) -print0)
           done
+          # Bundle the Ubuntu host's OpenMP runtime required by this pinned build.
+          gomp="$(ldconfig -p | awk '/libgomp.so.1 \(libc6,x86-64\)/ {print $NF; exit}')"
+          test -n "$gomp"
+          test -f "$gomp"
+          cp -L -- "$gomp" "$libdir/libgomp.so.1"
           test -f "$libdir/libwhisper.so.1"
           test -x "$libdir/whisper-cli"
           LD_LIBRARY_PATH="$libdir" ldd "$libdir/whisper-cli" | tee /tmp/whisper-linked-libraries.txt
