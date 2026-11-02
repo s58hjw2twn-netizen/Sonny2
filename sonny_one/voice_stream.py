@@ -42,6 +42,8 @@ class AudioBuffer:
     def push(self, frame: PCMFrame) -> None:
         if self._closed:
             raise RuntimeError("audio buffer closed")
+        if not isinstance(frame, PCMFrame):
+            raise TypeError("PCMFrame required")
         if self._size + len(frame.payload) > MAX_BUFFER_BYTES:
             raise BufferError("audio buffer capacity exceeded")
         self._frames.append(frame)
