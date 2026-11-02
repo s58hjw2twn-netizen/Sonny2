@@ -1,0 +1,78 @@
+name: Sonny ONE isolated Whisper tiny.en transcription trial
+
+on:
+  push:
+    branches:
+      - feature/sonny-one-voice-adapter-20261102
+    paths:
+      - '.github/workflows/sonny-one-whisper-isolated-transcription.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-transcription:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install free offline synthetic speech generator
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends espeak-ng cmake build-essential
+      - name: Build pinned upstream whisper.cpp engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          git init /tmp/whisper-source
+          git -C /tmp/whisper-source remote add origin https://github.com/ggml-org/whisper.cpp.git
+          git -C /tmp/whisper-source fetch --depth 1 origin 4979e04f5dcaccb36057e059bbaed8a2f5288315
+          git -C /tmp/whisper-source checkout --detach FETCH_HEAD
+          test "$(git -C /tmp/whisper-source rev-parse HEAD)" = 4979e04f5dcaccb36057e059bbaed8a2f5288315
+          cmake -S /tmp/whisper-source -B /tmp/whisper-build -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF
+          cmake --build /tmp/whisper-build --config Release -j 2
+          test -x /tmp/whisper-build/bin/whisper-cli
+      - name: Verify free tiny.en model and synthesize nonpersonal speech
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/sonny-trial
+          curl --fail --location --retry 2 --max-time 240 -o /tmp/sonny-trial/model.bin \
+            https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin
+          echo 'c78c86eb1a8faa21b369bcd33207cc90d64ae9df  /tmp/sonny-trial/model.bin' | sha1sum --check -
+          sha256sum /tmp/sonny-trial/model.bin > /tmp/sonny-trial/model.sha256
+          espeak-ng -v en-us -s 125 -w /tmp/sonny-trial/speech.wav "Sonny one voice verification test."
+          test -s /tmp/sonny-trial/speech.wav
+      - name: Execute model only inside restricted offline Docker container
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          docker pull docker.io/library/ubuntu:24.04
+          image="$(docker image inspect docker.io/library/ubuntu:24.04 --format '{{index .RepoDigests 0}}')"
+          test -n "$image"
+          timeout --signal=KILL 100s docker run --rm --pull never --network none \
+            --read-only --cap-drop ALL --security-opt no-new-privileges \
+            --memory 1g --memory-swap 1g --pids-limit 32 --cpus 2 \
+            --user 65534:65534 \
+            --mount type=bind,src=/tmp/whisper-build,dst=/engine,readonly \
+            --mount type=bind,src=/tmp/sonny-trial,dst=/input,readonly \
+            --entrypoint /engine/bin/whisper-cli "$image" \
+            -m /input/model.bin -f /input/speech.wav -t 2 -nt \
+            > evidence/transcript.txt 2> evidence/engine-log.txt
+          sha256sum evidence/transcript.txt evidence/engine-log.txt > evidence/SHA256SUMS
+          cp /tmp/sonny-trial/model.sha256 evidence/model.sha256
+          printf '%s\n' "$image" > evidence/container-image.txt
+          printf '%s\n' 4979e04f5dcaccb36057e059bbaed8a2f5288315 > evidence/engine-commit.txt
+          grep -Eiq 'Sonny|voice|verification' evidence/transcript.txt
+      - name: Retain evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonny-whisper-isolated-transcription-evidence
+          path: evidence/
+          if-no-files-found: warn
+          retention-days: 30
