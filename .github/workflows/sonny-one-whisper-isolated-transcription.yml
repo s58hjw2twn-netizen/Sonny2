@@ -56,6 +56,15 @@ jobs:
           cp -L -- "$gomp" "$libdir/libgomp.so.1"
           test -f "$libdir/libwhisper.so.1"
           test -x "$libdir/whisper-cli"
+          # The minimal Ubuntu runtime lacks the host compiler's OpenMP
+          # library. Bundle only the known required runtime dependencies
+          # into the same read-only engine mount (no network in inference).
+          for runtime in libgomp.so.1 libstdc++.so.6 libgcc_s.so.1; do
+            source_path="$(ldconfig -p | awk -v name="$runtime" '$1 == name && /x86-64/ { print $NF; exit }')"
+            test -n "$source_path"
+            test -f "$source_path"
+            cp -L -- "$source_path" "$libdir/$runtime"
+          done
           LD_LIBRARY_PATH="$libdir" ldd "$libdir/whisper-cli" | tee /tmp/whisper-linked-libraries.txt
           ! grep -q 'not found' /tmp/whisper-linked-libraries.txt
       - name: Verify free tiny.en model and synthesize nonpersonal speech
