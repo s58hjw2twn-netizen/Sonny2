@@ -29,3 +29,9 @@ def test_empty_and_oversized_rejected():
 def test_unvalidated_input_rejected():
     with pytest.raises(TypeError):
         pcm16_to_floats(b"\\x00\\x00")
+
+
+@pytest.mark.parametrize("bad", [True, False, 10 ** 10000, "0.5", None])
+def test_non_numeric_and_overflowing_samples_rejected(bad):
+    with pytest.raises(ValueError):
+        floats_to_pcm16([bad])
