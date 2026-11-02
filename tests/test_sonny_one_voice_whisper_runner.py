@@ -53,3 +53,13 @@ def test_oversized_output_kills_process():
             run_prepared_whisper(COMMAND, approved=True, isolation_verified=True,
                                  max_output_bytes=5)
     process.kill.assert_called()
+
+@pytest.mark.parametrize("approved,isolation_verified", [
+    ("yes", True), (True, 1), ([], True), (True, object())
+])
+def test_truthy_nonboolean_authorization_rejected(approved, isolation_verified):
+    with patch("sonny_one.voice_whisper_runner.subprocess.Popen") as launch:
+        with pytest.raises(TypeError):
+            run_prepared_whisper(COMMAND, approved=approved,
+                                 isolation_verified=isolation_verified)
+        launch.assert_not_called()
