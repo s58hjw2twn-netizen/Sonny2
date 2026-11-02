@@ -62,6 +62,9 @@ public final class SonnyAudioIO {
         let targetFormat = outputFormat
         let lifetime = self.lifetime
         let captureEpoch = lifetime.current()
+        // A new assembler is created for each capture session; old queued work
+        // is rejected by captureEpoch after stop/restart.
+        let frameAssembler = VoiceFrameAssembler()
         input.installTap(onBus: 0, bufferSize: 1024, format: hardwareFormat) { buffer, _ in
             guard slots.wait(timeout: .now()) == .success else { return }
             guard let channels = buffer.floatChannelData, buffer.frameLength > 0 else {
@@ -100,7 +103,13 @@ public final class SonnyAudioIO {
                 while offset < count {
                     let end = min(offset + VoiceWire.maxFrameBytes / 2, count)
                     let chunk = Array(UnsafeBufferPointer(start: samples[0] + offset, count: end - offset))
-                    if let pcm = try? VoiceWire.pcm16(from: chunk), lifetime.isCurrent(captureEpoch) { onPCMFrame(pcm) }
+                    if let pcm = try? VoiceWire.pcm16(from: chunk),
+                       lifetime.isCurrent(captureEpoch),
+                       let frames = try? frameAssembler.append(pcm) {
+                        for frame in frames where lifetime.isCurrent(captureEpoch) {
+                            onPCMFrame(frame)
+                        }
+                    }
                     offset = end
                 }
             }
