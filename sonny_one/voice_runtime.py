@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from typing import Protocol
 from sonny_one.voice_integrated_pipeline import IntegratedVoicePipeline
+from sonny_one.voice_pcm_contract import validate_pcm16, validate_synthesized_audio
 
 class Transcriber(Protocol):
     def transcribe(self, pcm: bytes) -> str: ...
@@ -31,8 +32,7 @@ class VoiceRuntime:
         self.synthesizer = synthesizer
 
     def process(self, pcm: bytes) -> VoiceResult | None:
-        if not isinstance(pcm, bytes) or not pcm or len(pcm) > 96000:
-            raise ValueError('invalid bounded PCM input')
+        validate_pcm16(pcm, max_bytes=96000)
         transcript = self.transcriber.transcribe(pcm)
         ticket = self.pipeline.submit(transcript)
         try:
@@ -45,8 +45,7 @@ class VoiceRuntime:
             return None
         try:
             audio = self.synthesizer.synthesize(response)
-            if not isinstance(audio, bytes) or not audio or len(audio) > 960000:
-                raise ValueError('invalid bounded synthesized audio')
+            validate_synthesized_audio(audio)
             if self.pipeline.turns._active != ticket or self.pipeline.turns.state.value != 'speaking':
                 return None
             return VoiceResult(transcript, response, audio)
