@@ -1,0 +1,61 @@
+name: Sonny ONE Voice real isolated container trial
+
+on:
+  push:
+    branches:
+      - feature/sonny-one-voice-adapter-20261102
+    paths:
+      - '.github/workflows/sonny-one-voice-real-isolation-trial.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  restricted-probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Resolve approved Docker Official Python image and pin its registry digest
+        shell: bash
+        run: |
+          set -euo pipefail
+          # User approved a verified Python container image for this trial only.
+          # Pull only this Docker Official Image; no speech model downloads.
+          docker pull docker.io/library/python:3.12.15-slim-bookworm
+          ref="$(docker image inspect docker.io/library/python:3.12.15-slim-bookworm --format '{{range .RepoDigests}}{{println .}}{{end}}' | grep -E '^python@sha256:[a-f0-9]{64}$|^docker.io/library/python@sha256:[a-f0-9]{64}$' | head -n 1)"
+          test -n "$ref"
+          printf 'SONNY_VOICE_TRIAL_IMAGE=%s\n' "$ref" >> "$GITHUB_ENV"
+          echo "Registry digest-pinned Python image resolved."
+      - name: Execute real restricted container probe (no speech models)
+        shell: bash
+        run: |
+          set -euo pipefail
+          export SONNY_VOICE_TRIAL_OUTPUT_DIR="voice-isolation-evidence"
+          bash scripts/sonny_voice_container_trial.sh
+      - name: Independently recheck retained evidence
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from sonny_one.voice_trial_evidence_verifier import verify_trial_evidence
+          passed, issues = verify_trial_evidence(Path("voice-isolation-evidence"))
+          print("Evidence consistency:", "PASS" if passed else "FAIL")
+          for issue in issues:
+              print("Issue:", issue)
+          if not passed:
+              raise SystemExit(1)
+          print("Observations consistent; this does NOT certify full isolation.")
+          PY
+      - name: Upload trial evidence even if observations fail
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonny-voice-isolation-evidence
+          path: voice-isolation-evidence/
+          if-no-files-found: warn
+          retention-days: 30
