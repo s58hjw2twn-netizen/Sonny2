@@ -43,7 +43,9 @@ def run_trial(*, adapter_module, provider_id, pcm_path, synthesis_text,
 
 def main():
     parser = argparse.ArgumentParser(description="Explicit approved live speech probe")
-    parser.add_argument("--adapter-module", required=True)\n    parser.add_argument("--allow-adapter-module", action="append", default=[],\n                        help="Explicitly trusted adapter module; approval is external")
+    parser.add_argument("--adapter-module", required=True)
+    parser.add_argument("--allow-adapter-module", action="append", default=[],
+                        help="Explicitly trusted adapter module; approval is external")
     parser.add_argument("--provider-id", required=True)
     parser.add_argument("--pcm-file", type=Path, required=True)
     parser.add_argument("--synthesis-text", required=True)
@@ -51,7 +53,8 @@ def main():
         parser.add_argument("--" + flag, action="store_true")
     args = parser.parse_args()
     result = run_trial(
-        adapter_module=args.adapter_module, provider_id=args.provider_id,\n        approved_adapter_modules=tuple(args.allow_adapter_module),
+        adapter_module=args.adapter_module, provider_id=args.provider_id,
+        approved_adapter_modules=tuple(args.allow_adapter_module),
         pcm_path=args.pcm_file, synthesis_text=args.synthesis_text,
         license_reviewed=args.license_reviewed,
         installation_verified=args.installation_verified,
