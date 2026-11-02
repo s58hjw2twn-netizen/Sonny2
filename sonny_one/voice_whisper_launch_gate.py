@@ -15,6 +15,8 @@ class WhisperLaunchSpec:
 def verify_whisper_launch(spec: WhisperLaunchSpec) -> bool:
     if not isinstance(spec, WhisperLaunchSpec):
         raise TypeError("WhisperLaunchSpec required")
+    if spec.executable.is_symlink() or spec.model.is_symlink():
+        raise ValueError("engine and model symlinks are forbidden")
     if spec.executable.resolve() == spec.model.resolve():
         raise ValueError("engine and model must be distinct files")
     if not verify_local_artifact(spec.executable_artifact, spec.executable):
