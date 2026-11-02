@@ -48,4 +48,7 @@ jobs:
             tests/test_sonny_one_voice_capture_gate.py \
             tests/test_sonny_one_voice_packet.py \
             tests/test_sonny_one_voice_packet_bridge.py \
-            tests/test_sonny_one_voice_cross_language_contract.py
+            tests/test_sonny_one_voice_cross_language_contract.py \
+            tests/test_sonny_one_voice_turn_coordinator.py \
+            tests/test_sonny_one_voice_integrated_pipeline.py \
+            tests/test_sonny_one_voice_runtime.py
