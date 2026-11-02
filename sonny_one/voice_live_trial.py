@@ -13,7 +13,7 @@ from pathlib import Path
 from sonny_one.voice_engine_probe import run_speech_probe
 from sonny_one.voice_provider_boundary import LocalSpeechApproval, LocalSpeechBoundary
 
-def run_trial(*, adapter_module, provider_id, pcm_path, synthesis_text,
+def run_trial(*, adapter_module, provider_id, pcm_path, synthesis_text,\n              approved_adapter_modules=(),
               license_reviewed=False, installation_verified=False,
               network_disabled=False, owner_approved=False):
     approval = LocalSpeechApproval(
@@ -42,7 +42,7 @@ def run_trial(*, adapter_module, provider_id, pcm_path, synthesis_text,
 
 def main():
     parser = argparse.ArgumentParser(description="Explicit approved live speech probe")
-    parser.add_argument("--adapter-module", required=True)
+    parser.add_argument("--adapter-module", required=True)\n    parser.add_argument("--allow-adapter-module", action="append", default=[],\n                        help="Explicitly trusted adapter module; approval is external")
     parser.add_argument("--provider-id", required=True)
     parser.add_argument("--pcm-file", type=Path, required=True)
     parser.add_argument("--synthesis-text", required=True)
@@ -50,7 +50,7 @@ def main():
         parser.add_argument("--" + flag, action="store_true")
     args = parser.parse_args()
     result = run_trial(
-        adapter_module=args.adapter_module, provider_id=args.provider_id,
+        adapter_module=args.adapter_module, provider_id=args.provider_id,\n        approved_adapter_modules=tuple(args.allow_adapter_module),
         pcm_path=args.pcm_file, synthesis_text=args.synthesis_text,
         license_reviewed=args.license_reviewed,
         installation_verified=args.installation_verified,
