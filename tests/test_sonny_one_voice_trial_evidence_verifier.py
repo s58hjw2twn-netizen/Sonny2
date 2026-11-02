@@ -8,7 +8,7 @@ def fixture(folder):
     probe = {"isolation_verified": False, "network_default_route_absent": True,
              "memory_max": str(512*1024*1024), "pids_max": "32",
              "cpu_max": "100000 100000", "root_mount": "overlay / overlay ro,relatime 0 0"}
-    assessment = {"full_isolation_certified": False, "observation_checks_passed": True}
+    assessment = {"full_isolation_certified": False, "observation_checks_passed": True, "failures": []}
     (folder / "probe.json").write_text(json.dumps(probe))
     (folder / "assessment.json").write_text(json.dumps(assessment))
     (folder / "SHA256SUMS").write_text("".join(
