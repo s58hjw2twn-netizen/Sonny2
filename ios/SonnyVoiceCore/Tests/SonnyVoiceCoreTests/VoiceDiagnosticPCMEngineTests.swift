@@ -40,4 +40,30 @@ final class VoiceDiagnosticPCMEngineTests: XCTestCase {
         XCTAssertFalse(engine.isRunning)
         XCTAssertThrowsError(try session.acceptMicrophoneFrame(frame))
     }
+
+    func testSharedTurnGateRejectsOldOutputAfterBargeIn() throws {
+        let turns = VoiceTurnGate()
+        let engine = VoiceDiagnosticPCMEngine()
+        let model = try VoiceModelGate(engine: engine, approval: VoiceModelApproval(
+            approved: true, licenseReviewed: true, locallyInstalled: true,
+            requiresExternalNetwork: false))
+        var delivered = 0
+        let session = VoiceSessionController(model: model, turns: turns,
+            output: { _, epoch in
+                XCTAssertTrue(turns.acceptsOutput(epoch: epoch))
+                delivered += 1
+            }, cancelPlayback: {})
+        try session.start(authenticated: true)
+        let epoch = try session.beginModelOutput()
+        XCTAssertTrue(turns.acceptsOutput(epoch: epoch))
+        try session.deliverModelOutput(frame, epoch: epoch)
+        try session.interrupt()
+        XCTAssertFalse(turns.acceptsOutput(epoch: epoch))
+        XCTAssertThrowsError(try session.deliverModelOutput(frame, epoch: epoch))
+        try session.resumeListening()
+        try session.acceptMicrophoneFrame(frame)
+        XCTAssertEqual(engine.framesReceived, 1)
+        XCTAssertEqual(delivered, 1)
+        session.stop()
+    }
 }

@@ -10,16 +10,18 @@ public enum VoiceSessionError: Error, Equatable {
 /// All methods and callbacks must run on one serialized executor (the iOS main actor).
 public final class VoiceSessionController {
     private let model: VoiceModelGate
-    private let turns = VoiceTurnGate()
+    private let turns: VoiceTurnGate
     private let output: (Data, UInt64) throws -> Void
     private let cancelPlayback: () -> Void
 
     public var state: VoiceTurnState { turns.state }
 
     public init(model: VoiceModelGate,
+                turns: VoiceTurnGate = VoiceTurnGate(),
                 output: @escaping (Data, UInt64) throws -> Void,
                 cancelPlayback: @escaping () -> Void) {
         self.model = model
+        self.turns = turns
         self.output = output
         self.cancelPlayback = cancelPlayback
     }
