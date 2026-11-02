@@ -10,14 +10,33 @@ final class VoiceDemoModel: ObservableObject {
     @Published var framesCaptured = 0
     private let io = SonnyAudioIO()
     private let turns = VoiceTurnGate()
+    private var lastCapturedFrame: Data?
+    private var startPending = false
+    private var startGeneration: UInt64 = 0
 
     func start() {
+        guard !startPending && turns.state == .idle else { return }
+        startPending = true
+        startGeneration &+= 1
+        let generation = startGeneration
+        lastCapturedFrame = nil
+        framesCaptured = 0
         Task {
+            defer { startPending = false }
             do {
                 // This is an in-process audio test, NOT authenticated assistant access.
                 try turns.start(authenticated: true)
-                try await io.start(authenticated: true) { [weak self] _ in
-                    Task { @MainActor [weak self] in self?.framesCaptured += 1 }
+                try await io.start(authenticated: true) { [weak self] frame in
+                    Task { @MainActor [weak self] in
+                        guard let self = self, self.startGeneration == generation else { return }
+                        self.lastCapturedFrame = frame
+                        self.framesCaptured += 1
+                    }
+                }
+                guard startGeneration == generation else {
+                    io.stop()
+                    turns.stop()
+                    return
                 }
                 status = "Capturing locally (no network or AI model)"
             } catch {
@@ -26,6 +45,20 @@ final class VoiceDemoModel: ObservableObject {
                 status = "Start failed: \(error.localizedDescription)"
             }
         }
+    }
+
+    /// A manual, local-only 80 ms microphone-to-speaker diagnostic.
+    /// Never automatically echo captured audio while the microphone is live.
+    func playCapturedSample() {
+        guard let frame = lastCapturedFrame else {
+            status = "Capture microphone audio before playback"
+            return
+        }
+        do {
+            let epoch = try turns.beginOutput()
+            try io.enqueueOutput(frame, epoch: epoch, gate: turns)
+            status = "Queued captured 80 ms sample (local-only)"
+        } catch { status = "Sample playback failed: \(error.localizedDescription)" }
     }
 
     func playTone() {
@@ -49,6 +82,8 @@ final class VoiceDemoModel: ObservableObject {
     }
 
     func stop() {
+        startGeneration &+= 1
+        lastCapturedFrame = nil
         io.stop()
         turns.stop()
         status = "Stopped"
@@ -58,6 +93,7 @@ final class VoiceDemoModel: ObservableObject {
 @main
 struct SonnyVoiceDemoApp: App {
     @StateObject private var model = VoiceDemoModel()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -67,13 +103,17 @@ struct SonnyVoiceDemoApp: App {
                 Text("PCM frames captured: \(model.framesCaptured)")
                 Button("Start microphone") { model.start() }
                 Button("Play test tone") { model.playTone() }
+                Button("Play last captured sample") { model.playCapturedSample() }
                 Button("Interrupt output") { model.interrupt() }
                 Button("Stop") { model.stop() }
-                Text("Local-only test. No model, server, or recording upload.")
+                Text("Local-only test. No model, server, or recording upload. Interrupt to reset playback.")
                     .font(.footnote)
             }
             .padding()
             .onDisappear { model.stop() }
+            .onChange(of: scenePhase) { _, phase in
+                if phase != .active { model.stop() }
+            }
         }
     }
 }
