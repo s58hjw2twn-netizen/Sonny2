@@ -35,18 +35,21 @@ class VoiceSession:
             raise PermissionError("authenticated session required")
         self.provider = provider
         self.state = VoiceState.IDLE
+        self.revision = 0
 
     def start(self) -> VoiceEvent:
         if self.state is not VoiceState.IDLE:
             raise RuntimeError("session already active")
         self.provider.start()
         self.state = VoiceState.LISTENING
+        self.revision += 1
         return VoiceEvent(self.state, "started")
 
     def begin_output(self) -> VoiceEvent:
         if self.state not in (VoiceState.LISTENING, VoiceState.INTERRUPTED):
             raise RuntimeError("not ready to speak")
         self.state = VoiceState.SPEAKING
+        self.revision += 1
         return VoiceEvent(self.state, "output_started")
 
     def interrupt(self) -> VoiceEvent:
@@ -55,6 +58,7 @@ class VoiceSession:
         # Cancel before acknowledging the interruption.
         self.provider.cancel_output()
         self.state = VoiceState.INTERRUPTED
+        self.revision += 1
         return VoiceEvent(self.state, "output_cancelled")
 
     def resume_listening(self) -> VoiceEvent:
@@ -68,4 +72,5 @@ class VoiceSession:
     def close(self) -> VoiceEvent:
         self.provider.stop()
         self.state = VoiceState.IDLE
+        self.revision += 1
         return VoiceEvent(self.state, "closed")
