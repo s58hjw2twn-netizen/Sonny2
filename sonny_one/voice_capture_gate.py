@@ -36,6 +36,7 @@ class VoiceCaptureGate:
     def take(self) -> PCMFrame | None:
         if self._closed:
             raise RuntimeError("capture gate closed")
+        self._synchronize()
         if self.session.state is not VoiceState.LISTENING:
             raise PermissionError("capture only permitted while listening")
         return self.buffer.pop()
