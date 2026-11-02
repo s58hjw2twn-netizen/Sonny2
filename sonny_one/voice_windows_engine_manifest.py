@@ -5,6 +5,8 @@ No downloads, process execution, network access, or model installation.
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
+import os
+import stat
 import re
 
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z")
@@ -32,12 +34,25 @@ def verify_local_artifact(artifact: SpeechArtifact, path: Path) -> bool:
     artifact.validate()
     if not isinstance(path, Path):
         raise TypeError("Path required")
-    if path.is_symlink() or not path.is_file():
-        raise ValueError("regular non-symlink file required")
-    if path.stat().st_size != artifact.size_bytes:
-        return False
-    digest = sha256()
-    with path.open("rb") as handle:
+    # Open with NOFOLLOW so swapping the path to a symlink cannot redirect
+    # hashing after the initial path check. Hash the same opened descriptor.
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0)
+    if not hasattr(os, "O_NOFOLLOW"):
+        if path.is_symlink():
+            raise ValueError("symlink artifact rejected")
+    else:
+        flags |= os.O_NOFOLLOW
+    try:
+        fd = os.open(path, flags)
+    except OSError as exc:
+        raise ValueError("regular non-symlink file required") from exc
+    with os.fdopen(fd, "rb") as handle:
+        metadata = os.fstat(handle.fileno())
+        if not stat.S_ISREG(metadata.st_mode):
+            raise ValueError("regular non-symlink file required")
+        if metadata.st_size != artifact.size_bytes:
+            return False
+        digest = sha256()
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
-    return digest.hexdigest() == artifact.sha256_hex
+        return digest.hexdigest() == artifact.sha256_hex
