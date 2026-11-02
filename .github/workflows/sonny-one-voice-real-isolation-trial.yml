@@ -39,6 +39,20 @@ jobs:
           set -euo pipefail
           export SONNY_VOICE_TRIAL_OUTPUT_DIR="voice-isolation-evidence"
           bash scripts/sonny_voice_container_trial.sh
+      - name: Execute sandbox-owned diagnostic entry point
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/sonny_voice_sandbox_executor.sh --probe > sandbox-executor-probe.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from sonny_one.voice_container_evidence import check_container_observations
+          valid, issues = check_container_observations(json.loads(Path("sandbox-executor-probe.json").read_text()))
+          print("Sandbox-owned diagnostic observations:", "PASS" if valid else "FAIL", issues)
+          if not valid:
+              raise SystemExit(1)
+          PY
       - name: Independently recheck retained evidence
         if: always()
         shell: bash
@@ -59,6 +73,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sonny-voice-isolation-evidence
-          path: voice-isolation-evidence/
+          path: |
+            voice-isolation-evidence/
+            sandbox-executor-probe.json
           if-no-files-found: warn
           retention-days: 30
