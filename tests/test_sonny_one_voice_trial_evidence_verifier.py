@@ -42,3 +42,17 @@ def test_self_certification_rejected_even_with_updated_hash(tmp_path):
     lines[1] = hashlib.sha256(assessment.read_bytes()).hexdigest() + "  assessment.json"
     (folder / "SHA256SUMS").write_text("\n".join(lines) + "\n")
     assert not verify_trial_evidence(folder)[0]
+
+def test_forged_assessment_failure_details_rejected(tmp_path):
+    folder = tmp_path / "trial"
+    fixture(folder)
+    assessment = folder / "assessment.json"
+    assessment.write_text(json.dumps({
+        "full_isolation_certified": False,
+        "observation_checks_passed": True,
+        "failures": ["fabricated"],
+    }))
+    lines = (folder / "SHA256SUMS").read_text().splitlines()
+    lines[1] = hashlib.sha256(assessment.read_bytes()).hexdigest() + "  assessment.json"
+    (folder / "SHA256SUMS").write_text("\n".join(lines) + "\n")
+    assert not verify_trial_evidence(folder)[0]
