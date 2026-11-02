@@ -1,6 +1,11 @@
 name: Sonny ONE free Whisper tiny.en provenance trial
 
 on:
+  push:
+    branches:
+      - feature/sonny-one-voice-adapter-20261102
+    paths:
+      - '.github/workflows/sonny-one-whisper-tiny-provenance.yml'
   workflow_dispatch:
 
 permissions:
