@@ -68,7 +68,7 @@ def quality_gate(source: np.ndarray, candidate: np.ndarray, protected_mask: np.n
     if not np.any(protected_mask):
         return {"passed": False, "reason": "empty protected mask",
                 "identity_verified": False, "release_allowed": False}
-    diff = np.abs(source.astype(np.int16) - candidate.astype(np.int16))
+    if type(max_protected_change) is not int or not 0 <= max_protected_change <= 255:\n        raise ValueError("max_protected_change must be an integer from 0 to 255")\n    diff = np.abs(source.astype(np.int16) - candidate.astype(np.int16))
     protected_max = int(diff[protected_mask].max())
     old_clip = analyze(source).clipping_fraction
     new_clip = analyze(candidate).clipping_fraction
