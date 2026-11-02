@@ -19,7 +19,7 @@ fi
 mkdir -- "$out"
 # Capture the exact inspected image identity alongside probe observations.
 docker image inspect "$image" --format '{{.Id}}' > "$out/image-id.txt"
-printf '%s\\n' "$image" > "$out/image-reference.txt"
+printf '%s\n' "$image" > "$out/image-reference.txt"
 docker run --rm --pull never --network none --read-only --cap-drop ALL \
   --security-opt no-new-privileges --memory 512m --memory-swap 512m \
   --pids-limit 32 --cpus 1 --user 65534:65534 \
