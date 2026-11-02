@@ -46,10 +46,15 @@ def verify_local_artifact(artifact: SpeechArtifact, path: Path) -> bool:
         fd = os.open(path, flags)
     except OSError as exc:
         raise ValueError("regular non-symlink file required") from exc
-    with os.fdopen(fd, "rb") as handle:
-        metadata = os.fstat(handle.fileno())
+    # fstat before wrapping: fdopen on Linux rejects directory descriptors.
+    try:
+        metadata = os.fstat(fd)
         if not stat.S_ISREG(metadata.st_mode):
             raise ValueError("regular non-symlink file required")
+    except BaseException:
+        os.close(fd)
+        raise
+    with os.fdopen(fd, "rb") as handle:
         if metadata.st_size != artifact.size_bytes:
             return False
         digest = sha256()
