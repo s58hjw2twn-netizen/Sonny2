@@ -32,18 +32,23 @@ def verify_trial_evidence(folder: Path) -> tuple[bool, tuple[str, ...]]:
             if observed != hashes[name]:
                 raise ValueError("evidence digest mismatch")
         assessment = json.loads((folder / "assessment.json").read_text())
+        if not isinstance(assessment, dict):
+            raise ValueError("assessment must be a mapping")
         if assessment.get("full_isolation_certified") is not False:
             failures.append("assessment improperly certifies isolation")
         if assessment.get("observation_checks_passed") is not True:
             failures.append("observation checks failed")
         probe = json.loads((folder / "probe.json").read_text())
+        if not isinstance(probe, dict):
+            raise ValueError("probe must be a mapping")
         from .voice_container_evidence import check_container_observations
         valid, issues = check_container_observations(probe)
         if not valid:
             failures.extend(issues)
         if assessment.get("observation_checks_passed") is not valid:
             failures.append("assessment and independently computed verdict disagree")
-        if tuple(assessment.get("failures", ())) != tuple(issues):
+        recorded_failures = assessment.get("failures")
+        if not isinstance(recorded_failures, list) or tuple(recorded_failures) != tuple(issues):
             failures.append("assessment failure details disagree with observations")
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
         failures.append(str(exc))
