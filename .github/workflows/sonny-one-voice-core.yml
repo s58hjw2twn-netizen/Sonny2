@@ -71,4 +71,5 @@ jobs:
             tests/test_sonny_one_voice_pcm_contract.py \
             tests/test_sonny_one_voice_provider_boundary.py \
             tests/test_sonny_one_voice_engine_probe.py \
-            tests/test_sonny_one_voice_live_trial.py
+            tests/test_sonny_one_voice_live_trial.py \
+            tests/test_sonny_one_voice_windows_preflight_contract.py
