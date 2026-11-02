@@ -24,7 +24,7 @@ def test_gate_authentication_and_type():
 def test_only_listening_accepts_audio():
     session = new_session()
     gate = VoiceCaptureGate(session, authenticated=True)
-    frame = PCMFrame(b"\\x00\\x00")
+    frame = PCMFrame(bytes(2))
     with pytest.raises(PermissionError):
         gate.ingest(frame)
     session.start()
