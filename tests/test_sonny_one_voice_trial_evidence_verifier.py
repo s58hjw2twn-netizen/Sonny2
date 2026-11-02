@@ -11,9 +11,9 @@ def fixture(folder):
     assessment = {"full_isolation_certified": False, "observation_checks_passed": True, "failures": []}
     (folder / "probe.json").write_text(json.dumps(probe))
     (folder / "assessment.json").write_text(json.dumps(assessment))
-    (folder / "SHA256SUMS").write_text("".join(
+    (folder / "image-id.txt").write_text("sha256:" + "a"*64 + "\n")\n    (folder / "image-reference.txt").write_text("example.invalid/approved@sha256:" + "b"*64 + "\n")\n    (folder / "SHA256SUMS").write_text("".join(
         hashlib.sha256((folder / name).read_bytes()).hexdigest() + "  " + name + "\n"
-        for name in ("probe.json", "assessment.json")
+        for name in ("probe.json", "assessment.json", "image-id.txt", "image-reference.txt")
     ))
 
 def test_valid_fixture_is_integrity_consistent(tmp_path):
