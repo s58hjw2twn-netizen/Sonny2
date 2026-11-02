@@ -76,6 +76,7 @@ final class VoiceDemoModel: ObservableObject {
     /// Manually exercise the controller-to-speaker path using captured PCM.
     /// Never automatically echo microphone audio while capturing.
     func playCapturedSample() {
+        guard !startPending else { status = "Wait for microphone permission"; return }
         guard let frame = lastCapturedFrame else {
             status = "Capture microphone audio before playback"
             return
@@ -85,10 +86,14 @@ final class VoiceDemoModel: ObservableObject {
             let epoch = try session.beginModelOutput()
             try session.deliverModelOutput(frame, epoch: epoch)
             status = "Queued local 80 ms playback (no AI)"
-        } catch { status = "Sample playback failed: \(error.localizedDescription)" }
+        } catch {
+            stop()
+            status = "Sample playback failed; restart required: \(error.localizedDescription)"
+        }
     }
 
     func playTone() {
+        guard !startPending else { status = "Wait for microphone permission"; return }
         do {
             guard let session else { status = "Start microphone first"; return }
             let epoch = try session.beginModelOutput()
@@ -97,10 +102,14 @@ final class VoiceDemoModel: ObservableObject {
             }
             try session.deliverModelOutput(VoiceWire.pcm16(from: tone), epoch: epoch)
             status = "Queued 100 ms diagnostic speaker tone"
-        } catch { status = "Playback failed: \(error.localizedDescription)" }
+        } catch {
+            stop()
+            status = "Playback failed; restart required: \(error.localizedDescription)"
+        }
     }
 
     func interrupt() {
+        guard !startPending else { status = "Wait for microphone permission"; return }
         do {
             guard let session else { status = "Start microphone first"; return }
             try session.interrupt()

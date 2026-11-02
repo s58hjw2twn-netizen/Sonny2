@@ -61,7 +61,14 @@ public final class VoiceSessionController {
     public func deliverModelOutput(_ pcm16: Data, epoch: UInt64) throws {
         guard turns.acceptsOutput(epoch: epoch) else { throw VoiceSessionError.staleOutput }
         try VoiceWire.validateFrame(pcm16)
-        try output(pcm16, epoch)
+        do {
+            try output(pcm16, epoch)
+        } catch {
+            // A failed audio device/queue must not leave the model speaking
+            // indefinitely or allow late output from the failed turn.
+            stop()
+            throw error
+        }
     }
 
     /// Invalidate the old epoch before cancelling playback and model output.

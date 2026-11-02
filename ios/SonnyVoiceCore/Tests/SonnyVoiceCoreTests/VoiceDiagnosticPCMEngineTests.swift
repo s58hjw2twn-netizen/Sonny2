@@ -66,4 +66,27 @@ final class VoiceDiagnosticPCMEngineTests: XCTestCase {
         XCTAssertEqual(delivered, 1)
         session.stop()
     }
+
+    func testPlaybackFailureFailsClosedAndRejectsLateFrames() throws {
+        enum OutputFailure: Error { case device }
+        let engine = VoiceDiagnosticPCMEngine()
+        let model = try VoiceModelGate(engine: engine, approval: VoiceModelApproval(
+            approved: true, licenseReviewed: true, locallyInstalled: true,
+            requiresExternalNetwork: false))
+        var playbackCancels = 0
+        let session = VoiceSessionController(model: model, output: { _, _ in
+            throw OutputFailure.device
+        }, cancelPlayback: { playbackCancels += 1 })
+        try session.start(authenticated: true)
+        let epoch = try session.beginModelOutput()
+        XCTAssertThrowsError(try session.deliverModelOutput(frame, epoch: epoch))
+        XCTAssertEqual(session.state, .idle)
+        XCTAssertFalse(engine.isRunning)
+        XCTAssertEqual(playbackCancels, 1)
+        XCTAssertThrowsError(try session.deliverModelOutput(frame, epoch: epoch))
+        XCTAssertThrowsError(try session.acceptMicrophoneFrame(frame))
+        try session.start(authenticated: true)
+        XCTAssertTrue(engine.isRunning)
+        session.stop()
+    }
 }
