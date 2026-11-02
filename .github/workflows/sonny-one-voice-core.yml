@@ -9,6 +9,7 @@ on:
       - 'scripts/sonny_voice_windows_preflight.ps1'
       - 'scripts/sonny_voice_isolation_probe.py'
       - 'scripts/sonny_voice_container_trial.sh'
+      - 'scripts/sonny_voice_sandbox_executor.sh'
       - 'docs/SONNY_ONE_VOICE_WINDOWS11_SETUP.md'
       - 'sonny_one/voice_*.py'
       - 'tests/test_sonny_one_voice_*.py'
@@ -66,6 +67,14 @@ jobs:
           docker image ls --digests --format '{{.Repository}}@{{.Digest}}' | sort -u
           echo "No container trial executed; image approval remains required."
 
+      - name: Assert sandbox speech executor fails closed
+        run: |
+          bash -n scripts/sonny_voice_sandbox_executor.sh
+          set +e
+          bash scripts/sonny_voice_sandbox_executor.sh
+          code=$?
+          set -e
+          test "$code" -eq 77
       - name: Report Swift toolchain
         run: swift --version
       - name: Test portable Swift voice core
