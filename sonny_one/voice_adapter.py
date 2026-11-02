@@ -67,6 +67,7 @@ class VoiceSession:
         if self.state is VoiceState.SPEAKING:
             self.provider.cancel_output()
         self.state = VoiceState.LISTENING
+        self.revision += 1
         return VoiceEvent(self.state, "listening")
 
     def close(self) -> VoiceEvent:
