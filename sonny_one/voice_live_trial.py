@@ -23,8 +23,10 @@ def run_trial(*, adapter_module, provider_id, pcm_path, synthesis_text,
         network_disabled=network_disabled, owner_approved=owner_approved,
     )
     approval.verify()  # Must fail before importing potentially privileged adapter code.
-    if not isinstance(adapter_module, str) or not adapter_module.startswith("sonny_approved_"):
-        raise ValueError("approved adapter module namespace required")
+    if (not isinstance(adapter_module, str)
+            or not adapter_module.startswith("sonny_approved_")
+            or adapter_module not in approved_adapter_modules):
+        raise PermissionError("speech adapter not on explicit allowlist")
     if not isinstance(pcm_path, Path):
         raise TypeError("Path required")
     pcm = pcm_path.read_bytes()
