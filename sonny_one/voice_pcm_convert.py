@@ -16,9 +16,15 @@ def floats_to_pcm16(samples: list[float]) -> PCMFrame:
         raise ValueError("invalid sample count")
     packed = bytearray()
     for sample in samples:
-        if not isinstance(sample, (int, float)) or not math.isfinite(sample):
+        if isinstance(sample, bool) or not isinstance(sample, (int, float)):
             raise ValueError("invalid audio sample")
-        clipped = max(-1.0, min(1.0, float(sample)))
+        try:
+            normalized = float(sample)
+        except (OverflowError, ValueError):
+            raise ValueError("invalid audio sample") from None
+        if not math.isfinite(normalized):
+            raise ValueError("invalid audio sample")
+        clipped = max(-1.0, min(1.0, normalized))
         quantized = max(-32768, min(32767, round(clipped * 32768)))
         packed.extend(struct.pack("<h", quantized))
     return PCMFrame(bytes(packed))
