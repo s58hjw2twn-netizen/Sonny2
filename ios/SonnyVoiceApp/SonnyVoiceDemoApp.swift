@@ -42,7 +42,9 @@ final class VoiceDemoModel: ObservableObject {
             } catch {
                 io.stop()
                 turns.stop()
-                status = "Start failed: \(error.localizedDescription)"
+                if startGeneration == generation {
+                    status = "Start failed: \(error.localizedDescription)"
+                }
             }
         }
     }
