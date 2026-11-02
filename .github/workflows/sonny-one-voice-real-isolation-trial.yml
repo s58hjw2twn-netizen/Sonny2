@@ -19,6 +19,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Validate trial shell syntax
+        run: bash -n scripts/sonny_voice_container_trial.sh
       - name: Resolve approved Docker Official Python image and pin its registry digest
         shell: bash
         run: |
