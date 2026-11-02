@@ -3,37 +3,44 @@ name: Sonny ONE Voice iOS verification (manual)
 # Do not dispatch without confirming runner entitlement/cost and owner approval.
 on:
   workflow_dispatch:
+
 permissions:
   contents: read
+
 jobs:
-  voice-unit-tests:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install test dependency
-        run: python -m pip install pytest==8.3.4
-      - name: Run voice tests
-        run: python -m pytest -q tests/test_sonny_one_voice_adapter.py tests/test_sonny_one_voice_engines.py tests/test_sonny_one_voice_stream.py tests/test_sonny_one_voice_pcm_convert.py tests/test_sonny_one_voice_capture_gate.py tests/test_sonny_one_voice_packet.py tests/test_sonny_one_voice_packet_bridge.py
-  ios-compile:
+  sonny-voice-ios-build:
     runs-on: macos-15
     timeout-minutes: 35
     steps:
-      - name: Check out upstream Moshi Swift at reviewed commit
+      - name: Check out Sonny ONE Voice (no persisted credentials)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify pinned upstream Moshi Swift reference
         uses: actions/checkout@v4
         with:
           repository: kyutai-labs/moshi-swift
           ref: df64ffdbe224e1ecb1ade1d254f347d379ed7f7a
+          path: upstream-moshi-swift
           persist-credentials: false
-      - name: Report toolchain and source
+      - name: Confirm upstream commit and Xcode version
         run: |
+          test "$(git -C upstream-moshi-swift rev-parse HEAD)" = "df64ffdbe224e1ecb1ade1d254f347d379ed7f7a"
           xcodebuild -version
-          git rev-parse HEAD
-      - name: Resolve Xcode project dependencies
-        run: xcodebuild -resolvePackageDependencies -project moshi.xcodeproj -scheme Moshi
-      - name: Compile for iOS simulator without signing
+      - name: Run portable Swift voice tests
+        run: swift test --package-path ios/SonnyVoiceCore
+      - name: Generate Sonny iOS project
         run: |
-          xcodebuild -project moshi.xcodeproj -scheme Moshi -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+          brew install xcodegen
+          xcodegen generate --spec ios/project.yml --project ios
+      - name: Compile actual Sonny Voice app for iOS Simulator (no signing)
+        run: |
+          xcodebuild -project ios/SonnyVoice.xcodeproj \
+            -scheme SonnyVoice \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath /tmp/sonny-voice-derived \
+            CODE_SIGNING_ALLOWED=NO build
+# Upstream Moshi is pinned for provenance, not linked as an inference engine.
+# Simulator compilation does not prove microphone, playback, or model inference.
