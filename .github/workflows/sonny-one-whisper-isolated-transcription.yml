@@ -49,11 +49,6 @@ jobs:
               ln -sfn -- "$target" "$libdir/$(basename "$link")"
             done < <(find "$root" -type l \( -name 'libwhisper.so*' -o -name 'libggml*.so*' \) -print0)
           done
-          # Bundle the Ubuntu host's OpenMP runtime required by this pinned build.
-          gomp="$(ldconfig -p | awk '/libgomp.so.1 \(libc6,x86-64\)/ {print $NF; exit}')"
-          test -n "$gomp"
-          test -f "$gomp"
-          cp -L -- "$gomp" "$libdir/libgomp.so.1"
           test -f "$libdir/libwhisper.so.1"
           test -x "$libdir/whisper-cli"
           # The minimal Ubuntu runtime lacks the host compiler's OpenMP
@@ -82,7 +77,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p evidence
+          # The checkout already contains unrelated historical evidence.
+          # Never mix it with the current speech trial's retained artifacts.
+          test ! -e voice-transcription-evidence
+          mkdir voice-transcription-evidence
           docker pull docker.io/library/ubuntu:24.04
           image="$(docker image inspect docker.io/library/ubuntu:24.04 --format '{{index .RepoDigests 0}}')"
           test -n "$image"
@@ -97,24 +95,56 @@ jobs:
             --env LD_LIBRARY_PATH=/engine/bin \
             --entrypoint /engine/bin/whisper-cli "$image" \
             -m /input/model.bin -f /input/speech.wav -t 2 -nt \
-            > evidence/transcript.txt 2> evidence/engine-log.txt
+            > voice-transcription-evidence/transcript.txt 2> voice-transcription-evidence/engine-log.txt
           result=$?
           set -e
           if [ "$result" -ne 0 ]; then
             echo "Restricted transcription failed with exit $result"
-            cat evidence/engine-log.txt
+            cat voice-transcription-evidence/engine-log.txt
             exit "$result"
           fi
-          sha256sum evidence/transcript.txt evidence/engine-log.txt > evidence/SHA256SUMS
-          cp /tmp/sonny-trial/model.sha256 evidence/model.sha256
-          printf '%s\n' "$image" > evidence/container-image.txt
-          printf '%s\n' 4979e04f5dcaccb36057e059bbaed8a2f5288315 > evidence/engine-commit.txt
-          grep -Eiq 'Sonny|voice|verification' evidence/transcript.txt
+          cp /tmp/sonny-trial/model.sha256 voice-transcription-evidence/model.sha256
+          printf '%s\n' "$image" > voice-transcription-evidence/container-image.txt
+          printf '%s\n' 4979e04f5dcaccb36057e059bbaed8a2f5288315 > voice-transcription-evidence/engine-commit.txt
+          # A homophone such as "Sunny" is a recognition error, not an exact
+          # transcription. Record the error rather than masking it with grep.
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+          folder = Path("voice-transcription-evidence")
+          expected = "sonny one voice verification test".split()
+          observed_text = (folder / "transcript.txt").read_text(encoding="utf-8")
+          observed = re.findall(r"[a-z]+", observed_text.lower())
+          previous = list(range(len(expected) + 1))
+          for index, word in enumerate(observed, 1):
+              current = [index] + [0] * len(expected)
+              for column, reference in enumerate(expected, 1):
+                  current[column] = min(current[column - 1] + 1,
+                                        previous[column] + 1,
+                                        previous[column - 1] + (word != reference))
+              previous = current
+          wer = previous[-1] / len(expected)
+          report = {
+              "expected": " ".join(expected),
+              "observed": observed_text.strip(),
+              "word_error_rate": wer,
+              "exact_match": wer == 0,
+              "synthetic_probe_threshold": 0.25,
+              "threshold_passed": wer <= 0.25,
+          }
+          (folder / "accuracy.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+          print("Synthetic speech WER:", wer, "exact:", wer == 0)
+          if not report["threshold_passed"]:
+              raise SystemExit("Synthetic speech transcription below minimum accuracy")
+          PY
+          (cd voice-transcription-evidence && sha256sum transcript.txt engine-log.txt model.sha256 container-image.txt engine-commit.txt accuracy.json > SHA256SUMS)
+          (cd voice-transcription-evidence && sha256sum -c SHA256SUMS)
       - name: Retain evidence even on failure
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: sonny-whisper-isolated-transcription-evidence
-          path: evidence/
+          path: voice-transcription-evidence/
           if-no-files-found: warn
           retention-days: 30
