@@ -13,7 +13,8 @@ from pathlib import Path
 from sonny_one.voice_engine_probe import run_speech_probe
 from sonny_one.voice_provider_boundary import LocalSpeechApproval, LocalSpeechBoundary
 
-def run_trial(*, adapter_module, provider_id, pcm_path, synthesis_text,\n              approved_adapter_modules=(),
+def run_trial(*, adapter_module, provider_id, pcm_path, synthesis_text,
+              approved_adapter_modules=(),
               license_reviewed=False, installation_verified=False,
               network_disabled=False, owner_approved=False):
     approval = LocalSpeechApproval(
