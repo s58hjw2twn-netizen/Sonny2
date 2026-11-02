@@ -1,0 +1,84 @@
+import Foundation
+import XCTest
+@testable import SonnyVoiceCore
+
+private enum SessionEngineFailure: Error { case unavailable }
+
+private final class SessionEngineSpy: VoicePCMEngine {
+    var starts = 0
+    var received = 0
+    var cancels = 0
+    var stops = 0
+    var failStart = false
+    func start() throws {
+        starts += 1
+        if failStart { throw SessionEngineFailure.unavailable }
+    }
+    func acceptMicrophonePCM(_ pcm16: Data) throws { received += 1 }
+    func cancelOutput() { cancels += 1 }
+    func stop() { stops += 1 }
+}
+
+final class VoiceSessionControllerTests: XCTestCase {
+    private func approvedGate(_ engine: SessionEngineSpy) throws -> VoiceModelGate {
+        try VoiceModelGate(engine: engine, approval: VoiceModelApproval(
+            approved: true, licenseReviewed: true, locallyInstalled: true, requiresExternalNetwork: false))
+    }
+
+    func testAuthAndFailedEngineStartDoNotExposeInput() throws {
+        let engine = SessionEngineSpy()
+        engine.failStart = true
+        let session = VoiceSessionController(model: try approvedGate(engine), output: { _, _ in }, cancelPlayback: {})
+        XCTAssertThrowsError(try session.start(authenticated: false))
+        XCTAssertEqual(engine.starts, 0)
+        XCTAssertThrowsError(try session.start(authenticated: true))
+        XCTAssertEqual(session.state, .idle)
+        XCTAssertThrowsError(try session.acceptMicrophoneFrame(Data(repeating: 0, count: 3_840)))
+        engine.failStart = false
+        try session.start(authenticated: true)
+        XCTAssertEqual(session.state, .listening)
+        session.stop()
+    }
+
+    func testFrameAndOutputEpochAreEnforcedAcrossBargeIn() throws {
+        let engine = SessionEngineSpy()
+        var delivered = 0
+        var cancelled = 0
+        let session = VoiceSessionController(model: try approvedGate(engine), output: { _, _ in delivered += 1 },
+                                             cancelPlayback: { cancelled += 1 })
+        try session.start(authenticated: true)
+        XCTAssertThrowsError(try session.acceptMicrophoneFrame(Data(repeating: 0, count: 3_838)))
+        try session.acceptMicrophoneFrame(Data(repeating: 0, count: 3_840))
+        XCTAssertEqual(engine.received, 1)
+        let first = try session.beginModelOutput()
+        XCTAssertThrowsError(try session.acceptMicrophoneFrame(Data(repeating: 0, count: 3_840)))
+        try session.deliverModelOutput(Data(repeating: 0, count: 2_400), epoch: first)
+        XCTAssertEqual(delivered, 1)
+        try session.interrupt()
+        XCTAssertThrowsError(try session.deliverModelOutput(Data(repeating: 0, count: 2_400), epoch: first))
+        let second = try session.beginModelOutput()
+        XCTAssertNotEqual(first, second)
+        try session.deliverModelOutput(Data(repeating: 0, count: 2_400), epoch: second)
+        try session.resumeListening()
+        XCTAssertThrowsError(try session.deliverModelOutput(Data(repeating: 0, count: 2_400), epoch: second))
+        try session.acceptMicrophoneFrame(Data(repeating: 0, count: 3_840))
+        session.stop()
+        XCTAssertThrowsError(try session.acceptMicrophoneFrame(Data(repeating: 0, count: 3_840)))
+        XCTAssertEqual(engine.received, 2)
+        XCTAssertEqual(delivered, 2)
+        XCTAssertEqual(cancelled, 3)
+        XCTAssertEqual(engine.stops, 1)
+    }
+
+    func testInvalidOutputNeverReachesPlayback() throws {
+        let engine = SessionEngineSpy()
+        var delivered = 0
+        let session = VoiceSessionController(model: try approvedGate(engine), output: { _, _ in delivered += 1 }, cancelPlayback: {})
+        try session.start(authenticated: true)
+        let epoch = try session.beginModelOutput()
+        XCTAssertThrowsError(try session.deliverModelOutput(Data([0]), epoch: epoch))
+        XCTAssertThrowsError(try session.deliverModelOutput(Data(repeating: 0, count: 4_802), epoch: epoch))
+        XCTAssertEqual(delivered, 0)
+        session.stop()
+    }
+}
