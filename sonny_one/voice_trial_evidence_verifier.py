@@ -41,6 +41,10 @@ def verify_trial_evidence(folder: Path) -> tuple[bool, tuple[str, ...]]:
         valid, issues = check_container_observations(probe)
         if not valid:
             failures.extend(issues)
+        if assessment.get("observation_checks_passed") is not valid:
+            failures.append("assessment and independently computed verdict disagree")
+        if tuple(assessment.get("failures", ())) != tuple(issues):
+            failures.append("assessment failure details disagree with observations")
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
         failures.append(str(exc))
     return not failures, tuple(failures)
