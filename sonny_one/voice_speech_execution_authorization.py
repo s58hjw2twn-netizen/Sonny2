@@ -6,8 +6,8 @@ A trusted host must authenticate the issuer and bind the record to a real run.
 from dataclasses import dataclass
 import re
 
-_HEX64 = re.compile(r"[0-9a-f]{64}\\Z")
-_RUN_ID = re.compile(r"[A-Za-z0-9_-]{12,128}\\Z")
+_HEX64 = re.compile(r"[0-9a-f]{64}\Z")
+_RUN_ID = re.compile(r"[A-Za-z0-9_-]{12,128}\Z")
 
 @dataclass(frozen=True)
 class SpeechExecutionAuthorization:
