@@ -41,3 +41,16 @@ def test_non_wav_input_rejected(tmp_path):
     audio.write_bytes(b"x"*50)
     with pytest.raises(ValueError):
         prepare_whisper_command(spec, audio)
+
+def test_wav_symlink_rejected(tmp_path):
+    spec, audio = setup(tmp_path)
+    alias = tmp_path / "alias.wav"
+    alias.symlink_to(audio)
+    with pytest.raises(ValueError, match="regular WAV"):
+        prepare_whisper_command(spec, alias)
+
+def test_short_wav_rejected(tmp_path):
+    spec, audio = setup(tmp_path)
+    audio.write_bytes(b"RIFF" + b"\\x00" * 4 + b"WAVE")
+    with pytest.raises(ValueError, match="at least 44"):
+        prepare_whisper_command(spec, audio)
