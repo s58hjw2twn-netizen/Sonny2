@@ -14,6 +14,8 @@ on:
   pull_request:
     paths:
       - 'ios/**'
+      - 'scripts/sonny_voice_windows_preflight.ps1'
+      - 'docs/SONNY_ONE_VOICE_WINDOWS11_SETUP.md'
       - 'sonny_one/voice_*.py'
       - 'tests/test_sonny_one_voice_*.py'
       - '.github/workflows/sonny-one-voice-core.yml'
