@@ -34,10 +34,25 @@ jobs:
           test "$(git -C /tmp/whisper-source rev-parse HEAD)" = 4979e04f5dcaccb36057e059bbaed8a2f5288315
           cmake -S /tmp/whisper-source -B /tmp/whisper-build -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF
           cmake --build /tmp/whisper-build --config Release -j 2
-          # Bundle the pinned engine's shared libraries in the read-only mount.
-          find /tmp/whisper-build -type f \( -name 'libwhisper.so*' -o -name 'libggml*.so*' \) -exec cp -L {} /tmp/whisper-build/bin/ \;
-          test -f /tmp/whisper-build/bin/libwhisper.so.1
-          test -x /tmp/whisper-build/bin/whisper-cli
+          # Bundle real libraries AND their SONAME symlinks. Copying only
+          # regular files loses libwhisper.so.1 and makes the engine unusable.
+          libdir=/tmp/whisper-build/bin
+          for root in /tmp/whisper-build/src /tmp/whisper-build/ggml/src; do
+            while IFS= read -r -d '' lib; do
+              cp -- "$lib" "$libdir/"
+            done < <(find "$root" -type f \( -name 'libwhisper.so*' -o -name 'libggml*.so*' \) -print0)
+          done
+          for root in /tmp/whisper-build/src /tmp/whisper-build/ggml/src; do
+            while IFS= read -r -d '' link; do
+              target="$(basename "$(readlink -f "$link")")"
+              test -f "$libdir/$target"
+              ln -sfn -- "$target" "$libdir/$(basename "$link")"
+            done < <(find "$root" -type l \( -name 'libwhisper.so*' -o -name 'libggml*.so*' \) -print0)
+          done
+          test -f "$libdir/libwhisper.so.1"
+          test -x "$libdir/whisper-cli"
+          LD_LIBRARY_PATH="$libdir" ldd "$libdir/whisper-cli" | tee /tmp/whisper-linked-libraries.txt
+          ! grep -q 'not found' /tmp/whisper-linked-libraries.txt
       - name: Verify free tiny.en model and synthesize nonpersonal speech
         shell: bash
         run: |
