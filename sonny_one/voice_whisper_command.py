@@ -5,6 +5,8 @@ network restrictions, process limits, and approval before execution.
 """
 from dataclasses import dataclass
 from pathlib import Path
+import os
+import stat
 from .voice_whisper_launch_gate import WhisperLaunchSpec, verify_whisper_launch
 
 @dataclass(frozen=True)
@@ -16,10 +18,23 @@ def prepare_whisper_command(spec: WhisperLaunchSpec, audio_wav: Path) -> Whisper
         raise ValueError("regular WAV input required")
     if audio_wav.suffix.lower() != ".wav":
         raise ValueError("WAV input required")
-    if audio_wav.stat().st_size < 44:
-        raise ValueError("WAV input too short")
-    with audio_wav.open("rb") as stream:
-        header = stream.read(12)
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        fd = os.open(audio_wav, flags)
+    except OSError as exc:
+        raise ValueError("regular WAV input required") from exc
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_size < 44:
+            raise ValueError("regular WAV of at least 44 bytes required")
+        with os.fdopen(fd, "rb") as stream:
+            fd = -1
+            header = stream.read(12)
+    finally:
+        if fd != -1:
+            os.close(fd)
     if header[:4] != b"RIFF" or header[8:12] != b"WAVE":
         raise ValueError("invalid WAV container")
     if not verify_whisper_launch(spec):
