@@ -16,10 +16,19 @@ class VoiceCaptureGate:
         self.session = session
         self.buffer = AudioBuffer(authenticated=True)
         self._closed = False
+        self._last_state = session.state
+
+    def _synchronize(self) -> None:
+        current = self.session.state
+        if current is not self._last_state:
+            # Audio captured before a state transition is never replayed later.
+            self.buffer.clear()
+            self._last_state = current
 
     def ingest(self, frame: PCMFrame) -> None:
         if self._closed:
             raise RuntimeError("capture gate closed")
+        self._synchronize()
         if self.session.state is not VoiceState.LISTENING:
             raise PermissionError("capture only permitted while listening")
         self.buffer.push(frame)
