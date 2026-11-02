@@ -75,4 +75,5 @@ jobs:
             tests/test_sonny_one_voice_engine_probe.py \
             tests/test_sonny_one_voice_live_trial.py \
             tests/test_sonny_one_voice_windows_preflight_contract.py \
-            tests/test_sonny_one_voice_windows_engine_manifest.py
+            tests/test_sonny_one_voice_windows_engine_manifest.py \
+            tests/test_sonny_one_voice_whisper_source_check.py
