@@ -54,3 +54,12 @@ def test_close_clears_and_rejects_io():
         buf.pop()
     with pytest.raises(RuntimeError):
         buf.push(PCMFrame(b"\x00\x00"))
+
+
+def test_rejects_unvalidated_objects_without_mutating_buffer():
+    buf = AudioBuffer(authenticated=True)
+    class FakeFrame:
+        payload = b"\\x00\\x00"
+    with pytest.raises(TypeError):
+        buf.push(FakeFrame())
+    assert buf.buffered_bytes == 0
