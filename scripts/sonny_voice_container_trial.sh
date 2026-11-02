@@ -17,6 +17,9 @@ if [[ -e "$out" || -L "$out" ]]; then
   exit 2
 fi
 mkdir -- "$out"
+# Capture the exact inspected image identity alongside probe observations.
+docker image inspect "$image" --format '{{.Id}}' > "$out/image-id.txt"
+printf '%s\\n' "$image" > "$out/image-reference.txt"
 docker run --rm --pull never --network none --read-only --cap-drop ALL \
   --security-opt no-new-privileges --memory 512m --memory-swap 512m \
   --pids-limit 32 --cpus 1 --user 65534:65534 \
@@ -37,7 +40,7 @@ destination.write_text(json.dumps({
 }, sort_keys=True, indent=2) + "\n")
 print("Observed checks:", "PASS" if passed else "FAIL", "; isolation is NOT certified.")
 PY
-(cd "$out" && sha256sum probe.json assessment.json > SHA256SUMS)
+(cd "$out" && sha256sum probe.json assessment.json image-id.txt image-reference.txt > SHA256SUMS)
 python - "$out/assessment.json" <<'PY'
 import json
 import sys
