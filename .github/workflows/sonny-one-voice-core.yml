@@ -1,0 +1,50 @@
+name: Sonny ONE Voice portable verification
+
+on:
+  push:
+    branches:
+      - feature/sonny-one-voice-adapter-20261102
+    paths:
+      - 'ios/**'
+      - 'sonny_one/voice_*.py'
+      - 'tests/test_sonny_one_voice_*.py'
+      - '.github/workflows/sonny-one-voice-core.yml'
+  pull_request:
+    paths:
+      - 'ios/**'
+      - 'sonny_one/voice_*.py'
+      - 'tests/test_sonny_one_voice_*.py'
+      - '.github/workflows/sonny-one-voice-core.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  portable-voice:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Report Swift toolchain
+        run: swift --version
+      - name: Test portable Swift voice core
+        run: swift test --package-path ios/SonnyVoiceCore
+      - name: Syntax-parse native iOS sources (not an iOS build)
+        run: swiftc -frontend -parse ios/SonnyVoiceApp/*.swift
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned Python test runner
+        run: python -m pip install pytest==8.3.4
+      - name: Test Python voice boundaries
+        run: |
+          python -m pytest -q \
+            tests/test_sonny_one_voice_adapter.py \
+            tests/test_sonny_one_voice_engines.py \
+            tests/test_sonny_one_voice_stream.py \
+            tests/test_sonny_one_voice_pcm_convert.py \
+            tests/test_sonny_one_voice_capture_gate.py \
+            tests/test_sonny_one_voice_packet.py \
+            tests/test_sonny_one_voice_packet_bridge.py
