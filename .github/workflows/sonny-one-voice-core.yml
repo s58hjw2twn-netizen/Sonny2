@@ -85,4 +85,5 @@ jobs:
             tests/test_sonny_one_voice_whisper_command.py \
             tests/test_sonny_one_voice_whisper_runner.py \
             tests/test_sonny_one_voice_isolation_policy.py \
-            tests/test_sonny_one_voice_isolation_probe.py
+            tests/test_sonny_one_voice_isolation_probe.py \
+            tests/test_sonny_one_voice_container_evidence.py
