@@ -1,0 +1,22 @@
+name: SonnyVoice
+options:
+  bundleIdPrefix: org.sonnyone.research
+packages:
+  SonnyVoiceCore:
+    path: SonnyVoiceCore
+targets:
+  SonnyVoice:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.1"
+    sources:
+      - path: SonnyVoiceApp
+    dependencies:
+      - package: SonnyVoiceCore
+    settings:
+      base:
+        SWIFT_VERSION: "5.9"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Sonny Voice needs microphone access for a local audio input test."
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
