@@ -55,3 +55,17 @@ def test_interrupt_resume_and_close():
     gate.close()
     with pytest.raises(RuntimeError):
         gate.ingest(frame)
+
+
+def test_audio_before_output_transition_is_not_replayed():
+    session = new_session()
+    gate = VoiceCaptureGate(session, authenticated=True)
+    session.start()
+    gate.ingest(PCMFrame(bytes(2)))
+    session.begin_output()
+    with pytest.raises(PermissionError):
+        gate.take()
+    session.interrupt()
+    session.resume_listening()
+    assert gate.take() is None
+    gate.close()
