@@ -69,3 +69,15 @@ def test_audio_before_output_transition_is_not_replayed():
     session.resume_listening()
     assert gate.take() is None
     gate.close()
+
+
+def test_take_discards_stale_audio_after_state_change():
+    session = new_session()
+    gate = VoiceCaptureGate(session, authenticated=True)
+    session.start()
+    gate.ingest(PCMFrame(bytes(2)))
+    session.begin_output()
+    with pytest.raises(PermissionError):
+        gate.take()
+    assert gate.buffer.buffered_bytes == 0
+    gate.close()
