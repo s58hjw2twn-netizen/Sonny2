@@ -64,18 +64,25 @@ public final class SonnyAudioIO {
         let captureEpoch = lifetime.current()
         // A new assembler is created for each capture session; old queued work
         // is rejected by captureEpoch after stop/restart.
-        let frameAssembler = VoiceFrameAssembler()
+        let continuity = VoiceCaptureContinuity()
+        let captureFramer = VoiceCaptureFramer(continuity: continuity)
         input.installTap(onBus: 0, bufferSize: 1024, format: hardwareFormat) { buffer, _ in
-            guard slots.wait(timeout: .now()) == .success else { return }
+            guard slots.wait(timeout: .now()) == .success else {
+                continuity.markDropped()
+                return
+            }
             guard let channels = buffer.floatChannelData, buffer.frameLength > 0 else {
+                continuity.markDropped()
                 slots.signal()
                 return
             }
             // Copy before returning from the real-time audio callback.
             let captured = Array(UnsafeBufferPointer(start: channels[0], count: Int(buffer.frameLength)))
+            let audioGeneration = continuity.snapshot()
             queue.async {
                 defer { slots.signal() }
-                guard lifetime.isCurrent(captureEpoch) else { return }
+                guard lifetime.isCurrent(captureEpoch),
+                      continuity.isCurrent(audioGeneration) else { return }
                 guard let source = AVAudioPCMBuffer(pcmFormat: monoInput,
                                                     frameCapacity: AVAudioFrameCount(captured.count)) else { return }
                 source.frameLength = AVAudioFrameCount(captured.count)
@@ -97,18 +104,25 @@ public final class SonnyAudioIO {
                 }
                 guard conversionError == nil,
                       let samples = output.floatChannelData,
-                      output.frameLength > 0 else { return }
+                      output.frameLength > 0 else {
+                    continuity.markDropped()
+                    return
+                }
                 let count = Int(output.frameLength)
                 var offset = 0
                 while offset < count {
                     let end = min(offset + VoiceWire.maxFrameBytes / 2, count)
                     let chunk = Array(UnsafeBufferPointer(start: samples[0] + offset, count: end - offset))
-                    if let pcm = try? VoiceWire.pcm16(from: chunk),
-                       lifetime.isCurrent(captureEpoch),
-                       let frames = try? frameAssembler.append(pcm) {
-                        for frame in frames where lifetime.isCurrent(captureEpoch) {
-                            onPCMFrame(frame)
-                        }
+                    guard lifetime.isCurrent(captureEpoch),
+                          continuity.isCurrent(audioGeneration) else { return }
+                    guard let pcm = try? VoiceWire.pcm16(from: chunk),
+                          let frames = try? captureFramer.append(pcm, generation: audioGeneration) else {
+                        continuity.markDropped()
+                        return
+                    }
+                    for frame in frames where lifetime.isCurrent(captureEpoch)
+                        && continuity.isCurrent(audioGeneration) {
+                        onPCMFrame(frame)
                     }
                     offset = end
                 }
