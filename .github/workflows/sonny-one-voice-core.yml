@@ -90,4 +90,5 @@ jobs:
             tests/test_sonny_one_voice_isolation_probe.py \
             tests/test_sonny_one_voice_container_evidence.py \
             tests/test_sonny_one_voice_container_trial_contract.py \
-            tests/test_sonny_one_voice_trial_evidence_retention.py
+            tests/test_sonny_one_voice_trial_evidence_retention.py \
+            tests/test_sonny_one_voice_trial_evidence_verifier.py
