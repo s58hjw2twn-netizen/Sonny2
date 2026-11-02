@@ -23,4 +23,7 @@ def verify_whisper_launch(spec: WhisperLaunchSpec) -> bool:
         return False
     if not verify_local_artifact(spec.model_artifact, spec.model):
         return False
+    # Both digest checks validate bytes at their respective read times. They do
+    # not pin the path for a future executor. Execution must independently
+    # bind the verified artifact bytes in its sandbox before launch.
     return verify_whisper_upstream_sha1(spec.model, spec.upstream_model_sha1)
