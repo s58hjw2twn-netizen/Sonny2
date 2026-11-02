@@ -15,3 +15,10 @@ def test_trial_emits_evidence_but_never_self_certifies():
     assert 'full_isolation_certified": False' in script
     assert 'check_container_observations(data)' in script
     assert 'SHA256SUMS' in script
+
+def test_trial_rejects_existing_evidence_and_resolves_repo_root():
+    script = Path("scripts/sonny_voice_container_trial.sh").read_text()
+    assert 'if [[ -e "$out" || -L "$out" ]]' in script
+    assert 'Evidence destination already exists' in script
+    assert 'mkdir -- "$out"' in script
+    assert 'cd "$repo_root"' in script
