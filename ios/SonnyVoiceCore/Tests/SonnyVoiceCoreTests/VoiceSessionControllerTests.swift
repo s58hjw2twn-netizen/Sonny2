@@ -2,7 +2,7 @@ import Foundation
 import XCTest
 @testable import SonnyVoiceCore
 
-private enum SessionEngineFailure: Error { case unavailable }
+private enum SessionEngineFailure: Error { case unavailable, inference }
 
 private final class SessionEngineSpy: VoicePCMEngine {
     var starts = 0
@@ -10,11 +10,15 @@ private final class SessionEngineSpy: VoicePCMEngine {
     var cancels = 0
     var stops = 0
     var failStart = false
+    var failInput = false
     func start() throws {
         starts += 1
         if failStart { throw SessionEngineFailure.unavailable }
     }
-    func acceptMicrophonePCM(_ pcm16: Data) throws { received += 1 }
+    func acceptMicrophonePCM(_ pcm16: Data) throws {
+        received += 1
+        if failInput { throw SessionEngineFailure.inference }
+    }
     func cancelOutput() { cancels += 1 }
     func stop() { stops += 1 }
 }
@@ -37,6 +41,28 @@ final class VoiceSessionControllerTests: XCTestCase {
         engine.failStart = false
         try session.start(authenticated: true)
         XCTAssertEqual(session.state, .listening)
+        session.stop()
+    }
+
+    func testInferenceFailureStopsSessionAndCancelsPlayback() throws {
+        let engine = SessionEngineSpy()
+        engine.failInput = true
+        var playbackCancels = 0
+        let session = VoiceSessionController(model: try approvedGate(engine),
+            output: { _, _ in XCTFail("No output expected") },
+            cancelPlayback: { playbackCancels += 1 })
+        try session.start(authenticated: true)
+        XCTAssertThrowsError(try session.acceptMicrophoneFrame(Data(repeating: 0, count: 3_840)))
+        XCTAssertEqual(session.state, .idle)
+        XCTAssertEqual(engine.stops, 1)
+        XCTAssertEqual(engine.cancels, 1)
+        XCTAssertEqual(playbackCancels, 1)
+        XCTAssertThrowsError(try session.acceptMicrophoneFrame(Data(repeating: 0, count: 3_840)))
+        XCTAssertEqual(engine.received, 1)
+        engine.failInput = false
+        try session.start(authenticated: true)
+        try session.acceptMicrophoneFrame(Data(repeating: 0, count: 3_840))
+        XCTAssertEqual(engine.received, 2)
         session.stop()
     }
 
