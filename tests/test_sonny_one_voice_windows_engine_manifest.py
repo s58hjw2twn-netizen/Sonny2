@@ -37,3 +37,11 @@ def test_invalid_digest_rejected(bad):
 def test_invalid_size_rejected():
     with pytest.raises(ValueError):
         SpeechArtifact("stt", "v1", "license", "a"*64, True).validate()
+
+def test_non_regular_directory_rejected(tmp_path):
+    with pytest.raises(ValueError, match="regular"):
+        verify_local_artifact(artifact(b"x"), tmp_path)
+
+def test_missing_artifact_rejected(tmp_path):
+    with pytest.raises(ValueError, match="regular"):
+        verify_local_artifact(artifact(b"x"), tmp_path / "missing.bin")
