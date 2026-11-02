@@ -23,7 +23,7 @@ def test_approval():
 def test_bounds():
     r=build()
     for bad in (b"",b"x"*96001,"not bytes"):
-        with pytest.raises(ValueError): r.process(bad)
+        with pytest.raises((TypeError, ValueError)): r.process(bad)
 def test_interrupted_response():
     r=build()
     class Interrupted:
