@@ -54,7 +54,9 @@ jobs:
           docker pull docker.io/library/ubuntu:24.04
           image="$(docker image inspect docker.io/library/ubuntu:24.04 --format '{{index .RepoDigests 0}}')"
           test -n "$image"
-          # Diagnostic: preserve container stderr on failure and print it to CI.\n          set +e\n          timeout --signal=KILL 100s docker run --rm --pull never --network none \
+          # Diagnostic: preserve container stderr on failure and print it to CI.
+          set +e
+          timeout --signal=KILL 100s docker run --rm --pull never --network none \
             --read-only --cap-drop ALL --security-opt no-new-privileges \
             --memory 1g --memory-swap 1g --pids-limit 32 --cpus 2 \
             --user 65534:65534 \
@@ -62,7 +64,15 @@ jobs:
             --mount type=bind,src=/tmp/sonny-trial,dst=/input,readonly \
             --entrypoint /engine/bin/whisper-cli "$image" \
             -m /input/model.bin -f /input/speech.wav -t 2 -nt \
-            > evidence/transcript.txt 2> evidence/engine-log.txt\n          result=$?\n          set -e\n          if [ "$result" -ne 0 ]; then\n            echo "Restricted transcription failed with exit $result"\n            cat evidence/engine-log.txt\n            exit "$result"\n          fi\n          sha256sum evidence/transcript.txt evidence/engine-log.txt > evidence/SHA256SUMS
+            > evidence/transcript.txt 2> evidence/engine-log.txt
+          result=$?
+          set -e
+          if [ "$result" -ne 0 ]; then
+            echo "Restricted transcription failed with exit $result"
+            cat evidence/engine-log.txt
+            exit "$result"
+          fi
+          sha256sum evidence/transcript.txt evidence/engine-log.txt > evidence/SHA256SUMS
           cp /tmp/sonny-trial/model.sha256 evidence/model.sha256
           printf '%s\n' "$image" > evidence/container-image.txt
           printf '%s\n' 4979e04f5dcaccb36057e059bbaed8a2f5288315 > evidence/engine-commit.txt
