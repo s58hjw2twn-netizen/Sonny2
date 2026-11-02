@@ -96,3 +96,31 @@ def test_state_transition_discards_audio_before_next_ingest():
     assert gate.take() == fresh
     assert gate.take() is None
     gate.close()
+
+
+def test_rapid_output_cycle_invalidates_buffer_even_when_gate_not_polled():
+    session = new_session()
+    gate = VoiceCaptureGate(session, authenticated=True)
+    session.start()
+    old = PCMFrame(bytes(2))
+    gate.ingest(old)
+    session.begin_output()
+    session.interrupt()
+    session.resume_listening()
+    # The gate never observed the intermediate speaking state.
+    assert gate.take() is None
+    gate.close()
+
+
+def test_failed_stop_does_not_report_gate_closed():
+    class FailingStop(FakeProvider):
+        def stop(self):
+            raise RuntimeError("stop failed")
+    session = VoiceSession(FailingStop(), authenticated=True)
+    gate = VoiceCaptureGate(session, authenticated=True)
+    session.start()
+    with pytest.raises(RuntimeError, match="stop failed"):
+        gate.close()
+    assert session.state.value == "listening"
+    gate.ingest(PCMFrame(bytes(2)))
+    assert gate.take() is not None
