@@ -36,7 +36,7 @@ def verify_trial_evidence(folder: Path) -> tuple[bool, tuple[str, ...]]:
         import re
         if not re.fullmatch(r"sha256:[a-f0-9]{64}", image_id):
             failures.append("invalid inspected image identity")
-        if not re.fullmatch(r"[^\\s]+@sha256:[a-f0-9]{64}", image_ref):
+        if not re.fullmatch(r"[^\s]+@sha256:[a-f0-9]{64}", image_ref):
             failures.append("invalid digest-pinned image reference")
         assessment = json.loads((folder / "assessment.json").read_text())
         if not isinstance(assessment, dict):
