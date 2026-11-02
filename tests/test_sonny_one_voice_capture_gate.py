@@ -81,3 +81,18 @@ def test_take_discards_stale_audio_after_state_change():
         gate.take()
     assert gate.buffer.buffered_bytes == 0
     gate.close()
+
+
+def test_state_transition_discards_audio_before_next_ingest():
+    session = new_session()
+    gate = VoiceCaptureGate(session, authenticated=True)
+    session.start()
+    gate.ingest(PCMFrame(bytes(2)))
+    session.begin_output()
+    session.interrupt()
+    session.resume_listening()
+    fresh = PCMFrame(bytes(4))
+    gate.ingest(fresh)
+    assert gate.take() == fresh
+    assert gate.take() is None
+    gate.close()
