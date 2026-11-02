@@ -8,8 +8,15 @@ if [[ ! "$image" =~ @sha256:[a-f0-9]{64}$ ]]; then
   exit 2
 fi
 docker image inspect "$image" >/dev/null
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+cd "$repo_root"
 out="${SONNY_VOICE_TRIAL_OUTPUT_DIR:-voice-isolation-evidence}"
-mkdir -p "$out"
+# Never mix a new run with existing evidence or overwrite an earlier trial.
+if [[ -e "$out" || -L "$out" ]]; then
+  echo "Evidence destination already exists; supply a fresh directory" >&2
+  exit 2
+fi
+mkdir -- "$out"
 docker run --rm --pull never --network none --read-only --cap-drop ALL \
   --security-opt no-new-privileges --memory 512m --memory-swap 512m \
   --pids-limit 32 --cpus 1 --user 65534:65534 \
