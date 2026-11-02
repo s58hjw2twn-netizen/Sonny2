@@ -51,6 +51,21 @@ jobs:
           Write-Host "Windows preflight PowerShell syntax valid"
       - name: Validate restricted-container trial shell syntax (no execution)
         run: bash -n scripts/sonny_voice_container_trial.sh
+      - name: Inspect Docker availability and cached image digests (no pulls)
+        shell: bash
+        run: |
+          if ! command -v docker >/dev/null 2>&1; then
+            echo "Docker CLI unavailable on this runner"
+            exit 0
+          fi
+          if ! docker info --format '{{.ServerVersion}}' >/dev/null 2>&1; then
+            echo "Docker daemon unavailable on this runner"
+            exit 0
+          fi
+          echo "Docker daemon available; listing only locally cached images"
+          docker image ls --digests --format '{{.Repository}}@{{.Digest}}' | sort -u
+          echo "No container trial executed; image approval remains required."
+
       - name: Report Swift toolchain
         run: swift --version
       - name: Test portable Swift voice core
