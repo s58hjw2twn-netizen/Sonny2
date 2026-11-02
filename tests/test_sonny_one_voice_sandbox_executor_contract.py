@@ -23,3 +23,31 @@ def test_fixed_docker_restrictions_and_no_arbitrary_execution():
         assert required in script
     assert 'if [[ "${1:-}" != "--probe" || "$#" -ne 1 ]]' in script
     assert "docker pull" not in script
+
+def test_probe_invokes_fixed_docker_arguments_with_fake_cli(tmp_path):
+    """Exercise the actual shell command without starting Docker or a model."""
+    import os
+    fake = tmp_path / "docker"
+    args_file = tmp_path / "args.txt"
+    fake.write_text('#!/bin/sh\\n'
+                    'if [ "$1" = "image" ]; then exit 0; fi\\n'
+                    'printf "%s\\\\n" "$@" > "$SONNY_TEST_ARGS"\\n'
+                    'printf "{}\\\\n"\\n')
+    fake.chmod(0o755)
+    image = "example.invalid/approved@sha256:" + "a" * 64
+    env = os.environ.copy()
+    env.update({"PATH": str(tmp_path) + ":" + env.get("PATH", ""),
+                "SONNY_VOICE_TRIAL_IMAGE": image,
+                "SONNY_TEST_ARGS": str(args_file)})
+    result = subprocess.run(["bash", str(SCRIPT), "--probe"],
+                            env=env, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    args = args_file.read_text().splitlines()
+    assert args[:2] == ["run", "--rm"]
+    assert args[-2:] == [image, "/probe.py"]
+    assert args[args.index("--entrypoint") + 1] == "python"
+    assert "--network" in args and args[args.index("--network") + 1] == "none"
+    assert "--read-only" in args
+    assert "--pull" in args and args[args.index("--pull") + 1] == "never"
+    mounts = [args[i + 1] for i, value in enumerate(args[:-1]) if value == "--mount"]
+    assert len(mounts) == 1 and mounts[0].endswith(",dst=/probe.py,readonly")
