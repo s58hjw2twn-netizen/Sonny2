@@ -43,14 +43,31 @@ public final class VoiceModelGate {
 
     public func start() throws {
         guard !started else { return }
-        try engine.start()
-        started = true
+        do {
+            try engine.start()
+            started = true
+        } catch {
+            // A failed engine startup may have partially allocated audio/model
+            // resources. Never leave them running after an unsuccessful start.
+            engine.cancelOutput()
+            engine.stop()
+            throw error
+        }
     }
 
     public func acceptMicrophonePCM(_ pcm16: Data) throws {
         guard started else { throw VoiceModelError.notStarted }
         try VoiceWire.validateFrame(pcm16)
-        try engine.acceptMicrophonePCM(pcm16)
+        do {
+            try engine.acceptMicrophonePCM(pcm16)
+        } catch {
+            // Inference failure is terminal for this session: do not continue
+            // feeding audio into a potentially corrupted model state.
+            started = false
+            engine.cancelOutput()
+            engine.stop()
+            throw error
+        }
     }
 
     /// Moshi/Mimi consumes 80 ms of 24 kHz mono PCM16 per model input step.
