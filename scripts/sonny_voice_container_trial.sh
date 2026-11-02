@@ -28,8 +28,14 @@ destination.write_text(json.dumps({
     "failures": failures,
     "full_isolation_certified": False,
 }, sort_keys=True, indent=2) + "\n")
-if not passed:
-    raise SystemExit("Container observations failed; inspect evidence")
-print("Observed container limits passed; isolation is NOT certified.")
+print("Observed checks:", "PASS" if passed else "FAIL", "; isolation is NOT certified.")
 PY
 sha256sum "$out/probe.json" "$out/assessment.json" > "$out/SHA256SUMS"
+python - "$out/assessment.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+result = json.loads(Path(sys.argv[1]).read_text())
+if not result["observation_checks_passed"]:
+    raise SystemExit("Container observations failed; retained hashed evidence")
+PY
