@@ -42,3 +42,19 @@ def test_same_file_rejected(tmp_path):
                                 spec.model_artifact, spec.upstream_model_sha1)
     with pytest.raises(ValueError):
         verify_whisper_launch(changed)
+
+@pytest.mark.parametrize("target", ["engine", "model"])
+def test_symlink_artifact_rejected_before_hashing(tmp_path, target):
+    spec = make_spec(tmp_path)
+    original = spec.executable if target == "engine" else spec.model
+    alias = tmp_path / ("alias-engine" if target == "engine" else "alias-model")
+    alias.symlink_to(original)
+    altered = WhisperLaunchSpec(
+        alias if target == "engine" else spec.executable,
+        spec.executable_artifact,
+        alias if target == "model" else spec.model,
+        spec.model_artifact,
+        spec.upstream_model_sha1,
+    )
+    with pytest.raises(ValueError, match="symlinks"):
+        verify_whisper_launch(altered)
