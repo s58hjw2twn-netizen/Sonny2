@@ -1,22 +1,35 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# No model binaries or network downloads. Uses the Python image already available on runner.
-image="${SONNY_VOICE_TRIAL_IMAGE:-python:3.12-slim}"
+# Deliberately requires a preloaded, owner-approved digest-pinned image.
+# Never pulls images or executes speech models.
+image="${SONNY_VOICE_TRIAL_IMAGE:?Set an approved, locally available image@sha256:digest}"
+if [[ ! "$image" =~ @sha256:[a-f0-9]{64}$ ]]; then
+  echo "Image must be pinned to an approved sha256 digest" >&2
+  exit 2
+fi
 docker image inspect "$image" >/dev/null
-docker run --rm --network none --read-only --cap-drop ALL \
+out="${SONNY_VOICE_TRIAL_OUTPUT_DIR:-voice-isolation-evidence}"
+mkdir -p "$out"
+docker run --rm --pull never --network none --read-only --cap-drop ALL \
   --security-opt no-new-privileges --memory 512m --memory-swap 512m \
   --pids-limit 32 --cpus 1 --user 65534:65534 \
   --mount "type=bind,src=$(pwd)/scripts/sonny_voice_isolation_probe.py,dst=/probe.py,readonly" \
-  --entrypoint python "$image" /probe.py > voice-isolation-probe.json
-python - <<'PY'
+  --entrypoint python "$image" /probe.py > "$out/probe.json"
+python - "$out/probe.json" "$out/assessment.json" <<'PY'
 import json
+import sys
 from pathlib import Path
-data = json.loads(Path("voice-isolation-probe.json").read_text())
-assert data["isolation_verified"] is False
-assert data["network_default_route_absent"] is True
-assert data["memory_max"] == str(512 * 1024 * 1024), data
-assert data["pids_max"] == "32", data
-assert data["cpu_max"].split()[0] != "max", data
-assert data["root_mount"] and "ro" in data["root_mount"].split()[3].split(","), data
-print("Container limits observed; full isolation not certified.")
+from sonny_one.voice_container_evidence import check_container_observations
+source, destination = map(Path, sys.argv[1:])
+data = json.loads(source.read_text())
+passed, failures = check_container_observations(data)
+destination.write_text(json.dumps({
+    "observation_checks_passed": passed,
+    "failures": failures,
+    "full_isolation_certified": False,
+}, sort_keys=True, indent=2) + "\n")
+if not passed:
+    raise SystemExit("Container observations failed; inspect evidence")
+print("Observed container limits passed; isolation is NOT certified.")
 PY
+sha256sum "$out/probe.json" "$out/assessment.json" > "$out/SHA256SUMS"
