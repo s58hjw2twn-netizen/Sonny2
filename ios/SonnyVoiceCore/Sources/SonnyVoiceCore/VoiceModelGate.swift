@@ -26,6 +26,7 @@ public struct VoiceModelApproval {
 public enum VoiceModelError: Error, Equatable {
     case notApproved
     case notStarted
+    case invalidMoshiFrame
 }
 
 /// Approval fields are policy inputs, not proof that a model is installed.
@@ -50,6 +51,15 @@ public final class VoiceModelGate {
         guard started else { throw VoiceModelError.notStarted }
         try VoiceWire.validateFrame(pcm16)
         try engine.acceptMicrophonePCM(pcm16)
+    }
+
+    /// Moshi/Mimi consumes 80 ms of 24 kHz mono PCM16 per model input step.
+    /// Reject partial and oversized frames before they reach the model adapter.
+    public func acceptMoshiFrame(_ pcm16: Data) throws {
+        guard pcm16.count == VoiceFrameAssembler.frameBytes else {
+            throw VoiceModelError.invalidMoshiFrame
+        }
+        try acceptMicrophonePCM(pcm16)
     }
 
     public func cancelOutput() {
