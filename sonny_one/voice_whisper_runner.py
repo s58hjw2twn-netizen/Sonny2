@@ -17,10 +17,10 @@ def run_prepared_whisper(command: WhisperCommand, *, approved: bool = False,
                          isolation_verified: bool = False,
                          timeout_seconds: int = 30,
                          max_output_bytes: int = 65536) -> WhisperRunResult:
-    if type(approved) is not bool or type(isolation_verified) is not bool:
-        raise TypeError("approval and isolation flags must be explicit booleans")
-    if not approved or not isolation_verified:
-        raise PermissionError("explicit approval and independent isolation verification required")
+    # A caller-supplied boolean cannot prove process isolation. Do not execute
+    # an untrusted speech engine on the host until a sandbox-owned executor
+    # replaces this legacy API. This gate intentionally fails closed.
+    raise PermissionError("direct host Whisper execution disabled; sandbox executor required")
     if not isinstance(command, WhisperCommand) or len(command.argv) != 6:
         raise ValueError("expected prepared Whisper command")
     if command.argv[1] != "-m" or command.argv[3] != "-f" or command.argv[5] != "-nt":
