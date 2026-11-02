@@ -1,0 +1,42 @@
+name: Sonny ONE free Whisper tiny.en provenance trial
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-free-model:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Fetch only approved upstream model and verify published SHA-1
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p model-evidence
+          curl --fail --location --retry 2 --max-time 240 \
+            --output model-evidence/ggml-tiny.en.bin \
+            https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin
+          echo 'c78c86eb1a8faa21b369bcd33207cc90d64ae9df  model-evidence/ggml-tiny.en.bin' | sha1sum --check -
+          sha256sum model-evidence/ggml-tiny.en.bin > model-evidence/SHA256SUMS
+          wc -c model-evidence/ggml-tiny.en.bin > model-evidence/SIZE
+          printf '%s\n' 'Source: https://huggingface.co/ggerganov/whisper.cpp' \
+            'Model: ggml-tiny.en.bin' 'Upstream license metadata: MIT' \
+            'Published SHA-1: c78c86eb1a8faa21b369bcd33207cc90d64ae9df' \
+            'No inference or execution was performed.' > model-evidence/PROVENANCE.txt
+      - name: Upload provenance only (not the model weights)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonny-whisper-tiny-en-provenance
+          path: |
+            model-evidence/SHA256SUMS
+            model-evidence/SIZE
+            model-evidence/PROVENANCE.txt
+          if-no-files-found: warn
+          retention-days: 30
