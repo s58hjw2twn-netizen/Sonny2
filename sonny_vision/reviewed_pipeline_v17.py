@@ -26,7 +26,7 @@ def release_with_quality_review(source_path: str, candidate_path: str,
                                 decision: ReviewDecision | None, secret: bytes,
                                 identity_reviewed: bool = False,
                                 identity_decision: ReviewDecision | None = None,
-                                authorized_reviewers: frozenset[str] | None = None) -> dict:
+                                authorized_reviewers: frozenset[str] | None = None,\n                                exact_protected_pixels: bool = False) -> dict:
     if not authorized_reviewers:
         return {"exported": False, "reason": "no authorized reviewers configured"}
     if (decision is None or identity_decision is None
@@ -35,7 +35,7 @@ def release_with_quality_review(source_path: str, candidate_path: str,
         return {"exported": False, "reason": "reviewer not authorized"}
     source = _decode(source_path)
     candidate = _decode(candidate_path)
-    gate = quality_gate(source, candidate, protected_mask)
+    if type(exact_protected_pixels) is not bool:\n        raise ValueError("exact_protected_pixels must be boolean")\n    gate = quality_gate(source, candidate, protected_mask,\n                        max_protected_change=0 if exact_protected_pixels else 16)
     if not gate["passed"]:
         return {"exported": False, "quality": gate, "reason": "quality gate failed"}
     source_digest = hashlib.sha256(Path(source_path).read_bytes()).hexdigest()
