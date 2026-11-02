@@ -17,6 +17,8 @@ on:
     paths:
       - 'ios/**'
       - 'scripts/sonny_voice_windows_preflight.ps1'
+      - 'scripts/sonny_voice_isolation_probe.py'
+      - 'scripts/sonny_voice_container_trial.sh'
       - 'docs/SONNY_ONE_VOICE_WINDOWS11_SETUP.md'
       - 'sonny_one/voice_*.py'
       - 'tests/test_sonny_one_voice_*.py'
@@ -87,4 +89,5 @@ jobs:
             tests/test_sonny_one_voice_isolation_policy.py \
             tests/test_sonny_one_voice_isolation_probe.py \
             tests/test_sonny_one_voice_container_evidence.py \
-            tests/test_sonny_one_voice_container_trial_contract.py
+            tests/test_sonny_one_voice_container_trial_contract.py \
+            tests/test_sonny_one_voice_trial_evidence_retention.py
