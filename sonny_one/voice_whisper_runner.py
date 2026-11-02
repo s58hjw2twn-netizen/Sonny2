@@ -17,6 +17,8 @@ def run_prepared_whisper(command: WhisperCommand, *, approved: bool = False,
                          isolation_verified: bool = False,
                          timeout_seconds: int = 30,
                          max_output_bytes: int = 65536) -> WhisperRunResult:
+    if type(approved) is not bool or type(isolation_verified) is not bool:
+        raise TypeError("approval and isolation flags must be explicit booleans")
     if not approved or not isolation_verified:
         raise PermissionError("explicit approval and independent isolation verification required")
     if not isinstance(command, WhisperCommand) or len(command.argv) != 6:
