@@ -31,9 +31,17 @@ def test_namespace_restriction(tmp_path):
 
 def test_missing_file_no_adapter_import(tmp_path):
     values=args(tmp_path)
-    values["pcm_path"]=tmp_path/"missing.pcm"
+    values["pcm_path"]=tmp_path/"missing.pcm"\n    values["approved_adapter_modules"]=("sonny_approved_fixture",)
     values.update(dict.fromkeys([
         "license_reviewed","installation_verified","network_disabled","owner_approved"
     ],True))
     with pytest.raises(FileNotFoundError):
+        run_trial(**values)
+
+def test_unlisted_module_fails_before_import(tmp_path):
+    values=args(tmp_path)
+    values.update(dict.fromkeys([
+        "license_reviewed","installation_verified","network_disabled","owner_approved"
+    ],True))
+    with pytest.raises(PermissionError):
         run_trial(**values)
