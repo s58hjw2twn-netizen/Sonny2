@@ -19,10 +19,17 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p model-evidence
+          # Prevent partial or mismatched downloads from being accepted as evidence.
           curl --fail --location --retry 2 --max-time 240 \
             --output model-evidence/ggml-tiny.en.bin \
             https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin
           echo 'c78c86eb1a8faa21b369bcd33207cc90d64ae9df  model-evidence/ggml-tiny.en.bin' | sha1sum --check -
+          python - <<'PY'
+          from pathlib import Path
+          size = Path('model-evidence/ggml-tiny.en.bin').stat().st_size
+          if not 70 * 1024 * 1024 <= size <= 85 * 1024 * 1024:
+              raise SystemExit(f'Unexpected model size: {size}')
+          PY
           sha256sum model-evidence/ggml-tiny.en.bin > model-evidence/SHA256SUMS
           wc -c model-evidence/ggml-tiny.en.bin > model-evidence/SIZE
           printf '%s\n' 'Source: https://huggingface.co/ggerganov/whisper.cpp' \
