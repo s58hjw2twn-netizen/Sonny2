@@ -16,14 +16,14 @@ class VoiceCaptureGate:
         self.session = session
         self.buffer = AudioBuffer(authenticated=True)
         self._closed = False
-        self._last_state = session.state
+        self._last_revision = session.revision
 
     def _synchronize(self) -> None:
-        current = self.session.state
-        if current is not self._last_state:
+        current = self.session.revision
+        if current != self._last_revision:
             # Audio captured before a state transition is never replayed later.
             self.buffer.clear()
-            self._last_state = current
+            self._last_revision = current
 
     def ingest(self, frame: PCMFrame) -> None:
         if self._closed:
