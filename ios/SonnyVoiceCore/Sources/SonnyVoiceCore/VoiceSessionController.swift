@@ -38,7 +38,17 @@ public final class VoiceSessionController {
     /// Frames must be exactly 80 ms of 24 kHz mono signed PCM16.
     public func acceptMicrophoneFrame(_ pcm16: Data) throws {
         guard turns.state == .listening else { throw VoiceSessionError.notListening }
-        try model.acceptMoshiFrame(pcm16)
+        // Malformed frames are rejected without tearing down an otherwise
+        // healthy session. An engine failure, however, must end the session.
+        guard pcm16.count == VoiceFrameAssembler.frameBytes else {
+            throw VoiceModelError.invalidMoshiFrame
+        }
+        do {
+            try model.acceptMoshiFrame(pcm16)
+        } catch {
+            stop()
+            throw error
+        }
     }
 
     public func beginModelOutput() throws -> UInt64 {
