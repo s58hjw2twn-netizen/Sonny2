@@ -14,6 +14,7 @@ public final class SonnyAudioIO {
         case outputQueueFull
         case notRunning
         case staleOutput
+        case startCancelled
     }
 
     private let engine = AVAudioEngine()
@@ -39,9 +40,13 @@ public final class SonnyAudioIO {
     public func start(authenticated: Bool, onPCMFrame: @escaping @Sendable (Data) -> Void) async throws {
         guard authenticated else { throw AudioError.unauthenticated }
         guard !running else { return }
+        let requestedEpoch = lifetime.current()
         guard await AVAudioApplication.requestRecordPermission() else {
             throw AudioError.microphoneDenied
         }
+        // Stop/background during the asynchronous permission dialog must not
+        // start a microphone later when the user returns to the application.
+        guard lifetime.isCurrent(requestedEpoch) else { throw AudioError.startCancelled }
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playAndRecord, mode: .voiceChat,
                                 options: [.defaultToSpeaker, .allowBluetooth])
@@ -61,7 +66,7 @@ public final class SonnyAudioIO {
         let slots = captureSlots
         let targetFormat = outputFormat
         let lifetime = self.lifetime
-        let captureEpoch = lifetime.current()
+        let captureEpoch = requestedEpoch
         // A new assembler is created for each capture session; old queued work
         // is rejected by captureEpoch after stop/restart.
         let continuity = VoiceCaptureContinuity()
