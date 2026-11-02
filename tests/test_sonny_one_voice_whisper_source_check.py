@@ -26,3 +26,16 @@ def test_invalid_hash_fails_closed(tmp_path, invalid):
     path.write_bytes(b"test")
     with pytest.raises(ValueError):
         verify_whisper_upstream_sha1(path, invalid)
+
+def test_upstream_hash_rejects_symlink(tmp_path):
+    data = b"fixture model"
+    target = tmp_path / "model.bin"
+    target.write_bytes(data)
+    alias = tmp_path / "alias.bin"
+    alias.symlink_to(target)
+    with pytest.raises(ValueError, match="non-symlink"):
+        verify_whisper_upstream_sha1(alias, sha1(data).hexdigest())
+
+def test_upstream_hash_rejects_directory(tmp_path):
+    with pytest.raises(ValueError, match="regular"):
+        verify_whisper_upstream_sha1(tmp_path, sha1(b"").hexdigest())
