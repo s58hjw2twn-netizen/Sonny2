@@ -25,14 +25,14 @@ def test_fixed_docker_restrictions_and_no_arbitrary_execution():
     assert "docker pull" not in script
 
 def test_probe_invokes_fixed_docker_arguments_with_fake_cli(tmp_path):
-    """Exercise the actual shell command without starting Docker or a model."""
+    """Exercise the fixed Docker argv without running a real container or model."""
     import os
     fake = tmp_path / "docker"
     args_file = tmp_path / "args.txt"
-    fake.write_text('#!/bin/sh\\n'
-                    'if [ "$1" = "image" ]; then exit 0; fi\\n'
-                    'printf "%s\\\\n" "$@" > "$SONNY_TEST_ARGS"\\n'
-                    'printf "{}\\\\n"\\n')
+    fake.write_text('#!/bin/sh\n'
+                    'if [ "$1" = "image" ]; then exit 0; fi\n'
+                    'printf "%s\\n" "$@" > "$SONNY_TEST_ARGS"\n'
+                    'printf "{}\\n"\n')
     fake.chmod(0o755)
     image = "example.invalid/approved@sha256:" + "a" * 64
     env = os.environ.copy()
