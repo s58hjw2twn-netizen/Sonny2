@@ -96,6 +96,25 @@ final class VoiceSessionControllerTests: XCTestCase {
         XCTAssertEqual(engine.stops, 1)
     }
 
+    func testNormalModelOutputCompletionPreservesEngineAndRejectsStaleCallbacks() throws {
+        let engine = SessionEngineSpy()
+        var cancels = 0
+        let session = VoiceSessionController(model: try approvedGate(engine),
+            output: { _, _ in }, cancelPlayback: { cancels += 1 })
+        try session.start(authenticated: true)
+        let epoch = try session.beginModelOutput()
+        try session.deliverModelOutput(Data(repeating: 0, count: 2_400), epoch: epoch)
+        try session.finishModelOutput(epoch: epoch)
+        XCTAssertEqual(session.state, .listening)
+        XCTAssertEqual(cancels, 0)
+        XCTAssertEqual(engine.cancels, 0)
+        XCTAssertThrowsError(try session.finishModelOutput(epoch: epoch))
+        XCTAssertThrowsError(try session.deliverModelOutput(Data(repeating: 0, count: 2_400), epoch: epoch))
+        try session.acceptMicrophoneFrame(Data(repeating: 0, count: 3_840))
+        XCTAssertEqual(engine.received, 1)
+        session.stop()
+    }
+
     func testInvalidOutputNeverReachesPlayback() throws {
         let engine = SessionEngineSpy()
         var delivered = 0
