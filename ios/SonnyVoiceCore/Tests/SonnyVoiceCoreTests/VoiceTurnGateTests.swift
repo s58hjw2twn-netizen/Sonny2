@@ -78,4 +78,27 @@ final class VoiceTurnGateTests: XCTestCase {
         let fresh = try gate.beginOutput()
         XCTAssertNotEqual(fresh, epoch)
     }
+
+    func testRepeatedInterruptionsNeverReauthorizePriorEpochs() throws {
+        let gate = VoiceTurnGate()
+        try gate.start(authenticated: true)
+        var priorEpochs: [UInt64] = []
+        for _ in 0..<128 {
+            let current = try gate.beginOutput()
+            XCTAssertTrue(gate.acceptsOutput(epoch: current))
+            for prior in priorEpochs {
+                XCTAssertFalse(gate.acceptsOutput(epoch: prior))
+                XCTAssertThrowsError(try gate.finishOutput(epoch: prior))
+            }
+            try gate.interrupt()
+            XCTAssertFalse(gate.acceptsOutput(epoch: current))
+            XCTAssertThrowsError(try gate.finishOutput(epoch: current))
+            priorEpochs.append(current)
+        }
+        gate.stop()
+        XCTAssertEqual(gate.state, .idle)
+        for prior in priorEpochs {
+            XCTAssertFalse(gate.acceptsOutput(epoch: prior))
+        }
+    }
 }
