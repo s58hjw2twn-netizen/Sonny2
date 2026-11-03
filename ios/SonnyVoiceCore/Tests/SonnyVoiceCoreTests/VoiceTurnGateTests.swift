@@ -21,6 +21,21 @@ final class VoiceTurnGateTests: XCTestCase {
         XCTAssertEqual(gate.state, .idle)
     }
 
+    func testNormalOutputCompletionResumesListeningWithoutAcceptingLateAudio() throws {
+        let gate = VoiceTurnGate()
+        try gate.start(authenticated: true)
+        let first = try gate.beginOutput()
+        try gate.finishOutput(epoch: first)
+        XCTAssertEqual(gate.state, .listening)
+        XCTAssertFalse(gate.acceptsOutput(epoch: first))
+        XCTAssertThrowsError(try gate.finishOutput(epoch: first))
+        let second = try gate.beginOutput()
+        XCTAssertThrowsError(try gate.finishOutput(epoch: first))
+        XCTAssertTrue(gate.acceptsOutput(epoch: second))
+        try gate.interrupt()
+        XCTAssertThrowsError(try gate.finishOutput(epoch: second))
+    }
+
     func testInvalidTransitionsFailClosed() throws {
         let gate = VoiceTurnGate()
         XCTAssertThrowsError(try gate.beginOutput())
