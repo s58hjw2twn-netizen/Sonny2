@@ -18,22 +18,22 @@ public final class VoiceTurnGate {
 
     public func start(authenticated: Bool) throws {
         guard authenticated else { throw VoiceTurnError.unauthenticated }
-        guard state == .idle else { throw VoiceTurnError.invalidTransition }
+        guard state == .idle && outputEpoch != UInt64.max else { throw VoiceTurnError.invalidTransition }
         state = .listening
     }
 
     @discardableResult
     public func beginOutput() throws -> UInt64 {
-        guard state == .listening || state == .interrupted else {
+        guard (state == .listening || state == .interrupted) && outputEpoch < UInt64.max - 1 else {
             throw VoiceTurnError.invalidTransition
         }
-        outputEpoch &+= 1
+        advanceEpoch()
         state = .speaking
         return outputEpoch
     }
 
     public func acceptsOutput(epoch: UInt64) -> Bool {
-        state == .speaking && epoch == outputEpoch
+        state == .speaking && outputEpoch != UInt64.max && epoch == outputEpoch
     }
 
     /// Mark a model turn complete only after its final output has finished.
@@ -42,13 +42,13 @@ public final class VoiceTurnGate {
         guard state == .speaking && epoch == outputEpoch else {
             throw VoiceTurnError.invalidTransition
         }
-        outputEpoch &+= 1
+        advanceEpoch()
         state = .listening
     }
 
     public func interrupt() throws {
         guard state == .speaking else { throw VoiceTurnError.invalidTransition }
-        outputEpoch &+= 1
+        advanceEpoch()
         state = .interrupted
     }
 
@@ -56,12 +56,17 @@ public final class VoiceTurnGate {
         guard state == .interrupted || state == .speaking else {
             throw VoiceTurnError.invalidTransition
         }
-        outputEpoch &+= 1
+        advanceEpoch()
         state = .listening
     }
 
+    // Exhaustion is terminal: never reuse an epoch that may authorize stale audio.
+    private func advanceEpoch() {
+        if outputEpoch < UInt64.max { outputEpoch += 1 }
+    }
+
     public func stop() {
-        outputEpoch &+= 1
+        advanceEpoch()
         state = .idle
     }
 }
