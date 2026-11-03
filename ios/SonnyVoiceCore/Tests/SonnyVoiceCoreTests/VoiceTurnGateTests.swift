@@ -46,4 +46,22 @@ final class VoiceTurnGateTests: XCTestCase {
         gate.stop()
         XCTAssertThrowsError(try gate.beginOutput())
     }
+    func testRestartRejectsPriorSessionAudioAndCompletion() throws {
+        let gate = VoiceTurnGate()
+        try gate.start(authenticated: true)
+        let oldEpoch = try gate.beginOutput()
+        gate.stop()
+        XCTAssertFalse(gate.acceptsOutput(epoch: oldEpoch))
+        XCTAssertThrowsError(try gate.start(authenticated: false))
+        XCTAssertEqual(gate.state, .idle)
+        try gate.start(authenticated: true)
+        XCTAssertThrowsError(try gate.finishOutput(epoch: oldEpoch))
+        let currentEpoch = try gate.beginOutput()
+        XCTAssertNotEqual(oldEpoch, currentEpoch)
+        XCTAssertFalse(gate.acceptsOutput(epoch: oldEpoch))
+        XCTAssertThrowsError(try gate.finishOutput(epoch: oldEpoch))
+        XCTAssertTrue(gate.acceptsOutput(epoch: currentEpoch))
+        try gate.finishOutput(epoch: currentEpoch)
+        XCTAssertEqual(gate.state, .listening)
+    }
 }
