@@ -71,6 +71,12 @@ public final class VoiceSessionController {
         }
     }
 
+    /// Normal end-of-turn is distinct from interruption: playback has already
+    /// drained, so do not cancel the engine or speaker on successful completion.
+    public func finishModelOutput(epoch: UInt64) throws {
+        try turns.finishOutput(epoch: epoch)
+    }
+
     /// Invalidate the old epoch before cancelling playback and model output.
     public func interrupt() throws {
         try turns.interrupt()
