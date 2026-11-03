@@ -205,4 +205,4 @@ public final class SonnyAudioIO {
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }
-
+#endif
