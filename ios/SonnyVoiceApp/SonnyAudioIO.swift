@@ -15,6 +15,7 @@ public final class SonnyAudioIO {
         case notRunning
         case staleOutput
         case startCancelled
+        case startInProgress
     }
 
     private let engine = AVAudioEngine()
@@ -25,6 +26,7 @@ public final class SonnyAudioIO {
     private var notificationTokens: [NSObjectProtocol] = []
     private var tapInstalled = false
     private var running = false
+    private var starting = false
     private var pendingBuffers = 0
     private var playbackGeneration: UInt64 = 0
     private let maxPendingBuffers = 8
@@ -42,6 +44,11 @@ public final class SonnyAudioIO {
                       onAudioRouteInvalidated: @escaping @MainActor () -> Void) async throws {
         guard authenticated else { throw AudioError.unauthenticated }
         guard !running else { return }
+        // Prevent concurrent callers from installing duplicate taps while the
+        // asynchronous microphone permission dialog is still pending.
+        guard !starting else { throw AudioError.startInProgress }
+        starting = true
+        defer { starting = false }
         let requestedEpoch = lifetime.current()
         guard await AVAudioApplication.requestRecordPermission() else {
             throw AudioError.microphoneDenied
