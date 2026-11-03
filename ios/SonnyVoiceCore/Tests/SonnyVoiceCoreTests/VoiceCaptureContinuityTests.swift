@@ -37,4 +37,22 @@ final class VoiceCaptureContinuityTests: XCTestCase {
         XCTAssertEqual(continuity.snapshot(), initial + 128)
         XCTAssertFalse(continuity.isCurrent(initial))
     }
+
+    func testRepeatedCaptureGapsNeverJoinOldAndNewAudio() throws {
+        let continuity = VoiceCaptureContinuity()
+        let framer = VoiceCaptureFramer(continuity: continuity)
+        for index in 0..<256 {
+            let stale = continuity.snapshot()
+            let oldByte = UInt8(index % 256)
+            XCTAssertTrue(try framer.append(Data(repeating: oldByte, count: 1_920), generation: stale).isEmpty)
+            continuity.markDropped()
+            XCTAssertFalse(continuity.isCurrent(stale))
+            XCTAssertTrue(try framer.append(Data(repeating: oldByte, count: 1_920), generation: stale).isEmpty)
+            let fresh = continuity.snapshot()
+            let freshByte = UInt8((index + 1) % 256)
+            XCTAssertTrue(try framer.append(Data(repeating: freshByte, count: 1_920), generation: fresh).isEmpty)
+            let frames = try framer.append(Data(repeating: freshByte, count: 1_920), generation: fresh)
+            XCTAssertEqual(frames, [Data(repeating: freshByte, count: 3_840)])
+        }
+    }
 }
