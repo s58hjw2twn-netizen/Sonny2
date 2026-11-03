@@ -42,7 +42,7 @@ final class VoiceDemoModel: ObservableObject {
                     cancelPlayback: { [weak self] in self?.io.interruptOutput() })
                 try controller.start(authenticated: true) // In-process diagnostic only.
                 session = controller
-                try await io.start(authenticated: true) { [weak self] frame in
+                try await io.start(authenticated: true, onPCMFrame: { [weak self] frame in
                     Task { @MainActor [weak self] in
                         guard let self, self.startGeneration == generation else { return }
                         self.lastCapturedFrame = frame
@@ -56,7 +56,11 @@ final class VoiceDemoModel: ObservableObject {
                             self.status = "Diagnostic input failed: \(error.localizedDescription)"
                         }
                     }
-                }
+                }, onAudioRouteInvalidated: { [weak self] in
+                    guard let self, self.startGeneration == generation else { return }
+                    self.stop()
+                    self.status = "Audio interrupted or route changed; restart microphone"
+                })
                 guard startGeneration == generation else {
                     stop()
                     return
