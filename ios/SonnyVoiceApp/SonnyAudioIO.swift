@@ -28,7 +28,7 @@ public final class SonnyAudioIO {
     private var pendingBuffers = 0
     private var playbackGeneration: UInt64 = 0
     private let maxPendingBuffers = 8
-    private let lifetime = CaptureLifetime()
+    private let lifetime = VoiceCaptureLifetime()
 
     public init() {
         engine.attach(player)
@@ -37,7 +37,9 @@ public final class SonnyAudioIO {
 
     /// Caller must establish its own authenticated assistant session before starting.
     /// Callback is in-process PCM16 only; never send it over unauthenticated transport.
-    public func start(authenticated: Bool, onPCMFrame: @escaping @Sendable (Data) -> Void) async throws {
+    public func start(authenticated: Bool,
+                      onPCMFrame: @escaping @Sendable (Data) -> Void,
+                      onAudioRouteInvalidated: @escaping @MainActor () -> Void) async throws {
         guard authenticated else { throw AudioError.unauthenticated }
         guard !running else { return }
         let requestedEpoch = lifetime.current()
@@ -146,8 +148,13 @@ public final class SonnyAudioIO {
             notificationTokens.append(NotificationCenter.default.addObserver(
                 forName: name, object: session, queue: nil
             ) { [weak self] _ in
-                // Fail closed: re-authorization/restart is required after audio route changes.
-                Task { @MainActor [weak self] in self?.stop() }
+                // The notification may be delivered after stop/restart. Only the
+                // capture session that registered this observer may invalidate I/O.
+                Task { @MainActor [weak self] in
+                    guard let self, self.lifetime.isCurrent(captureEpoch) else { return }
+                    self.stop()
+                    onAudioRouteInvalidated()
+                }
             })
         }
     }
@@ -199,27 +206,3 @@ public final class SonnyAudioIO {
     }
 }
 
-/// Prevents already-queued microphone work from escaping after stop/restart.
-private final class CaptureLifetime: @unchecked Sendable {
-    private let lock = NSLock()
-    private var epoch: UInt64 = 0
-
-    func current() -> UInt64 {
-        lock.lock()
-        defer { lock.unlock() }
-        return epoch
-    }
-
-    func invalidate() {
-        lock.lock()
-        epoch &+= 1
-        lock.unlock()
-    }
-
-    func isCurrent(_ value: UInt64) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return epoch == value
-    }
-}
-#endif
