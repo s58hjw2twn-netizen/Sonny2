@@ -115,6 +115,32 @@ final class VoiceSessionControllerTests: XCTestCase {
         session.stop()
     }
 
+    func testPlaybackFailureClosesSessionAndRejectsLateAudio() throws {
+        enum PlaybackFailure: Error { case unavailable }
+        let engine = SessionEngineSpy()
+        var playbackAttempts = 0
+        var cancellations = 0
+        let session = VoiceSessionController(model: try approvedGate(engine),
+            output: { _, _ in
+                playbackAttempts += 1
+                throw PlaybackFailure.unavailable
+            },
+            cancelPlayback: { cancellations += 1 })
+        try session.start(authenticated: true)
+        let epoch = try session.beginModelOutput()
+        XCTAssertThrowsError(try session.deliverModelOutput(Data(repeating: 0, count: 2_400), epoch: epoch))
+        XCTAssertEqual(session.state, .idle)
+        XCTAssertEqual(playbackAttempts, 1)
+        XCTAssertEqual(cancellations, 1)
+        XCTAssertEqual(engine.cancels, 1)
+        XCTAssertEqual(engine.stops, 1)
+        XCTAssertThrowsError(try session.deliverModelOutput(Data(repeating: 0, count: 2_400), epoch: epoch))
+        XCTAssertThrowsError(try session.acceptMicrophoneFrame(Data(repeating: 0, count: 3_840)))
+        XCTAssertEqual(playbackAttempts, 1)
+        session.stop()
+        XCTAssertEqual(engine.stops, 1)
+    }
+
     func testInvalidOutputNeverReachesPlayback() throws {
         let engine = SessionEngineSpy()
         var delivered = 0
