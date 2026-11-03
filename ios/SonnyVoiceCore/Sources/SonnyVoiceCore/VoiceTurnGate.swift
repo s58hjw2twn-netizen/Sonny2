@@ -36,6 +36,16 @@ public final class VoiceTurnGate {
         state == .speaking && epoch == outputEpoch
     }
 
+    /// Mark a model turn complete only after its final output has finished.
+    /// A late completion from an interrupted/restarted turn must not resume input.
+    public func finishOutput(epoch: UInt64) throws {
+        guard state == .speaking && epoch == outputEpoch else {
+            throw VoiceTurnError.invalidTransition
+        }
+        outputEpoch &+= 1
+        state = .listening
+    }
+
     public func interrupt() throws {
         guard state == .speaking else { throw VoiceTurnError.invalidTransition }
         outputEpoch &+= 1
