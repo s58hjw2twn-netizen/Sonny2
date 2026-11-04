@@ -171,6 +171,9 @@ public final class SonnyAudioIO {
         guard running else { throw AudioError.notRunning }
         guard gate.acceptsOutput(epoch: epoch) else { throw AudioError.staleOutput }
         guard pendingBuffers < maxPendingBuffers else { throw AudioError.outputQueueFull }
+        // An empty buffer has no playback completion guarantee. Reject it before
+        // reserving a queue slot so a malformed model response cannot stall audio.
+        guard !pcm16.isEmpty else { throw AudioError.invalidInputFormat }
         let samples = try VoiceWire.floats(from: pcm16)
         guard let buffer = AVAudioPCMBuffer(pcmFormat: outputFormat,
                                            frameCapacity: AVAudioFrameCount(samples.count)) else {
