@@ -126,7 +126,10 @@ final class VoiceDemoModel: ObservableObject {
     }
 
     func stop() {
+        // Invalidate an outstanding permission/start task immediately. Its
+        // deferred cleanup is generation-guarded and cannot clear a new start.
         startGeneration &+= 1
+        startPending = false
         lastCapturedFrame = nil
         session?.stop()
         session = nil
