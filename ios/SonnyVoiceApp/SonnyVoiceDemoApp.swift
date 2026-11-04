@@ -64,10 +64,9 @@ final class VoiceDemoModel: ObservableObject {
                     self.stop()
                     self.status = "Audio interrupted or route changed; restart microphone"
                 })
-                guard startGeneration == generation else {
-                    stop()
-                    return
-                }
+                // An older asynchronous start may finish after a newer one.
+                // Do not stop the newer session from this stale task.
+                guard startGeneration == generation else { return }
                 status = "Microphone → local diagnostic active (no AI or network)"
             } catch {
                 // An obsolete permission/start task must never tear down a
