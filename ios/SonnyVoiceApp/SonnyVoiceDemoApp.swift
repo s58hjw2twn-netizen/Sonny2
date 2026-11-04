@@ -27,7 +27,10 @@ final class VoiceDemoModel: ObservableObject {
         framesCaptured = 0
         diagnosticFrames = 0
         Task {
-            defer { startPending = false }
+            defer {
+                // A cancelled older start must not clear a newer start's guard.
+                if startGeneration == generation { startPending = false }
+            }
             do {
                 // These flags describe only the locally built diagnostic engine.
                 // They do not authenticate a user or authorize an external model.
@@ -67,12 +70,13 @@ final class VoiceDemoModel: ObservableObject {
                 }
                 status = "Microphone → local diagnostic active (no AI or network)"
             } catch {
+                // An obsolete permission/start task must never tear down a
+                // newer session that started after Stop or a scene transition.
+                guard startGeneration == generation else { return }
                 io.stop()
                 session?.stop()
                 session = nil
-                if startGeneration == generation {
-                    status = "Start failed: \(error.localizedDescription)"
-                }
+                status = "Start failed: \(error.localizedDescription)"
             }
         }
     }
