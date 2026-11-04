@@ -28,8 +28,10 @@ final class VoiceDemoModel: ObservableObject {
         diagnosticFrames = 0
         Task {
             defer {
-                // A cancelled older start must not clear a newer start's guard.
-                if startGeneration == generation { startPending = false }
+                // Keep the guard until the permission/start task has actually
+                // returned. Stop invalidates its generation but cannot cancel
+                // the system permission prompt; a replacement start must wait.
+                startPending = false
             }
             do {
                 // These flags describe only the locally built diagnostic engine.
@@ -129,7 +131,8 @@ final class VoiceDemoModel: ObservableObject {
         // Invalidate an outstanding permission/start task immediately. Its
         // deferred cleanup is generation-guarded and cannot clear a new start.
         startGeneration &+= 1
-        startPending = false
+        // Do not release startPending while an older permission request is
+        // suspended: SonnyAudioIO still owns its native startup guard.
         lastCapturedFrame = nil
         session?.stop()
         session = nil
