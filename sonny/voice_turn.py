@@ -37,7 +37,7 @@ class VoiceTurn:
             raise PermissionError("session mismatch")
         if self.interrupted:
             raise RuntimeError("turn interrupted")
-        if sequence != self.next_audio_sequence:
+        if type(sequence) is not int or sequence != self.next_audio_sequence:
             raise ValueError("out-of-order audio")
         if not isinstance(chunk, bytes) or not chunk:
             raise ValueError("nonempty audio bytes required")
@@ -68,14 +68,14 @@ class VoiceTurn:
 
     def allow_output(self, session_id: str, generation: int) -> bool:
         return (session_id == self.session_id and
-                generation == self.generation and not self.interrupted)
+                type(generation) is int and generation == self.generation and\n                not self.interrupted)
 
 
 def verified_spoken_status(status: ActionStatus, evidence_reference: Optional[str] = None) -> str:
     """Return conservative wording; only independently verified actions claim verification."""
     status = ActionStatus(status)
     if status == ActionStatus.VERIFIED:
-        if not evidence_reference or not evidence_reference.strip():
+        if not isinstance(evidence_reference, str) or not evidence_reference.strip():
             raise ValueError("independent verification requires evidence")
         return "The action was independently verified."
     return {
