@@ -27,8 +27,10 @@ class VoiceTurn:
     _audio: bytearray = field(default_factory=bytearray, repr=False)
 
     def __post_init__(self):
-        if not self.session_id:
-            raise ValueError("session_id required")
+        if not isinstance(self.session_id, str) or not self.session_id.strip():
+            raise ValueError("nonempty session_id required")
+        if type(self.max_audio_bytes) is not int or self.max_audio_bytes <= 0:
+            raise ValueError("positive max_audio_bytes required")
 
     def ingest(self, session_id: str, sequence: int, chunk: bytes) -> None:
         if session_id != self.session_id:
