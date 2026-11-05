@@ -67,3 +67,24 @@ def test_rejected_audio_does_not_advance_sequence_or_buffer():
     assert t.consume_audio() == b""
     t.ingest("owner", 0, b"ab")
     assert t.consume_audio() == b"ab"
+
+
+@pytest.mark.parametrize("bad_sequence", [True, False, 0.0, "0", None])
+def test_reject_noninteger_audio_sequence_without_mutation(bad_sequence):
+    t = VoiceTurn("owner")
+    with pytest.raises(ValueError):
+        t.ingest("owner", bad_sequence, b"audio")
+    assert t.next_audio_sequence == 0
+    assert t.consume_audio() == b""
+
+
+@pytest.mark.parametrize("bad_generation", [True, False, 0.0, "0", None])
+def test_reject_noninteger_output_generation(bad_generation):
+    t = VoiceTurn("owner")
+    assert not t.allow_output("owner", bad_generation)
+
+
+@pytest.mark.parametrize("bad_evidence", [123, True, [], {}, "  "])
+def test_reject_invalid_independent_evidence(bad_evidence):
+    with pytest.raises(ValueError):
+        verified_spoken_status(ActionStatus.VERIFIED, bad_evidence)
