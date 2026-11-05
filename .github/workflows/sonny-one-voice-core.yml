@@ -12,6 +12,8 @@ on:
       - 'scripts/sonny_voice_sandbox_executor.sh'
       - 'docs/SONNY_ONE_VOICE_WINDOWS11_SETUP.md'
       - 'sonny_one/voice_*.py'
+      - 'sonny/voice_turn.py'
+      - 'tests/test_voice_turn.py'
       - 'tests/test_sonny_one_voice_*.py'
       - '.github/workflows/sonny-one-voice-core.yml'
   pull_request:
@@ -22,6 +24,8 @@ on:
       - 'scripts/sonny_voice_container_trial.sh'
       - 'docs/SONNY_ONE_VOICE_WINDOWS11_SETUP.md'
       - 'sonny_one/voice_*.py'
+      - 'sonny/voice_turn.py'
+      - 'tests/test_voice_turn.py'
       - 'tests/test_sonny_one_voice_*.py'
       - '.github/workflows/sonny-one-voice-core.yml'
 
@@ -89,6 +93,7 @@ jobs:
       - name: Test Python voice boundaries
         run: |
           python -m pytest -q \
+            tests/test_voice_turn.py \
             tests/test_sonny_one_voice_adapter.py \
             tests/test_sonny_one_voice_engines.py \
             tests/test_sonny_one_voice_stream.py \
