@@ -106,11 +106,11 @@ final class VoiceDemoModel: ObservableObject {
         do {
             guard let session else { status = "Start microphone first"; return }
             let epoch = try session.beginModelOutput()
-            let tone = (0..<2_400).map { i in
+            let tone = (0..<1_920).map { i in
                 Float(sin(2 * Double.pi * 440 * Double(i) / 24_000) * 0.1)
             }
             try session.deliverModelOutput(VoiceWire.pcm16(from: tone), epoch: epoch)
-            status = "Queued 100 ms diagnostic speaker tone"
+            status = "Queued 80 ms diagnostic speaker tone"
         } catch {
             stop()
             status = "Playback failed; restart required: \(error.localizedDescription)"
