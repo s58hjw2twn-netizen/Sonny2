@@ -45,3 +45,25 @@ def test_never_claim_verification_without_evidence():
     for status in (ActionStatus.PROPOSED, ActionStatus.ATTEMPTED,
                    ActionStatus.COMPLETED, ActionStatus.FAILED, ActionStatus.UNKNOWN):
         assert "independently verified" not in verified_spoken_status(status)
+
+
+@pytest.mark.parametrize("session_id", ["", "   ", None, 12])
+def test_reject_invalid_session_identity(session_id):
+    with pytest.raises(ValueError):
+        VoiceTurn(session_id)
+
+
+@pytest.mark.parametrize("limit", [0, -1, True, 2.5, "1024"])
+def test_reject_invalid_audio_budget(limit):
+    with pytest.raises(ValueError):
+        VoiceTurn("owner", max_audio_bytes=limit)
+
+
+def test_rejected_audio_does_not_advance_sequence_or_buffer():
+    t = VoiceTurn("owner", max_audio_bytes=2)
+    with pytest.raises(BufferError):
+        t.ingest("owner", 0, b"abc")
+    assert t.next_audio_sequence == 0
+    assert t.consume_audio() == b""
+    t.ingest("owner", 0, b"ab")
+    assert t.consume_audio() == b"ab"
