@@ -68,7 +68,8 @@ class VoiceTurn:
 
     def allow_output(self, session_id: str, generation: int) -> bool:
         return (session_id == self.session_id and
-                type(generation) is int and generation == self.generation and\n                not self.interrupted)
+                type(generation) is int and generation == self.generation and
+                not self.interrupted)
 
 
 def verified_spoken_status(status: ActionStatus, evidence_reference: Optional[str] = None) -> str:
