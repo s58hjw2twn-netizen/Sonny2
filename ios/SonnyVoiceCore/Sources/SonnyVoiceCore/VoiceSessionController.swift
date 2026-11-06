@@ -87,6 +87,12 @@ public final class VoiceSessionController {
     /// Normal end-of-turn is distinct from interruption: playback has already
     /// drained, so do not cancel the engine or speaker on successful completion.
     public func finishModelOutput(epoch: UInt64) throws {
+        // Streaming playback must not reopen the microphone before the model
+        // has explicitly marked its last audio frame. Legacy single-buffer
+        // output retains its existing completion contract.
+        if streamingOutput != nil && finalFrameEpoch != epoch {
+            throw VoiceTurnError.invalidTransition
+        }
         try turns.finishOutput(epoch: epoch)
         finalFrameEpoch = nil
     }
