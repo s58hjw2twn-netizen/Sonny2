@@ -178,4 +178,30 @@ final class VoiceSessionControllerTests: XCTestCase {
         session.stop()
     }
 
+    func testInterruptedStreamingTurnRejectsAllLateFramesAndCompletion() throws {
+        let engine = SessionEngineSpy()
+        var delivered = 0
+        var playbackCancels = 0
+        let session = VoiceSessionController(model: try approvedGate(engine),
+            output: { _, _ in delivered += 1 },
+            cancelPlayback: { playbackCancels += 1 })
+        try session.start(authenticated: true)
+        let staleEpoch = try session.beginModelOutput()
+        try session.deliverModelOutput(Data(repeating: 1, count: 3_840), epoch: staleEpoch)
+        try session.interrupt()
+        XCTAssertThrowsError(try session.deliverModelOutput(Data(repeating: 2, count: 3_840), epoch: staleEpoch))
+        XCTAssertThrowsError(try session.finishModelOutput(epoch: staleEpoch))
+        try session.resumeListening()
+        let freshEpoch = try session.beginModelOutput()
+        XCTAssertNotEqual(staleEpoch, freshEpoch)
+        XCTAssertThrowsError(try session.deliverModelOutput(Data(repeating: 3, count: 3_840), epoch: staleEpoch))
+        try session.deliverModelOutput(Data(repeating: 4, count: 3_840), epoch: freshEpoch)
+        try session.finishModelOutput(epoch: freshEpoch)
+        XCTAssertEqual(session.state, .listening)
+        XCTAssertEqual(delivered, 2)
+        XCTAssertEqual(playbackCancels, 2)
+        XCTAssertEqual(engine.cancels, 2)
+        session.stop()
+    }
+
 }
