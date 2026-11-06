@@ -42,7 +42,8 @@ final class VoiceDemoModel: ObservableObject {
                 let controller = VoiceSessionController(model: model, turns: turns,
                     output: { [weak self] pcm, epoch in
                         guard let self else { throw VoiceSessionError.staleOutput }
-                        try self.io.enqueueOutput(pcm, epoch: epoch, gate: self.turns) { [weak self] in
+                        try self.io.enqueueOutput(pcm, epoch: epoch, gate: self.turns,
+                                                  isFinalFrame: true) { [weak self] in
                             guard let self, self.session?.state == .speaking else { return }
                             // The playback generation and output epoch must both still
                             // be current; interrupted/late callbacks cannot reopen input.
