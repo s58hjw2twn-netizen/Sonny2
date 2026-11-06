@@ -168,6 +168,7 @@ public final class SonnyAudioIO {
 
     /// A model's output must carry the current VoiceTurnGate epoch.
     public func enqueueOutput(_ pcm16: Data, epoch: UInt64, gate: VoiceTurnGate,
+                              isFinalFrame: Bool = false,
                               onPlayed: @escaping @MainActor () -> Void = {}) throws {
         guard running else { throw AudioError.notRunning }
         guard gate.acceptsOutput(epoch: epoch) else { throw AudioError.staleOutput }
@@ -194,7 +195,7 @@ public final class SonnyAudioIO {
             Task { @MainActor [weak self] in
                 guard let self = self, self.playbackGeneration == generation else { return }
                 self.pendingBuffers = max(0, self.pendingBuffers - 1)
-                onPlayed()
+                if isFinalFrame { onPlayed() }
             }
         }
     }
