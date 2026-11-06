@@ -14,6 +14,7 @@ public final class VoiceSessionController {
     private let output: (Data, UInt64) throws -> Void
     private let streamingOutput: ((Data, UInt64, Bool) throws -> Void)?
     private let cancelPlayback: () -> Void
+    private var finalFrameEpoch: UInt64?
 
     public var state: VoiceTurnState { turns.state }
 
@@ -57,16 +58,21 @@ public final class VoiceSessionController {
     }
 
     public func beginModelOutput() throws -> UInt64 {
-        try turns.beginOutput()
+        let epoch = try turns.beginOutput()
+        finalFrameEpoch = nil
+        return epoch
     }
 
     /// Reject late asynchronous model output after interruption, restart or stop.
     public func deliverModelOutput(_ pcm16: Data, epoch: UInt64, isFinalFrame: Bool = false) throws {
-        guard turns.acceptsOutput(epoch: epoch) else { throw VoiceSessionError.staleOutput }
+        guard turns.acceptsOutput(epoch: epoch), finalFrameEpoch != epoch else {
+            throw VoiceSessionError.staleOutput
+        }
         try VoiceWire.validateFrame(pcm16)
         do {
             if let streamingOutput {
                 try streamingOutput(pcm16, epoch, isFinalFrame)
+                if isFinalFrame { finalFrameEpoch = epoch }
             } else {
                 try output(pcm16, epoch)
             }
@@ -82,23 +88,27 @@ public final class VoiceSessionController {
     /// drained, so do not cancel the engine or speaker on successful completion.
     public func finishModelOutput(epoch: UInt64) throws {
         try turns.finishOutput(epoch: epoch)
+        finalFrameEpoch = nil
     }
 
     /// Invalidate the old epoch before cancelling playback and model output.
     public func interrupt() throws {
         try turns.interrupt()
+        finalFrameEpoch = nil
         cancelPlayback()
         model.cancelOutput()
     }
 
     public func resumeListening() throws {
         try turns.resumeListening()
+        finalFrameEpoch = nil
         cancelPlayback()
         model.cancelOutput()
     }
 
     public func stop() {
         turns.stop()
+        finalFrameEpoch = nil
         cancelPlayback()
         model.stop()
     }
