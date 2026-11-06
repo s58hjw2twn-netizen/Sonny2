@@ -248,4 +248,34 @@ final class VoiceSessionControllerTests: XCTestCase {
         session.stop()
     }
 
+
+    func testStreamingPlaybackFailureFailsClosedAndRejectsStaleCompletion() throws {
+        enum SpeakerError: Error { case unavailable }
+        let engine = SessionEngineSpy()
+        var attempts = 0
+        var cancels = 0
+        let session = VoiceSessionController(model: try approvedGate(engine),
+            output: { _, _ in XCTFail("Legacy output must not run") },
+            streamingOutput: { _, _, isFinal in
+                attempts += 1
+                XCTAssertFalse(isFinal)
+                throw SpeakerError.unavailable
+            },
+            cancelPlayback: { cancels += 1 })
+        try session.start(authenticated: true)
+        let epoch = try session.beginModelOutput()
+        XCTAssertThrowsError(try session.deliverModelOutput(
+            Data(repeating: 0, count: 3_840), epoch: epoch, isFinalFrame: false))
+        XCTAssertEqual(session.state, .idle)
+        XCTAssertEqual(attempts, 1)
+        XCTAssertEqual(cancels, 1)
+        XCTAssertEqual(engine.stops, 1)
+        XCTAssertEqual(engine.cancels, 1)
+        XCTAssertThrowsError(try session.deliverModelOutput(
+            Data(repeating: 0, count: 3_840), epoch: epoch, isFinalFrame: true))
+        XCTAssertThrowsError(try session.finishModelOutput(epoch: epoch))
+        XCTAssertEqual(attempts, 1)
+        session.stop()
+        XCTAssertEqual(engine.stops, 1)
+    }
 }
