@@ -12,6 +12,7 @@ public final class VoiceSessionController {
     private let model: VoiceModelGate
     private let turns: VoiceTurnGate
     private let output: (Data, UInt64) throws -> Void
+    private let streamingOutput: ((Data, UInt64, Bool) throws -> Void)?
     private let cancelPlayback: () -> Void
 
     public var state: VoiceTurnState { turns.state }
@@ -19,10 +20,12 @@ public final class VoiceSessionController {
     public init(model: VoiceModelGate,
                 turns: VoiceTurnGate = VoiceTurnGate(),
                 output: @escaping (Data, UInt64) throws -> Void,
+                streamingOutput: ((Data, UInt64, Bool) throws -> Void)? = nil,
                 cancelPlayback: @escaping () -> Void) {
         self.model = model
         self.turns = turns
         self.output = output
+        self.streamingOutput = streamingOutput
         self.cancelPlayback = cancelPlayback
     }
 
@@ -58,11 +61,15 @@ public final class VoiceSessionController {
     }
 
     /// Reject late asynchronous model output after interruption, restart or stop.
-    public func deliverModelOutput(_ pcm16: Data, epoch: UInt64) throws {
+    public func deliverModelOutput(_ pcm16: Data, epoch: UInt64, isFinalFrame: Bool = false) throws {
         guard turns.acceptsOutput(epoch: epoch) else { throw VoiceSessionError.staleOutput }
         try VoiceWire.validateFrame(pcm16)
         do {
-            try output(pcm16, epoch)
+            if let streamingOutput {
+                try streamingOutput(pcm16, epoch, isFinalFrame)
+            } else {
+                try output(pcm16, epoch)
+            }
         } catch {
             // A failed audio device/queue must not leave the model speaking
             // indefinitely or allow late output from the failed turn.
