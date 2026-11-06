@@ -72,6 +72,11 @@ public final class VoiceSessionController {
         do {
             if let streamingOutput {
                 try streamingOutput(pcm16, epoch, isFinalFrame)
+                // Playback callbacks may synchronously interrupt or stop the session.
+                // Never mark a final frame for an epoch invalidated during delivery.
+                guard turns.acceptsOutput(epoch: epoch) else {
+                    throw VoiceSessionError.staleOutput
+                }
                 if isFinalFrame { finalFrameEpoch = epoch }
             } else {
                 try output(pcm16, epoch)
