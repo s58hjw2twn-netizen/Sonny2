@@ -21,6 +21,15 @@ private final class SessionEngineSpy: VoicePCMEngine {
     }
     func cancelOutput() { cancels += 1 }
     func stop() { stops += 1 }
+
+}
+
+final class VoiceSessionControllerTests: XCTestCase {
+    private func approvedGate(_ engine: SessionEngineSpy) throws -> VoiceModelGate {
+        try VoiceModelGate(engine: engine, approval: VoiceModelApproval(
+            approved: true, licenseReviewed: true, locallyInstalled: true, requiresExternalNetwork: false))
+    }
+
     func testStreamingOutputFinalFlagIsExplicitAndEpochScoped() throws {
         let engine = SessionEngineSpy()
         var finalFlags: [Bool] = []
@@ -39,13 +48,6 @@ private final class SessionEngineSpy: VoicePCMEngine {
         XCTAssertThrowsError(try session.deliverModelOutput(Data(repeating: 0, count: 3_840), epoch: epoch, isFinalFrame: true))
         XCTAssertEqual(finalFlags.count, 3)
         session.stop()
-    }
-}
-
-final class VoiceSessionControllerTests: XCTestCase {
-    private func approvedGate(_ engine: SessionEngineSpy) throws -> VoiceModelGate {
-        try VoiceModelGate(engine: engine, approval: VoiceModelApproval(
-            approved: true, licenseReviewed: true, locallyInstalled: true, requiresExternalNetwork: false))
     }
 
     func testAuthAndFailedEngineStartDoNotExposeInput() throws {
