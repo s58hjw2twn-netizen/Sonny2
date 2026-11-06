@@ -152,4 +152,30 @@ final class VoiceSessionControllerTests: XCTestCase {
         XCTAssertEqual(delivered, 0)
         session.stop()
     }
+
+    func testStreamingFramesRemainInSpeakingStateUntilExplicitCompletion() throws {
+        let engine = SessionEngineSpy()
+        var frames = 0
+        var cancellations = 0
+        let session = VoiceSessionController(model: try approvedGate(engine),
+            output: { _, _ in frames += 1 },
+            cancelPlayback: { cancellations += 1 })
+        try session.start(authenticated: true)
+        let epoch = try session.beginModelOutput()
+        for index in 0..<3 {
+            try session.deliverModelOutput(Data(repeating: UInt8(index), count: 3_840), epoch: epoch)
+            XCTAssertEqual(session.state, .speaking)
+            XCTAssertThrowsError(try session.acceptMicrophoneFrame(Data(repeating: 0, count: 3_840)))
+        }
+        XCTAssertEqual(frames, 3)
+        XCTAssertEqual(cancellations, 0)
+        try session.finishModelOutput(epoch: epoch)
+        XCTAssertEqual(session.state, .listening)
+        XCTAssertThrowsError(try session.deliverModelOutput(Data(repeating: 0, count: 3_840), epoch: epoch))
+        XCTAssertThrowsError(try session.finishModelOutput(epoch: epoch))
+        try session.acceptMicrophoneFrame(Data(repeating: 0, count: 3_840))
+        XCTAssertEqual(engine.received, 1)
+        session.stop()
+    }
+
 }
