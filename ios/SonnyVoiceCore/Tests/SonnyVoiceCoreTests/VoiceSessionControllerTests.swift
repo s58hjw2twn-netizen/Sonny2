@@ -278,6 +278,28 @@ final class VoiceSessionControllerTests: XCTestCase {
         session.stop()
         XCTAssertEqual(engine.stops, 1)
     }
+    func testStreamingCompletionRequiresFinalFrameAndPreservesListeningGate() throws {
+        let engine = SessionEngineSpy()
+        var delivered = 0
+        let session = VoiceSessionController(model: try approvedGate(engine),
+            output: { _, _ in XCTFail("Legacy output should not be used") },
+            streamingOutput: { _, _, _ in delivered += 1 },
+            cancelPlayback: {})
+        try session.start(authenticated: true)
+        let epoch = try session.beginModelOutput()
+        try session.deliverModelOutput(Data(repeating: 0, count: 3_840), epoch: epoch)
+        XCTAssertThrowsError(try session.finishModelOutput(epoch: epoch))
+        XCTAssertEqual(session.state, .speaking)
+        XCTAssertThrowsError(try session.acceptMicrophoneFrame(Data(repeating: 0, count: 3_840)))
+        try session.deliverModelOutput(Data(repeating: 0, count: 3_840), epoch: epoch, isFinalFrame: true)
+        try session.finishModelOutput(epoch: epoch)
+        XCTAssertEqual(session.state, .listening)
+        XCTAssertEqual(delivered, 2)
+        try session.acceptMicrophoneFrame(Data(repeating: 0, count: 3_840))
+        XCTAssertEqual(engine.received, 1)
+        session.stop()
+    }
+
     func testFinalStreamingFrameRejectsAdditionalFramesUntilCompletion() throws {
         let engine = SessionEngineSpy()
         var accepted = 0
