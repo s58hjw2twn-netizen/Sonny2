@@ -178,6 +178,29 @@ final class VoiceSessionControllerTests: XCTestCase {
         session.stop()
     }
 
+    func testMalformedStreamingFrameDoesNotCancelHealthyTurn() throws {
+        let engine = SessionEngineSpy()
+        var delivered = 0
+        var playbackCancels = 0
+        let session = VoiceSessionController(model: try approvedGate(engine),
+            output: { _, _ in delivered += 1 },
+            cancelPlayback: { playbackCancels += 1 })
+        try session.start(authenticated: true)
+        let epoch = try session.beginModelOutput()
+        XCTAssertThrowsError(try session.deliverModelOutput(Data([0]), epoch: epoch))
+        XCTAssertThrowsError(try session.deliverModelOutput(Data(repeating: 0, count: 4_802), epoch: epoch))
+        XCTAssertEqual(session.state, .speaking)
+        XCTAssertEqual(delivered, 0)
+        XCTAssertEqual(playbackCancels, 0)
+        try session.deliverModelOutput(Data(repeating: 0, count: 3_840), epoch: epoch)
+        try session.finishModelOutput(epoch: epoch)
+        XCTAssertEqual(session.state, .listening)
+        XCTAssertEqual(delivered, 1)
+        XCTAssertEqual(playbackCancels, 0)
+        XCTAssertEqual(engine.cancels, 0)
+        session.stop()
+    }
+
     func testInterruptedStreamingTurnRejectsAllLateFramesAndCompletion() throws {
         let engine = SessionEngineSpy()
         var delivered = 0
