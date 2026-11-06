@@ -21,6 +21,25 @@ private final class SessionEngineSpy: VoicePCMEngine {
     }
     func cancelOutput() { cancels += 1 }
     func stop() { stops += 1 }
+    func testStreamingOutputFinalFlagIsExplicitAndEpochScoped() throws {
+        let engine = SessionEngineSpy()
+        var finalFlags: [Bool] = []
+        let session = VoiceSessionController(model: try approvedGate(engine),
+            output: { _, _ in XCTFail("Streaming callback should be used") },
+            streamingOutput: { _, _, final in finalFlags.append(final) },
+            cancelPlayback: {})
+        try session.start(authenticated: true)
+        let epoch = try session.beginModelOutput()
+        try session.deliverModelOutput(Data(repeating: 0, count: 3_840), epoch: epoch)
+        try session.deliverModelOutput(Data(repeating: 0, count: 3_840), epoch: epoch, isFinalFrame: false)
+        try session.deliverModelOutput(Data(repeating: 0, count: 3_840), epoch: epoch, isFinalFrame: true)
+        XCTAssertEqual(finalFlags, [false, false, true])
+        XCTAssertEqual(session.state, .speaking)
+        try session.finishModelOutput(epoch: epoch)
+        XCTAssertThrowsError(try session.deliverModelOutput(Data(repeating: 0, count: 3_840), epoch: epoch, isFinalFrame: true))
+        XCTAssertEqual(finalFlags.count, 3)
+        session.stop()
+    }
 }
 
 final class VoiceSessionControllerTests: XCTestCase {
