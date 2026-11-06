@@ -40,10 +40,11 @@ final class VoiceDemoModel: ObservableObject {
                     approved: true, licenseReviewed: true, locallyInstalled: true,
                     requiresExternalNetwork: false))
                 let controller = VoiceSessionController(model: model, turns: turns,
-                    output: { [weak self] pcm, epoch in
+                    output: { _, _ in throw VoiceSessionError.staleOutput },
+                    streamingOutput: { [weak self] pcm, epoch, isFinalFrame in
                         guard let self else { throw VoiceSessionError.staleOutput }
                         try self.io.enqueueOutput(pcm, epoch: epoch, gate: self.turns,
-                                                  isFinalFrame: true) { [weak self] in
+                                                  isFinalFrame: isFinalFrame) { [weak self] in
                             guard let self, self.session?.state == .speaking else { return }
                             // The playback generation and output epoch must both still
                             // be current; interrupted/late callbacks cannot reopen input.
@@ -105,7 +106,7 @@ final class VoiceDemoModel: ObservableObject {
         do {
             guard let session else { status = "Start microphone first"; return }
             let epoch = try session.beginModelOutput()
-            try session.deliverModelOutput(frame, epoch: epoch)
+            try session.deliverModelOutput(frame, epoch: epoch, isFinalFrame: true)
             status = "Queued local 80 ms playback (no AI)"
         } catch {
             stop()
@@ -121,7 +122,7 @@ final class VoiceDemoModel: ObservableObject {
             let tone = (0..<1_920).map { i in
                 Float(sin(2 * Double.pi * 440 * Double(i) / 24_000) * 0.1)
             }
-            try session.deliverModelOutput(VoiceWire.pcm16(from: tone), epoch: epoch)
+            try session.deliverModelOutput(VoiceWire.pcm16(from: tone), epoch: epoch, isFinalFrame: true)
             status = "Queued 80 ms diagnostic speaker tone"
         } catch {
             stop()
