@@ -54,10 +54,14 @@ final class VoiceInferenceOutputBridgeTests: XCTestCase {
         let controller = try session { _ in XCTFail("Invalid frame reached speaker") }
         let bridge = VoiceInferenceOutputBridge(session: controller)
         try bridge.begin()
-        XCTAssertThrowsError(try bridge.emit(Data([0])))
-        XCTAssertThrowsError(try bridge.emit(Data(repeating: 0, count: VoiceFrameAssembler.frameBytes)))
+        XCTAssertThrowsError(try bridge.emit(Data([0]))) { error in
+            XCTAssertEqual(error as? VoiceModelError, .invalidMoshiFrame)
+        }
         XCTAssertEqual(controller.state, .speaking)
-        // Invalid frames are rejected before speaker delivery; caller owns teardown.
+        // Recoverable validation failures must not strand the speaking turn.
+        try bridge.emit(Data(repeating: 0, count: VoiceFrameAssembler.frameBytes), final: true)
+        try bridge.finish()
+        XCTAssertEqual(controller.state, .listening)
         controller.stop()
     }
     func testStaleFinishReleasesBridgeEpochAfterInterruption() throws {
