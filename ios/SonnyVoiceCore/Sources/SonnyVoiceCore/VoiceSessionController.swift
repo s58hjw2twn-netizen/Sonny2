@@ -100,6 +100,11 @@ public final class VoiceSessionController {
         // Streaming playback must not reopen the microphone before the model
         // has explicitly marked its last audio frame. Legacy single-buffer
         // output retains its existing completion contract.
+        // Check revocation first: a cancelled worker must receive staleOutput,
+        // even when its final frame was never delivered.
+        guard turns.acceptsOutput(epoch: epoch) else {
+            throw VoiceSessionError.staleOutput
+        }
         if streamingOutput != nil && finalFrameEpoch != epoch {
             throw VoiceTurnError.invalidTransition
         }
