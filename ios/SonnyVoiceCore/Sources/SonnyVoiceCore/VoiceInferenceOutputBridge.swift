@@ -33,8 +33,14 @@ public final class VoiceInferenceOutputBridge {
     /// Call only after the speaker has drained the last emitted frame.
     public func finish() throws {
         guard let current = epoch else { throw VoiceSessionError.staleOutput }
-        try session.finishModelOutput(epoch: current)
-        epoch = nil
+        do {
+            try session.finishModelOutput(epoch: current)
+            epoch = nil
+        } catch VoiceSessionError.staleOutput {
+            // The session has revoked this turn; do not retain a dead epoch.
+            epoch = nil
+            throw VoiceSessionError.staleOutput
+        }
     }
 
     /// Explicitly revoke pending worker output after stop or interruption.
