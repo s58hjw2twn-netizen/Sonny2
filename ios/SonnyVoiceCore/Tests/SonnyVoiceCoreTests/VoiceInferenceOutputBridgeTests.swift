@@ -60,4 +60,31 @@ final class VoiceInferenceOutputBridgeTests: XCTestCase {
         // Invalid frames are rejected before speaker delivery; caller owns teardown.
         controller.stop()
     }
+    func testStaleFinishReleasesBridgeEpochAfterInterruption() throws {
+        let controller = try session { _ in }
+        let bridge = VoiceInferenceOutputBridge(session: controller)
+        try bridge.begin()
+        try controller.interrupt()
+        XCTAssertThrowsError(try bridge.finish()) { error in
+            XCTAssertEqual(error as? VoiceSessionError, .staleOutput)
+        }
+        try controller.resumeListening()
+        // A revoked output must not permanently block a subsequent turn.
+        try bridge.begin()
+        try bridge.emit(Data(repeating: 0, count: VoiceFrameAssembler.frameBytes), final: true)
+        try bridge.finish()
+        controller.stop()
+    }
+
+    func testPrematureFinishRemainsRecoverableUntilFinalFrame() throws {
+        let controller = try session { _ in }
+        let bridge = VoiceInferenceOutputBridge(session: controller)
+        try bridge.begin()
+        XCTAssertThrowsError(try bridge.finish())
+        try bridge.emit(Data(repeating: 0, count: VoiceFrameAssembler.frameBytes), final: true)
+        try bridge.finish()
+        XCTAssertEqual(controller.state, .listening)
+        controller.stop()
+    }
+
 }
