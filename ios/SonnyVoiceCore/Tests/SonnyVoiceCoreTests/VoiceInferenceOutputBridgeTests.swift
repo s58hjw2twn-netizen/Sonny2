@@ -55,7 +55,7 @@ final class VoiceInferenceOutputBridgeTests: XCTestCase {
         let bridge = VoiceInferenceOutputBridge(session: controller)
         try bridge.begin()
         XCTAssertThrowsError(try bridge.emit(Data([0]))) { error in
-            XCTAssertEqual(error as? VoiceModelError, .invalidMoshiFrame)
+            XCTAssertEqual(error as? VoiceWireError, .invalidFrame)
         }
         XCTAssertEqual(controller.state, .speaking)
         // Recoverable validation failures must not strand the speaking turn.
