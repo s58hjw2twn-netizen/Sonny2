@@ -36,7 +36,7 @@ final class VoiceLegacyReentrantPlaybackTests: XCTestCase {
         XCTAssertEqual(callbacks, 1)
     }
 
-    func testLegacyCallbackInterruptRejectsRevokedEpochAndCanResume() throws {
+    func testLegacyCallbackInterruptRejectsRevokedEpochAndStopsFailedDelivery() throws {
         let engine = LegacyReentrantEngineSpy()
         let gate = try VoiceModelGate(engine: engine, approval: VoiceModelApproval(
             approved: true, licenseReviewed: true, locallyInstalled: true, requiresExternalNetwork: false))
