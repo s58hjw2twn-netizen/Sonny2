@@ -87,4 +87,31 @@ final class VoiceInferenceOutputBridgeTests: XCTestCase {
         controller.stop()
     }
 
+    func testStoppedSessionRejectsLateFinishAsStale() throws {
+        let controller = try session { _ in }
+        let bridge = VoiceInferenceOutputBridge(session: controller)
+        try bridge.begin()
+        controller.stop()
+        XCTAssertThrowsError(try bridge.finish()) { error in
+            XCTAssertEqual(error as? VoiceSessionError, .staleOutput)
+        }
+        XCTAssertThrowsError(try bridge.emit(Data(repeating: 0, count: VoiceFrameAssembler.frameBytes)))
+    }
+
+    func testInterruptedTurnCannotFinishAfterNewTurnBegins() throws {
+        let controller = try session { _ in }
+        let staleBridge = VoiceInferenceOutputBridge(session: controller)
+        try staleBridge.begin()
+        try controller.interrupt()
+        try controller.resumeListening()
+        let freshBridge = VoiceInferenceOutputBridge(session: controller)
+        try freshBridge.begin()
+        XCTAssertThrowsError(try staleBridge.finish()) { error in
+            XCTAssertEqual(error as? VoiceSessionError, .staleOutput)
+        }
+        try freshBridge.emit(Data(repeating: 0, count: VoiceFrameAssembler.frameBytes), final: true)
+        try freshBridge.finish()
+        controller.stop()
+    }
+
 }
