@@ -80,6 +80,11 @@ public final class VoiceSessionController {
                 if isFinalFrame { finalFrameEpoch = epoch }
             } else {
                 try output(pcm16, epoch)
+                // Legacy callbacks can also synchronously stop or interrupt.
+                // Never report successful delivery after the epoch was revoked.
+                guard turns.acceptsOutput(epoch: epoch) else {
+                    throw VoiceSessionError.staleOutput
+                }
             }
         } catch {
             // A failed audio device/queue must not leave the model speaking
