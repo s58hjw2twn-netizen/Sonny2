@@ -24,9 +24,11 @@ public final class VoiceInferenceOutputBridge {
         guard let current = epoch else { throw VoiceSessionError.staleOutput }
         do {
             try session.deliverModelOutput(pcm16, epoch: current, isFinalFrame: final)
-        } catch {
+        } catch VoiceSessionError.staleOutput {
+            // Only revocation invalidates the bridge's epoch. A malformed frame
+            // can be corrected and retried without trapping the session speaking.
             epoch = nil
-            throw error
+            throw VoiceSessionError.staleOutput
         }
     }
 
